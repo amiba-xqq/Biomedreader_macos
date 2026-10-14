@@ -1,0 +1,2926 @@
+{
+  "name": "NC扩选",
+  "count": 565,
+  "core_issns": [
+    "0028-0836",
+    "0036-8075",
+    "0092-8674",
+    "2041-1723",
+    "2375-2548",
+    "0027-8424",
+    "0140-6736",
+    "0028-4793",
+    "0098-7484",
+    "1078-8956",
+    "2168-6106",
+    "1946-6234",
+    "0021-9738",
+    "2666-3791",
+    "2574-3805",
+    "1757-4676",
+    "1001-0602",
+    "1934-5909",
+    "1465-7392",
+    "1097-2765",
+    "1545-9993",
+    "0261-4189",
+    "2211-1247",
+    "0890-9369",
+    "0021-9525",
+    "1550-4131",
+    "2213-8587",
+    "2522-5812",
+    "2662-8465",
+    "0149-5992",
+    "1474-9718",
+    "0168-8278",
+    "2468-1253",
+    "0016-5085",
+    "0017-5749",
+    "0270-9139",
+    "1949-0976",
+    "0923-7534",
+    "1535-6108",
+    "0732-183X",
+    "2159-8274",
+    "2662-1347",
+    "2374-2437",
+    "0008-5472",
+    "1078-0432",
+    "1074-7613",
+    "1529-2908",
+    "1672-7681",
+    "1931-3128",
+    "2058-5276",
+    "2470-9468",
+    "0022-1007",
+    "1474-4422",
+    "1097-6256",
+    "2168-622X",
+    "0896-6273",
+    "0006-8950",
+    "0195-668X",
+    "0009-7322",
+    "0735-1097",
+    "0009-7330",
+    "2380-6583",
+    "0006-4971",
+    "0085-2538",
+    "1073-449X",
+    "2044-5385",
+    "0887-6924",
+    "1087-0156",
+    "1548-7091",
+    "1061-4036",
+    "0305-1048",
+    "1474-7596",
+    "1088-9051",
+    "1471-0072",
+    "1474-175X",
+    "1759-5045",
+    "1474-1733",
+    "2405-8033",
+    "1748-3387",
+    "1474-1776",
+    "1471-0056",
+    "1471-003X",
+    "1554-8627",
+    "1552-4450",
+    "1674-800X",
+    "1534-5807",
+    "2041-4889",
+    "1469-221X",
+    "0950-9232",
+    "1945-0877",
+    "1754-2189"
+  ],
+  "basis": "保留原NC精选，并从用户提供的三个IF目录按生物医学主题筛选；NLM名称/ISSN别名去重。未引入无依据JIF。",
+  "scie_status": "原用户目录来源；未重新逐刊核验最新Clarivate SCIE状态。",
+  "journals": [
+    {
+      "issn": "1742-7061",
+      "title": "Acta biomaterialia",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0001-6322",
+      "title": "Acta neuropathologica",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2211-3835",
+      "title": "Acta pharmaceutica Sinica. B",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1671-4083",
+      "title": "Acta pharmacologica Sinica",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0169-409X",
+      "title": "Advanced drug delivery reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2192-2640",
+      "title": "Advanced healthcare materials",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2515-2459",
+      "title": "Advances in methods and practices in psychological science",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2161-8313",
+      "title": "Advances in nutrition (Bethesda, Md.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0002-0729",
+      "title": "Age and ageing",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1568-1637",
+      "title": "Ageing research reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2152-5250",
+      "title": "Aging and disease",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1474-9718",
+      "title": "Aging cell",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1535-7414",
+      "title": "Alcohol research & health : the journal of the National Institute on Alcohol Abuse and Alcoholism",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0269-2813",
+      "title": "Alimentary pharmacology & therapeutics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2512-8957",
+      "title": "Allergologie select",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1323-8930",
+      "title": "Allergology international : official journal of the Japanese Society of Allergology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0105-4538",
+      "title": "Allergy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2352-8737",
+      "title": "Alzheimer's & dementia (New York, N. Y.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1552-5260",
+      "title": "Alzheimer's & dementia : the journal of the Alzheimer's Association",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1758-9193",
+      "title": "Alzheimer's research & therapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1175-0561",
+      "title": "American journal of clinical dermatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0361-8609",
+      "title": "American journal of hematology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0002-9297",
+      "title": "American journal of human genetics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0272-6386",
+      "title": "American journal of kidney diseases : the official journal of the National Kidney Foundation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0002-9378",
+      "title": "American journal of obstetrics and gynecology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0090-0036",
+      "title": "American journal of public health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1073-449X",
+      "title": "American journal of respiratory and critical care medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1600-6135",
+      "title": "American journal of transplantation : official journal of the American Society of Transplantation and the American Society of Transplant Surgeons",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1350-6129",
+      "title": "Amyloid : the international journal of experimental and clinical investigation : the official journal of the International Society of Amyloidosis",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0003-2409",
+      "title": "Anaesthesia",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0003-3022",
+      "title": "Anesthesiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0003-4819",
+      "title": "Annals of internal medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0364-5134",
+      "title": "Annals of neurology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0923-7534",
+      "title": "Annals of oncology : official journal of the European Society for Medical Oncology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0003-4932",
+      "title": "Annals of surgery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0003-4967",
+      "title": "Annals of the rheumatic diseases",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0066-4154",
+      "title": "Annual review of biochemistry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2574-3414",
+      "title": "Annual review of biomedical data science",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1523-9829",
+      "title": "Annual review of biomedical engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1936-122X",
+      "title": "Annual review of biophysics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2472-3428",
+      "title": "Annual review of cancer biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1081-0706",
+      "title": "Annual review of cell and developmental biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1947-5438",
+      "title": "Annual review of chemical and biomolecular engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1548-5943",
+      "title": "Annual review of clinical psychology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1543-592X",
+      "title": "Annual review of ecology, evolution, and systematics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1941-1413",
+      "title": "Annual review of food science and technology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0066-4197",
+      "title": "Annual review of genetics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1527-8204",
+      "title": "Annual review of genomics and human genetics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0732-0582",
+      "title": "Annual review of immunology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0066-4219",
+      "title": "Annual review of medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0066-4227",
+      "title": "Annual review of microbiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0147-006X",
+      "title": "Annual review of neuroscience",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0199-9885",
+      "title": "Annual review of nutrition",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1553-4006",
+      "title": "Annual review of pathology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0362-1642",
+      "title": "Annual review of pharmacology and toxicology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0066-4278",
+      "title": "Annual review of physiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0066-4286",
+      "title": "Annual review of phytopathology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0066-4308",
+      "title": "Annual review of psychology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0163-7525",
+      "title": "Annual review of public health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2327-056X",
+      "title": "Annual review of virology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1523-0864",
+      "title": "Antioxidants & redox signaling",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2076-3921",
+      "title": "Antioxidants (Basel, Switzerland)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1360-8185",
+      "title": "Apoptosis : an international journal on programmed cell death",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0926-3373",
+      "title": "Applied catalysis. B, Environmental",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0253-6269",
+      "title": "Archives of pharmacal research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0340-5761",
+      "title": "Archives of toxicology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1079-5642",
+      "title": "Arteriosclerosis, thrombosis, and vascular biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2326-5191",
+      "title": "Arthritis & rheumatology (Hoboken, N.J.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0933-3657",
+      "title": "Artificial intelligence in medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1818-0876",
+      "title": "Asian journal of pharmaceutical sciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1568-9972",
+      "title": "Autoimmunity reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1554-8627",
+      "title": "Autophagy",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1741-7015",
+      "title": "BMC medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0959-8138",
+      "title": "BMJ (Clinical research ed.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2515-446X",
+      "title": "BMJ evidence-based medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2059-7908",
+      "title": "BMJ global health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2754-0413",
+      "title": "BMJ medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0300-8428",
+      "title": "Basic research in cardiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1521-690X",
+      "title": "Best practice & research. Clinical endocrinology & metabolism",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2096-5524",
+      "title": "Bio-design and manufacturing",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1756-0381",
+      "title": "BioData mining",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1173-8804",
+      "title": "BioDrugs : clinical immunotherapeutics, biopharmaceuticals and gene therapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2452-199X",
+      "title": "Bioactive materials",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2524-7972",
+      "title": "Biochar",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0304-419X",
+      "title": "Biochimica et biophysica acta. Reviews on cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0208-5216",
+      "title": "Biocybernetics and biomedical engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1758-5082",
+      "title": "Biofabrication",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0006-3223",
+      "title": "Biological psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1464-7931",
+      "title": "Biological reviews of the Cambridge Philosophical Society",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2050-7771",
+      "title": "Biomarker research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0142-9612",
+      "title": "Biomaterials",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2772-9516",
+      "title": "Biomaterials advances",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1226-4601",
+      "title": "Biomaterials research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0753-3322",
+      "title": "Biomedicine & pharmacotherapy = Biomedecine & pharmacotherapie",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0006-3568",
+      "title": "Bioscience",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0956-5663",
+      "title": "Biosensors & bioelectronics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0734-9750",
+      "title": "Biotechnology advances",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0006-4971",
+      "title": "Blood",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2473-9529",
+      "title": "Blood advances",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2643-3230",
+      "title": "Blood cancer discovery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2044-5385",
+      "title": "Blood cancer journal",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2095-4700",
+      "title": "Bone research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0006-8950",
+      "title": "Brain : a journal of neurology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1015-6305",
+      "title": "Brain pathology (Zurich, Switzerland)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1935-861X",
+      "title": "Brain stimulation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0889-1591",
+      "title": "Brain, behavior, and immunity",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0960-9776",
+      "title": "Breast (Edinburgh, Scotland)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1467-5463",
+      "title": "Briefings in bioinformatics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0007-0912",
+      "title": "British journal of anaesthesia",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0007-0920",
+      "title": "British journal of cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0007-1188",
+      "title": "British journal of pharmacology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0306-3674",
+      "title": "British journal of sports medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2321-3868",
+      "title": "Burns & trauma",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0007-9235",
+      "title": "CA: a cancer journal for clinicians",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0820-3946",
+      "title": "CMAJ : Canadian Medical Association journal = journal de l'Association medicale canadienne",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1172-7047",
+      "title": "CNS drugs",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2095-3941",
+      "title": "Cancer biology & medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1535-6108",
+      "title": "Cancer cell",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1475-2867",
+      "title": "Cancer cell international",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2523-3548",
+      "title": "Cancer communications (London, England)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2159-8274",
+      "title": "Cancer discovery",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2326-6066",
+      "title": "Cancer immunology research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0304-3835",
+      "title": "Cancer letters",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0167-7659",
+      "title": "Cancer metastasis reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0008-5472",
+      "title": "Cancer research",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0305-7372",
+      "title": "Cancer treatment reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1475-2840",
+      "title": "Cardiovascular diabetology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0008-6363",
+      "title": "Cardiovascular research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0092-8674",
+      "title": "Cell",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2045-3701",
+      "title": "Cell & bioscience",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2451-9456",
+      "title": "Cell chemical biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1478-811X",
+      "title": "Cell communication and signaling : CCS",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2041-4889",
+      "title": "Cell death & disease",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1350-9047",
+      "title": "Cell death and differentiation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2058-7716",
+      "title": "Cell death discovery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2056-5968",
+      "title": "Cell discovery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2666-979X",
+      "title": "Cell genomics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1931-3128",
+      "title": "Cell host & microbe",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1550-4131",
+      "title": "Cell metabolism",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2211-1247",
+      "title": "Cell reports",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2666-3791",
+      "title": "Cell reports. Medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1001-0602",
+      "title": "Cell research",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1934-5909",
+      "title": "Cell stem cell",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2468-2330",
+      "title": "Cell surface (Amsterdam, Netherlands)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2405-4712",
+      "title": "Cell systems",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1425-8153",
+      "title": "Cellular & molecular biology letters",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1672-7681",
+      "title": "Cellular & molecular immunology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2352-345X",
+      "title": "Cellular and molecular gastroenterology and hepatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1420-682X",
+      "title": "Cellular and molecular life sciences : CMLS",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0012-3692",
+      "title": "Chest",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1674-6384",
+      "title": "Chinese herbal medicines",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1000-9604",
+      "title": "Chinese journal of cancer research = Chung-kuo yen cheng yen chiu",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0366-6999",
+      "title": "Chinese medical journal",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0009-7322",
+      "title": "Circulation",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0009-7330",
+      "title": "Circulation research",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1941-3149",
+      "title": "Circulation. Arrhythmia and electrophysiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1941-9651",
+      "title": "Circulation. Cardiovascular imaging",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1941-7640",
+      "title": "Circulation. Cardiovascular interventions",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1941-7713",
+      "title": "Circulation. Cardiovascular quality and outcomes",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1941-3289",
+      "title": "Circulation. Heart failure",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2287-2728",
+      "title": "Clinical and molecular hepatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2001-1326",
+      "title": "Clinical and translational medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1078-0432",
+      "title": "Clinical cancer research : an official journal of the American Association for Cancer Research",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0009-9147",
+      "title": "Clinical chemistry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1542-3565",
+      "title": "Clinical gastroenterology and hepatology : the official clinical practice journal of the American Gastroenterological Association",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1058-4838",
+      "title": "Clinical infectious diseases : an official publication of the Infectious Diseases Society of America",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1555-9041",
+      "title": "Clinical journal of the American Society of Nephrology : CJASN",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1198-743X",
+      "title": "Clinical microbiology and infection : the official publication of the European Society of Clinical Microbiology and Infectious Diseases",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0893-8512",
+      "title": "Clinical microbiology reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0363-9762",
+      "title": "Clinical nuclear medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0261-5614",
+      "title": "Clinical nutrition (Edinburgh, Scotland)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0272-7358",
+      "title": "Clinical psychology review",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1080-0549",
+      "title": "Clinical reviews in allergy & immunology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0143-5221",
+      "title": "Clinical science (London, England : 1979)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1943-0264",
+      "title": "Cold Spring Harbor perspectives in biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2157-1422",
+      "title": "Cold Spring Harbor perspectives in medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2730-664X",
+      "title": "Communications medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1541-4337",
+      "title": "Comprehensive reviews in food science and food safety",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0010-4825",
+      "title": "Computers in biology and medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0090-3493",
+      "title": "Critical care medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1040-9238",
+      "title": "Critical reviews in biochemistry and molecular biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0738-8551",
+      "title": "Critical reviews in biotechnology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1064-3389",
+      "title": "Critical reviews in environmental science and technology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0960-9822",
+      "title": "Current biology : CB",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1534-4827",
+      "title": "Current diabetes reports",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2196-5412",
+      "title": "Current environmental health reports",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2162-4968",
+      "title": "Current obesity reports",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0958-1669",
+      "title": "Current opinion in biotechnology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1367-5931",
+      "title": "Current opinion in chemical biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1369-5274",
+      "title": "Current opinion in microbiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0959-440X",
+      "title": "Current opinion in structural biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1523-3812",
+      "title": "Current psychiatry reports",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2097-1087",
+      "title": "Cyborg and bionic systems (Washington, D.C.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0109-5641",
+      "title": "Dental materials : official publication of the Academy of Dental Materials",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1534-5807",
+      "title": "Developmental cell",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0012-1797",
+      "title": "Diabetes",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2233-6079",
+      "title": "Diabetes & metabolism journal",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0149-5992",
+      "title": "Diabetes care",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0168-8227",
+      "title": "Diabetes research and clinical practice",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1520-9156",
+      "title": "Diabetes technology & therapeutics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1520-7552",
+      "title": "Diabetes/metabolism research and reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0012-186X",
+      "title": "Diabetologia",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2211-5684",
+      "title": "Diagnostic and interventional imaging",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1294-8322",
+      "title": "Dialogues in clinical neuroscience",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1071-7544",
+      "title": "Drug delivery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1359-6446",
+      "title": "Drug discovery today",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1368-7646",
+      "title": "Drug resistance updates : reviews and commentaries in antimicrobial and anticancer chemotherapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0012-6667",
+      "title": "Drugs",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2352-3964",
+      "title": "EBioMedicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2589-5370",
+      "title": "EClinicalMedicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1757-4676",
+      "title": "EMBO molecular medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1469-221X",
+      "title": "EMBO reports",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2772-9850",
+      "title": "Eco-Environment & Health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0046-1520",
+      "title": "Educational psychologist",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1137-6821",
+      "title": "Emergencias : revista de la Sociedad Espanola de Medicina de Emergencias",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1080-6040",
+      "title": "Emerging infectious diseases",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2222-1751",
+      "title": "Emerging microbes & infections",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1046-3976",
+      "title": "Endocrine pathology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0163-769X",
+      "title": "Endocrine reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0013-726X",
+      "title": "Endoscopy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1610-3653",
+      "title": "Environmental chemistry letters",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0195-9255",
+      "title": "Environmental impact assessment review",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0013-936X",
+      "title": "Environmental science & technology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2045-7960",
+      "title": "Epidemiology and psychiatric sciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0013-9580",
+      "title": "Epilepsia",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1535-7597",
+      "title": "Epilepsy currents",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1025-496X",
+      "title": "Euro surveillance : bulletin Europeen sur les maladies transmissibles = European communicable disease bulletin",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1774-024X",
+      "title": "EuroIntervention : journal of EuroPCR in collaboration with the Working Group on Interventional Cardiology of the European Society of Cardiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1099-5129",
+      "title": "Europace : European pacing, arrhythmias, and cardiac electrophysiology : journal of the working groups on cardiac pacing, arrhythmias, and cardiac cellular electrophysiology of the European Society of Cardiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0195-668X",
+      "title": "European heart journal",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2047-2404",
+      "title": "European heart journal. Cardiovascular Imaging",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2055-6837",
+      "title": "European heart journal. Cardiovascular pharmacotherapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0265-0215",
+      "title": "European journal of anaesthesiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0959-8049",
+      "title": "European journal of cancer (Oxford, England : 1990)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1388-9842",
+      "title": "European journal of heart failure",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0953-6205",
+      "title": "European journal of internal medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1619-7070",
+      "title": "European journal of nuclear medicine and molecular imaging",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2047-4873",
+      "title": "European journal of preventive cardiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1078-5884",
+      "title": "European journal of vascular and endovascular surgery : the official journal of the European Society for Vascular Surgery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0924-977X",
+      "title": "European neuropsychopharmacology : the journal of the European College of Neuropsychopharmacology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0924-9338",
+      "title": "European psychiatry : the journal of the Association of European Psychiatrists",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0905-9180",
+      "title": "European respiratory review : an official journal of the European Respiratory Society",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0302-2838",
+      "title": "European urology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2588-9311",
+      "title": "European urology oncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1362-0347",
+      "title": "Evidence-based mental health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1226-3613",
+      "title": "Experimental & molecular medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2162-3619",
+      "title": "Experimental hematology & oncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0168-6445",
+      "title": "FEMS microbiology reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0015-0282",
+      "title": "Fertility and sterility",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0268-005X",
+      "title": "Food hydrocolloids",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2214-2894",
+      "title": "Food packaging and shelf life",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0891-5849",
+      "title": "Free radical biology & medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0091-3022",
+      "title": "Frontiers in neuroendocrinology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0016-5085",
+      "title": "Gastroenterology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0016-5107",
+      "title": "Gastrointestinal endoscopy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2517-729X",
+      "title": "General psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0890-9369",
+      "title": "Genes & development",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2352-4820",
+      "title": "Genes & diseases",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1098-3600",
+      "title": "Genetics in medicine : official journal of the American College of Medical Genetics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1474-7596",
+      "title": "Genome biology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1756-994X",
+      "title": "Genome medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1088-9051",
+      "title": "Genome research",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1672-0229",
+      "title": "Genomics, proteomics & bioinformatics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1354-1013",
+      "title": "Global change biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0017-5749",
+      "title": "Gut",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1949-0976",
+      "title": "Gut microbes",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0390-6078",
+      "title": "Haematologica",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0278-2715",
+      "title": "Health affairs (Project Hope)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2304-3881",
+      "title": "Hepatobiliary surgery and nutrition",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0270-9139",
+      "title": "Hepatology (Baltimore, Md.)",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1936-0533",
+      "title": "Hepatology international",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0268-1161",
+      "title": "Human reproduction (Oxford, England)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2399-3529",
+      "title": "Human reproduction open",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1355-4786",
+      "title": "Human reproduction update",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0194-911X",
+      "title": "Hypertension (Dallas, Tex. : 1979)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2168-2194",
+      "title": "IEEE journal of biomedical and health informatics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1937-3333",
+      "title": "IEEE reviews in biomedical engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1089-778X",
+      "title": "IEEE transactions on evolutionary computation : a publication of the IEEE Neural Networks Council",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0278-0062",
+      "title": "IEEE transactions on medical imaging",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1074-7613",
+      "title": "Immunity",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0105-2896",
+      "title": "Immunological reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2096-9376",
+      "title": "Intelligent medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0342-4642",
+      "title": "Intensive care medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2832-6237",
+      "title": "Interdisciplinary medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0143-2885",
+      "title": "International endodontic journal",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2042-6976",
+      "title": "International forum of allergy & rhinology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0141-8130",
+      "title": "International journal of biological macromolecules",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1449-2288",
+      "title": "International journal of biological sciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2424-7723",
+      "title": "International journal of bioprinting",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1176-9114",
+      "title": "International journal of nanomedicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0020-7489",
+      "title": "International journal of nursing studies",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2590-1567",
+      "title": "International journal of pharmaceutics: X",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0360-3016",
+      "title": "International journal of radiation oncology, biology, physics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1747-4930",
+      "title": "International journal of stroke : official journal of the International Stroke Society",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1743-9191",
+      "title": "International journal of surgery (London, England)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2689-5269",
+      "title": "International journal of transgender health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0020-9996",
+      "title": "Investigative radiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2666-0873",
+      "title": "JACC. CardioOncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1936-878X",
+      "title": "JACC. Cardiovascular imaging",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1936-8798",
+      "title": "JACC. Cardiovascular interventions",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2405-500X",
+      "title": "JACC. Clinical electrophysiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2213-1779",
+      "title": "JACC. Heart failure",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0098-7484",
+      "title": "JAMA",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2380-6583",
+      "title": "JAMA cardiology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2168-6068",
+      "title": "JAMA dermatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2689-0186",
+      "title": "JAMA health forum",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2168-6106",
+      "title": "JAMA internal medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2574-3805",
+      "title": "JAMA network open",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2168-6149",
+      "title": "JAMA neurology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2374-2437",
+      "title": "JAMA oncology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2168-6165",
+      "title": "JAMA ophthalmology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2168-6203",
+      "title": "JAMA pediatrics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2168-622X",
+      "title": "JAMA psychiatry",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2168-6254",
+      "title": "JAMA surgery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2589-5559",
+      "title": "JHEP reports : innovation in hepatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2051-1426",
+      "title": "Journal for immunotherapy of cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0896-8411",
+      "title": "Journal of autoimmunity",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2062-5871",
+      "title": "Journal of behavioral addictions",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1754-1611",
+      "title": "Journal of biological engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1021-7770",
+      "title": "Journal of biomedical science",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2190-5991",
+      "title": "Journal of cachexia, sarcopenia and muscle",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1097-6647",
+      "title": "Journal of cardiovascular magnetic resonance : official journal of the Society for Cardiovascular Magnetic Resonance",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0021-9630",
+      "title": "Journal of child psychology and psychiatry, and allied disciplines",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0732-183X",
+      "title": "Journal of clinical oncology : official journal of the American Society of Clinical Oncology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0303-6979",
+      "title": "Journal of clinical periodontology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0392-9078",
+      "title": "Journal of experimental & clinical cancer research : CR",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2001-3078",
+      "title": "Journal of extracellular vesicles",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1673-8527",
+      "title": "Journal of genetics and genomics = Yi chuan xue bao",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1756-8722",
+      "title": "Journal of hematology & oncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0168-8278",
+      "title": "Journal of hepatology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0954-6820",
+      "title": "Journal of internal medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1439-4456",
+      "title": "Journal of medical Internet research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0022-2623",
+      "title": "Journal of medicinal chemistry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1742-2094",
+      "title": "Journal of neuroinflammation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0022-3050",
+      "title": "Journal of neurology, neurosurgery, and psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0161-5505",
+      "title": "Journal of nuclear medicine : official publication, Society of Nuclear Medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2155-8256",
+      "title": "Journal of nursing regulation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2508-6235",
+      "title": "Journal of obesity & metabolic syndrome",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2214-031X",
+      "title": "Journal of orthopaedic translation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2095-1779",
+      "title": "Journal of pharmaceutical analysis",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1836-9553",
+      "title": "Journal of physiotherapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2095-2546",
+      "title": "Journal of sport and health science",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2287-6391",
+      "title": "Journal of stroke",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0890-8567",
+      "title": "Journal of the American Academy of Child and Adolescent Psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0190-9622",
+      "title": "Journal of the American Academy of Dermatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0735-1097",
+      "title": "Journal of the American College of Cardiology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0894-7317",
+      "title": "Journal of the American Society of Echocardiography : official publication of the American Society of Echocardiography",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0926-9959",
+      "title": "Journal of the European Academy of Dermatology and Venereology : JEADV",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2096-8663",
+      "title": "Journal of the National Cancer Center",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0027-8874",
+      "title": "Journal of the National Cancer Institute",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1540-1405",
+      "title": "Journal of the National Comprehensive Cancer Network : JNCCN",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0141-0768",
+      "title": "Journal of the Royal Society of Medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1556-0864",
+      "title": "Journal of thoracic oncology : official publication of the International Association for the Study of Lung Cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2041-7314",
+      "title": "Journal of tissue engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1093-7404",
+      "title": "Journal of toxicology and environmental health. Part B, Critical reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2450-131X",
+      "title": "Journal of translational internal medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1479-5876",
+      "title": "Journal of translational medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1195-1982",
+      "title": "Journal of travel medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0085-2538",
+      "title": "Kidney international",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2157-1724",
+      "title": "Kidney international supplements",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2005-6419",
+      "title": "Korean journal of anesthesiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0140-6736",
+      "title": "Lancet (London, England)",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2667-193X",
+      "title": "Lancet regional health. Americas",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0887-6924",
+      "title": "Leukemia",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2755-1733",
+      "title": "Life medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2235-1795",
+      "title": "Liver cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2590-0064",
+      "title": "Materials today. Bio",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0025-6196",
+      "title": "Mayo Clinic proceedings",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1361-8415",
+      "title": "Medical image analysis",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0198-6325",
+      "title": "Medicinal research reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1096-7176",
+      "title": "Metabolic engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0026-0495",
+      "title": "Metabolism: clinical and experimental",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0944-5013",
+      "title": "Microbiological research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1092-2172",
+      "title": "Microbiology and molecular biology reviews : MMBR",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2049-2618",
+      "title": "Microbiome",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2095-7467",
+      "title": "Military Medical Research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0098-2997",
+      "title": "Molecular aspects of medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2662-8651",
+      "title": "Molecular biomedicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1476-4598",
+      "title": "Molecular cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1097-2765",
+      "title": "Molecular cell",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1076-1551",
+      "title": "Molecular medicine (Cambridge, Mass.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2212-8778",
+      "title": "Molecular metabolism",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1750-1326",
+      "title": "Molecular neurodegeneration",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1359-4184",
+      "title": "Molecular psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1744-4292",
+      "title": "Molecular systems biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1525-0016",
+      "title": "Molecular therapy : the journal of the American Society of Gene Therapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2162-2531",
+      "title": "Molecular therapy. Nucleic acids",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1016-8478",
+      "title": "Molecules and cells",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1933-0219",
+      "title": "Mucosal immunology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2373-8057",
+      "title": "NPJ Parkinson's disease",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2057-3995",
+      "title": "NPJ Regenerative medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2055-5008",
+      "title": "NPJ biofilms and microbiomes",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2374-4677",
+      "title": "NPJ breast cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2398-6352",
+      "title": "NPJ digital medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2397-768X",
+      "title": "NPJ precision oncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2059-0105",
+      "title": "NPJ vaccines",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0028-0836",
+      "title": "Nature",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2662-8465",
+      "title": "Nature aging",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2157-846X",
+      "title": "Nature biomedical engineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1087-0156",
+      "title": "Nature biotechnology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2662-1347",
+      "title": "Nature cancer",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2731-0590",
+      "title": "Nature cardiovascular research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1465-7392",
+      "title": "Nature cell biology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1552-4450",
+      "title": "Nature chemical biology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2041-1723",
+      "title": "Nature communications",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2397-334X",
+      "title": "Nature ecology & evolution",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2662-1355",
+      "title": "Nature food",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1061-4036",
+      "title": "Nature genetics",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2397-3374",
+      "title": "Nature human behaviour",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1529-2908",
+      "title": "Nature immunology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1078-8956",
+      "title": "Nature medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2522-5812",
+      "title": "Nature metabolism",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1548-7091",
+      "title": "Nature methods",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2058-5276",
+      "title": "Nature microbiology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1748-3387",
+      "title": "Nature nanotechnology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1097-6256",
+      "title": "Nature neuroscience",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1754-2189",
+      "title": "Nature protocols",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2731-6092",
+      "title": "Nature reviews bioengineering",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1474-175X",
+      "title": "Nature reviews. Cancer",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1759-5002",
+      "title": "Nature reviews. Cardiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1759-4774",
+      "title": "Nature reviews. Clinical oncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2056-676X",
+      "title": "Nature reviews. Disease primers",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1474-1776",
+      "title": "Nature reviews. Drug discovery",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1759-5029",
+      "title": "Nature reviews. Endocrinology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1759-5045",
+      "title": "Nature reviews. Gastroenterology & hepatology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1471-0056",
+      "title": "Nature reviews. Genetics",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1474-1733",
+      "title": "Nature reviews. Immunology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1740-1526",
+      "title": "Nature reviews. Microbiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1471-0072",
+      "title": "Nature reviews. Molecular cell biology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1759-4758",
+      "title": "Nature reviews. Neurology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1471-003X",
+      "title": "Nature reviews. Neuroscience",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2731-0574",
+      "title": "Nature reviews. Psychology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1759-4790",
+      "title": "Nature reviews. Rheumatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1759-4812",
+      "title": "Nature reviews. Urology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1545-9993",
+      "title": "Nature structural & molecular biology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2731-6076",
+      "title": "Nature. Mental health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1522-8517",
+      "title": "Neuro-oncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0028-3878",
+      "title": "Neurology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2332-7812",
+      "title": "Neurology(R) neuroimmunology & neuroinflammation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0896-6273",
+      "title": "Neuron",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0893-133X",
+      "title": "Neuropsychopharmacology : official publication of the American College of Neuropsychopharmacology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0149-7634",
+      "title": "Neuroscience and biobehavioral reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1933-7213",
+      "title": "Neurotherapeutics : the journal of the American Society for Experimental NeuroTherapeutics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0305-1048",
+      "title": "Nucleic acids research",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1467-7881",
+      "title": "Obesity reviews : an official journal of the International Association for the Study of Obesity",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0950-9232",
+      "title": "Oncogene",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2162-4011",
+      "title": "Oncoimmunology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0161-6420",
+      "title": "Ophthalmology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1063-4584",
+      "title": "Osteoarthritis and cartilage",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2767-3170",
+      "title": "PLOS digital health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1544-9173",
+      "title": "PLoS biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1549-1277",
+      "title": "PLoS medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1743-8977",
+      "title": "Particle and fibre toxicology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0031-4005",
+      "title": "Pediatrics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0906-6713",
+      "title": "Periodontology 2000",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1088-8683",
+      "title": "Personality and social psychology review : an official journal of the Society for Personality and Social Psychology, Inc",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1043-6618",
+      "title": "Pharmacological research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0031-6997",
+      "title": "Pharmacological reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0163-7258",
+      "title": "Pharmacology & therapeutics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0031-9333",
+      "title": "Physiological reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1548-9213",
+      "title": "Physiology (Bethesda, Md.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0944-7113",
+      "title": "Phytomedicine : international journal of phytotherapy and phytopharmacology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0951-418X",
+      "title": "Phytotherapy research : PTR",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0027-8424",
+      "title": "Proceedings of the National Academy of Sciences of the United States of America",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2516-1091",
+      "title": "Progress in biomedical engineering (Bristol, England)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0033-0620",
+      "title": "Progress in cardiovascular diseases",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0301-0082",
+      "title": "Progress in neurobiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1350-9462",
+      "title": "Progress in retinal and eye research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1674-800X",
+      "title": "Protein & cell",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1323-1316",
+      "title": "Psychiatry and clinical neurosciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0033-2909",
+      "title": "Psychological bulletin",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1529-1006",
+      "title": "Psychological science in the public interest : a journal of the American Psychological Society",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0033-3190",
+      "title": "Psychotherapy and psychosomatics",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2326-3601",
+      "title": "Qualitative psychology (Washington, D.C.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0033-8419",
+      "title": "Radiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2638-6100",
+      "title": "Radiology. Artificial intelligence",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2638-616X",
+      "title": "Radiology. Imaging cancer",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1572-9826",
+      "title": "Re/views in environmental science and bio/technology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2213-2317",
+      "title": "Redox biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1351-0002",
+      "title": "Redox report : communications in free radical research",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2056-3418",
+      "title": "Regenerative biomaterials",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0921-3449",
+      "title": "Resources, conservation, and recycling",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1389-9155",
+      "title": "Reviews in endocrine & metabolic disorders",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1052-9276",
+      "title": "Reviews in medical virology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0036-8075",
+      "title": "Science (New York, N.Y.)",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2375-2548",
+      "title": "Science advances",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2470-9468",
+      "title": "Science immunology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1945-0877",
+      "title": "Science signaling",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1946-6234",
+      "title": "Science translational medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1044-579X",
+      "title": "Seminars in cancer biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1084-9521",
+      "title": "Seminars in cell & developmental biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1044-5323",
+      "title": "Seminars in immunology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1863-2297",
+      "title": "Seminars in immunopathology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2095-9907",
+      "title": "Signal transduction and targeted therapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1087-0792",
+      "title": "Sleep medicine reviews",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2751-1863",
+      "title": "Smart medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0112-1642",
+      "title": "Sports medicine (Auckland, N.Z.)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1757-6512",
+      "title": "Stem cell research & therapy",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0039-2499",
+      "title": "Stroke",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1526-5161",
+      "title": "The American journal of bioethics : AJOB",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0002-9165",
+      "title": "The American journal of clinical nutrition",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0002-9270",
+      "title": "The American journal of gastroenterology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0002-953X",
+      "title": "The American journal of psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0140-525X",
+      "title": "The Behavioral and brain sciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0007-0963",
+      "title": "The British journal of dermatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0007-1250",
+      "title": "The British journal of psychiatry : the journal of mental science",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0007-1323",
+      "title": "The British journal of surgery",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0261-4189",
+      "title": "The EMBO journal",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0903-1936",
+      "title": "The European respiratory journal",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1882-7616",
+      "title": "The Japanese dental science review",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0091-6749",
+      "title": "The Journal of allergy and clinical immunology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0021-9525",
+      "title": "The Journal of cell biology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0021-9738",
+      "title": "The Journal of clinical investigation",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "0022-1007",
+      "title": "The Journal of experimental medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1053-2498",
+      "title": "The Journal of heart and lung transplantation : the official publication of the International Society for Heart Transplantation",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0163-4453",
+      "title": "The Journal of infection",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0022-5347",
+      "title": "The Journal of urology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2666-7762",
+      "title": "The Lancet regional health. Europe",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2772-3682",
+      "title": "The Lancet regional health. Southeast Asia",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2666-6065",
+      "title": "The Lancet regional health. Western Pacific",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2352-4642",
+      "title": "The Lancet. Child & adolescent health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2589-7500",
+      "title": "The Lancet. Digital health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2214-109X",
+      "title": "The Lancet. Global health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2352-3026",
+      "title": "The Lancet. Haematology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1473-3099",
+      "title": "The Lancet. Infectious diseases",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1474-4422",
+      "title": "The Lancet. Neurology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1470-2045",
+      "title": "The Lancet. Oncology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2542-5196",
+      "title": "The Lancet. Planetary health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2468-2667",
+      "title": "The Lancet. Public health",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2213-2600",
+      "title": "The Lancet. Respiratory medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2665-9913",
+      "title": "The Lancet. Rheumatology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0025-729X",
+      "title": "The Medical journal of Australia",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0028-4793",
+      "title": "The New England journal of medicine",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2213-2198",
+      "title": "The journal of allergy and clinical immunology. In practice",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1129-2369",
+      "title": "The journal of headache and pain",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2274-5807",
+      "title": "The journal of prevention of Alzheimer's disease",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2213-8587",
+      "title": "The lancet. Diabetes & endocrinology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2468-1253",
+      "title": "The lancet. Gastroenterology & hepatology",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "2666-7568",
+      "title": "The lancet. Healthy longevity",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2215-0366",
+      "title": "The lancet. Psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0040-6376",
+      "title": "Thorax",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2047-9158",
+      "title": "Translational neurodegeneration",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2158-3188",
+      "title": "Translational psychiatry",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0968-0004",
+      "title": "Trends in biochemical sciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0167-7799",
+      "title": "Trends in biotechnology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2405-8033",
+      "title": "Trends in cancer",
+      "origin": "原NC精选"
+    },
+    {
+      "issn": "1050-1738",
+      "title": "Trends in cardiovascular medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0962-8924",
+      "title": "Trends in cell biology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1364-6613",
+      "title": "Trends in cognitive sciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0169-5347",
+      "title": "Trends in ecology & evolution",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1043-2760",
+      "title": "Trends in endocrinology and metabolism: TEM",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0924-2244",
+      "title": "Trends in food science & technology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0168-9525",
+      "title": "Trends in genetics : TIG",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1471-4906",
+      "title": "Trends in immunology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0966-842X",
+      "title": "Trends in microbiology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1471-4914",
+      "title": "Trends in molecular medicine",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0166-2236",
+      "title": "Trends in neurosciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0165-6147",
+      "title": "Trends in pharmacological sciences",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "0960-7692",
+      "title": "Ultrasound in obstetrics & gynecology : the official journal of the International Society of Ultrasound in Obstetrics and Gynecology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2050-6406",
+      "title": "United European gastroenterology journal",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2096-496X",
+      "title": "Visual computing for industry, biomedicine, and art",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1759-0876",
+      "title": "Wiley interdisciplinary reviews. Computational molecular science",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1939-5116",
+      "title": "Wiley interdisciplinary reviews. Nanomedicine and nanobiotechnology",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "1723-8617",
+      "title": "World psychiatry : official journal of the World Psychiatric Association (WPA)",
+      "origin": "用户IF目录·生物医学候选"
+    },
+    {
+      "issn": "2731-6068",
+      "title": "npj aging",
+      "origin": "用户IF目录·生物医学候选"
+    }
+  ]
+}

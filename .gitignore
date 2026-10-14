@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+outputs/
+*.sqlite3
+*.sqlite3-*
+.DS_Store
+app/assets/nlm_journals.json
+app/assets/user_jif_2023_2025.json

@@ -1,0 +1,821 @@
+[
+  {
+    "title": "Nature",
+    "nlm_title": "Nature",
+    "issn": "0028-0836",
+    "aliases": "0028-0836;1476-4687",
+    "jif": 56.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=DYlYL5"
+  },
+  {
+    "title": "Science",
+    "nlm_title": "Science (New York, N.Y.)",
+    "issn": "0036-8075",
+    "aliases": "0036-8075;1095-9203",
+    "jif": 47.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rwRWqD"
+  },
+  {
+    "title": "Cell",
+    "nlm_title": "Cell",
+    "issn": "0092-8674",
+    "aliases": "0092-8674;1097-4172",
+    "jif": 45.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=jp38m5"
+  },
+  {
+    "title": "Nature Communications",
+    "nlm_title": "Nature communications",
+    "issn": "2041-1723",
+    "aliases": "2041-1723",
+    "jif": 18.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pB7xG5"
+  },
+  {
+    "title": "Science Advances",
+    "nlm_title": "Science advances",
+    "issn": "2375-2548",
+    "aliases": "2375-2548",
+    "jif": 13.9,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rz8jq5"
+  },
+  {
+    "title": "Proceedings of the National Academy of Sciences of the United States of America",
+    "nlm_title": "Proceedings of the National Academy of Sciences of the United States of America",
+    "issn": "0027-8424",
+    "aliases": "0027-8424;1091-6490",
+    "jif": 9.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rA9mMr"
+  },
+  {
+    "title": "The Lancet",
+    "nlm_title": "Lancet (London, England)",
+    "issn": "0140-6736",
+    "aliases": "0140-6736;1474-547X",
+    "jif": 109.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5jRK45"
+  },
+  {
+    "title": "New England Journal of Medicine",
+    "nlm_title": "The New England journal of medicine",
+    "issn": "0028-4793",
+    "aliases": "0028-4793;1533-4406",
+    "jif": 84.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=DblnVp"
+  },
+  {
+    "title": "JAMA",
+    "nlm_title": "JAMA",
+    "issn": "0098-7484",
+    "aliases": "0098-7484;1538-3598",
+    "jif": 65.4,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=r8VOx5"
+  },
+  {
+    "title": "Nature Medicine",
+    "nlm_title": "Nature medicine",
+    "issn": "1078-8956",
+    "aliases": "1078-8956;1546-170X",
+    "jif": 52.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=Dlg3A5"
+  },
+  {
+    "title": "JAMA Internal Medicine",
+    "nlm_title": "JAMA internal medicine",
+    "issn": "2168-6106",
+    "aliases": "2168-6106;2168-6114",
+    "jif": 26.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5K9Edr"
+  },
+  {
+    "title": "Science Translational Medicine",
+    "nlm_title": "Science translational medicine",
+    "issn": "1946-6234",
+    "aliases": "1946-6234;1946-6242",
+    "jif": 15.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=DMb1xr"
+  },
+  {
+    "title": "Journal of Clinical Investigation",
+    "nlm_title": "The Journal of clinical investigation",
+    "issn": "0021-9738",
+    "aliases": "0021-9738;1558-8238",
+    "jif": 14.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=p6B4vp"
+  },
+  {
+    "title": "Cell Reports Medicine",
+    "nlm_title": "Cell reports. Medicine",
+    "issn": "2666-3791",
+    "aliases": "2666-3791",
+    "jif": 14.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=DZn0wD"
+  },
+  {
+    "title": "JAMA Network Open",
+    "nlm_title": "JAMA network open",
+    "issn": "2574-3805",
+    "aliases": "2574-3805",
+    "jif": 11.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=DG6a75"
+  },
+  {
+    "title": "EMBO Molecular Medicine",
+    "nlm_title": "EMBO molecular medicine",
+    "issn": "1757-4676",
+    "aliases": "1757-4676;1757-4684",
+    "jif": 7.9,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=poqoJD"
+  },
+  {
+    "title": "Cell Research",
+    "nlm_title": "Cell research",
+    "issn": "1001-0602",
+    "aliases": "1001-0602;1748-7838",
+    "jif": 31.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=lpLJvD"
+  },
+  {
+    "title": "Cell Stem Cell",
+    "nlm_title": "Cell stem cell",
+    "issn": "1934-5909",
+    "aliases": "1934-5909;1875-9777",
+    "jif": 23.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=grRJwr"
+  },
+  {
+    "title": "Nature Cell Biology",
+    "nlm_title": "Nature cell biology",
+    "issn": "1465-7392",
+    "aliases": "1465-7392;1476-4679",
+    "jif": 22.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5VvM45"
+  },
+  {
+    "title": "Molecular Cell",
+    "nlm_title": "Molecular cell",
+    "issn": "1097-2765",
+    "aliases": "1097-2765;1097-4164",
+    "jif": 16.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rA99br"
+  },
+  {
+    "title": "Nature Structural & Molecular Biology",
+    "nlm_title": "Nature structural & molecular biology",
+    "issn": "1545-9993",
+    "aliases": "1545-9993;1545-9985",
+    "jif": 10.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5mNJRD"
+  },
+  {
+    "title": "The EMBO Journal",
+    "nlm_title": "The EMBO journal",
+    "issn": "0261-4189",
+    "aliases": "0261-4189;1460-2075",
+    "jif": 8.4,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5yNovD"
+  },
+  {
+    "title": "Cell Reports",
+    "nlm_title": "Cell reports",
+    "issn": "2211-1247",
+    "aliases": "2211-1247",
+    "jif": 7.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5jVxG5"
+  },
+  {
+    "title": "Genes & Development",
+    "nlm_title": "Genes & development",
+    "issn": "0890-9369",
+    "aliases": "0890-9369;1549-5477",
+    "jif": 7.4,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rA4mOD"
+  },
+  {
+    "title": "Journal of Cell Biology",
+    "nlm_title": "The Journal of cell biology",
+    "issn": "0021-9525",
+    "aliases": "0021-9525;1540-8140",
+    "jif": 6.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pWgQvp"
+  },
+  {
+    "title": "Cell Metabolism",
+    "nlm_title": "Cell metabolism",
+    "issn": "1550-4131",
+    "aliases": "1550-4131;1932-7420",
+    "jif": 37.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=ZD4ZZp"
+  },
+  {
+    "title": "The Lancet Diabetes & Endocrinology",
+    "nlm_title": "The lancet. Diabetes & endocrinology",
+    "issn": "2213-8587",
+    "aliases": "2213-8587;2213-8595",
+    "jif": 36.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pB4lXD"
+  },
+  {
+    "title": "Nature Metabolism",
+    "nlm_title": "Nature metabolism",
+    "issn": "2522-5812",
+    "aliases": "2522-5812",
+    "jif": 27.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pB4QxD"
+  },
+  {
+    "title": "Nature Aging",
+    "nlm_title": "Nature aging",
+    "issn": "2662-8465",
+    "aliases": "2662-8465",
+    "jif": 25.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pqPX6r"
+  },
+  {
+    "title": "Diabetes Care",
+    "nlm_title": "Diabetes care",
+    "issn": "0149-5992",
+    "aliases": "0149-5992;1935-5548",
+    "jif": 22.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pLaEj5"
+  },
+  {
+    "title": "Aging Cell",
+    "nlm_title": "Aging cell",
+    "issn": "1474-9718",
+    "aliases": "1474-9718;1474-9726",
+    "jif": 7.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=52zKx5"
+  },
+  {
+    "title": "Journal of Hepatology",
+    "nlm_title": "Journal of hepatology",
+    "issn": "0168-8278",
+    "aliases": "0168-8278;1600-0641",
+    "jif": 40.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5K4GWD"
+  },
+  {
+    "title": "The Lancet Gastroenterology & Hepatology",
+    "nlm_title": "The lancet. Gastroenterology & hepatology",
+    "issn": "2468-1253",
+    "aliases": "2468-1253",
+    "jif": 39.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5mxbep"
+  },
+  {
+    "title": "Gastroenterology",
+    "nlm_title": "Gastroenterology",
+    "issn": "0016-5085",
+    "aliases": "0016-5085;1528-0012",
+    "jif": 29.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5mwQor"
+  },
+  {
+    "title": "Gut",
+    "nlm_title": "Gut",
+    "issn": "0017-5749",
+    "aliases": "0017-5749;1468-3288",
+    "jif": 24.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5JqbZp"
+  },
+  {
+    "title": "Hepatology",
+    "nlm_title": "Hepatology (Baltimore, Md.)",
+    "issn": "0270-9139",
+    "aliases": "0270-9139;1527-3350",
+    "jif": 18.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pe94wp"
+  },
+  {
+    "title": "Gut Microbes",
+    "nlm_title": "Gut microbes",
+    "issn": "1949-0976",
+    "aliases": "1949-0976;1949-0984",
+    "jif": 15.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=DXlNaD"
+  },
+  {
+    "title": "Annals of Oncology",
+    "nlm_title": "Annals of oncology : official journal of the European Society for Medical Oncology",
+    "issn": "0923-7534",
+    "aliases": "0923-7534;1569-8041",
+    "jif": 80.4,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=ypoa8D"
+  },
+  {
+    "title": "Cancer Cell",
+    "nlm_title": "Cancer cell",
+    "issn": "1535-6108",
+    "aliases": "1535-6108;1878-3686",
+    "jif": 56.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=R52Nx5"
+  },
+  {
+    "title": "Journal of Clinical Oncology",
+    "nlm_title": "Journal of clinical oncology : official journal of the American Society of Clinical Oncology",
+    "issn": "0732-183X",
+    "aliases": "0732-183X;1527-7755",
+    "jif": 44.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5K4g7D"
+  },
+  {
+    "title": "Cancer Discovery",
+    "nlm_title": "Cancer discovery",
+    "issn": "2159-8274",
+    "aliases": "2159-8274;2159-8290",
+    "jif": 29.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=r7LO9p"
+  },
+  {
+    "title": "Nature Cancer",
+    "nlm_title": "Nature cancer",
+    "issn": "2662-1347",
+    "aliases": "2662-1347",
+    "jif": 28.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=DakZ9p"
+  },
+  {
+    "title": "JAMA Oncology",
+    "nlm_title": "JAMA oncology",
+    "issn": "2374-2437",
+    "aliases": "2374-2437;2374-2445",
+    "jif": 23.9,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=peVoP5"
+  },
+  {
+    "title": "Cancer Research",
+    "nlm_title": "Cancer research",
+    "issn": "0008-5472",
+    "aliases": "0008-5472;1538-7445",
+    "jif": 22.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=XDl6Qp"
+  },
+  {
+    "title": "Clinical Cancer Research",
+    "nlm_title": "Clinical cancer research : an official journal of the American Association for Cancer Research",
+    "issn": "1078-0432",
+    "aliases": "1078-0432;1557-3265",
+    "jif": 10.9,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=npBeQr"
+  },
+  {
+    "title": "Immunity",
+    "nlm_title": "Immunity",
+    "issn": "1074-7613",
+    "aliases": "1074-7613;1097-4180",
+    "jif": 30.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5QdWAp"
+  },
+  {
+    "title": "Nature Immunology",
+    "nlm_title": "Nature immunology",
+    "issn": "1529-2908",
+    "aliases": "1529-2908;1529-2916",
+    "jif": 26.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=r7VmAD"
+  },
+  {
+    "title": "Cellular & Molecular Immunology",
+    "nlm_title": "Cellular & molecular immunology",
+    "issn": "1672-7681",
+    "aliases": "1672-7681;2042-0226",
+    "jif": 23.9,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=b5JPNr"
+  },
+  {
+    "title": "Cell Host & Microbe",
+    "nlm_title": "Cell host & microbe",
+    "issn": "1931-3128",
+    "aliases": "1931-3128;1934-6069",
+    "jif": 23.2,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=Erv7yp"
+  },
+  {
+    "title": "Nature Microbiology",
+    "nlm_title": "Nature microbiology",
+    "issn": "2058-5276",
+    "aliases": "2058-5276",
+    "jif": 18.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rvxPy5"
+  },
+  {
+    "title": "Science Immunology",
+    "nlm_title": "Science immunology",
+    "issn": "2470-9468",
+    "aliases": "2470-9468",
+    "jif": 16.4,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5Elkqp"
+  },
+  {
+    "title": "Journal of Experimental Medicine",
+    "nlm_title": "The Journal of experimental medicine",
+    "issn": "0022-1007",
+    "aliases": "0022-1007;1540-9538",
+    "jif": 11.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=p10eJr"
+  },
+  {
+    "title": "The Lancet Neurology",
+    "nlm_title": "The Lancet. Neurology",
+    "issn": "1474-4422",
+    "aliases": "1474-4422;1474-4465",
+    "jif": 54.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rvNn9r"
+  },
+  {
+    "title": "Nature Neuroscience",
+    "nlm_title": "Nature neuroscience",
+    "issn": "1097-6256",
+    "aliases": "1097-6256;1546-1726",
+    "jif": 20.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pWVGYr"
+  },
+  {
+    "title": "JAMA Psychiatry",
+    "nlm_title": "JAMA psychiatry",
+    "issn": "2168-622X",
+    "aliases": "2168-622X;2168-6238",
+    "jif": 18.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5jV035"
+  },
+  {
+    "title": "Neuron",
+    "nlm_title": "Neuron",
+    "issn": "0896-6273",
+    "aliases": "0896-6273;1097-4199",
+    "jif": 16.9,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5y0K1p"
+  },
+  {
+    "title": "Brain",
+    "nlm_title": "Brain : a journal of neurology",
+    "issn": "0006-8950",
+    "aliases": "0006-8950;1460-2156",
+    "jif": 12.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=7Dbz7D"
+  },
+  {
+    "title": "European Heart Journal",
+    "nlm_title": "European heart journal",
+    "issn": "0195-668X",
+    "aliases": "0195-668X;1522-9645",
+    "jif": 45.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=poqmgD"
+  },
+  {
+    "title": "Circulation",
+    "nlm_title": "Circulation",
+    "issn": "0009-7322",
+    "aliases": "0009-7322;1524-4539",
+    "jif": 41.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=G5dqQD"
+  },
+  {
+    "title": "Journal of the American College of Cardiology",
+    "nlm_title": "Journal of the American College of Cardiology",
+    "issn": "0735-1097",
+    "aliases": "0735-1097;1558-3597",
+    "jif": 22.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5Nyk8p"
+  },
+  {
+    "title": "Circulation Research",
+    "nlm_title": "Circulation research",
+    "issn": "0009-7330",
+    "aliases": "0009-7330;1524-4571",
+    "jif": 18.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=R52P3r"
+  },
+  {
+    "title": "JAMA Cardiology",
+    "nlm_title": "JAMA cardiology",
+    "issn": "2380-6583",
+    "aliases": "2380-6583;2380-6591",
+    "jif": 15.2,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5kPV9D"
+  },
+  {
+    "title": "Blood",
+    "nlm_title": "Blood",
+    "issn": "0006-4971",
+    "aliases": "0006-4971;1528-0020",
+    "jif": 23.9,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=lpLWar"
+  },
+  {
+    "title": "Kidney International",
+    "nlm_title": "Kidney international",
+    "issn": "0085-2538",
+    "aliases": "0085-2538;1523-1755",
+    "jif": 21.8,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5Ny79p"
+  },
+  {
+    "title": "American Journal of Respiratory and Critical Care Medicine",
+    "nlm_title": "American journal of respiratory and critical care medicine",
+    "issn": "1073-449X",
+    "aliases": "1073-449X;1535-4970",
+    "jif": 21.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=0pW3Lp"
+  },
+  {
+    "title": "Blood Cancer Journal",
+    "nlm_title": "Blood cancer journal",
+    "issn": "2044-5385",
+    "aliases": "2044-5385",
+    "jif": 13.8,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rw4Lqp"
+  },
+  {
+    "title": "Leukemia",
+    "nlm_title": "Leukemia",
+    "issn": "0887-6924",
+    "aliases": "0887-6924;1476-5551",
+    "jif": 8.8,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5yJgVD"
+  },
+  {
+    "title": "Nature Biotechnology",
+    "nlm_title": "Nature biotechnology",
+    "issn": "1087-0156",
+    "aliases": "1087-0156;1546-1696",
+    "jif": 44.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pBl4ED"
+  },
+  {
+    "title": "Nature Methods",
+    "nlm_title": "Nature methods",
+    "issn": "1548-7091",
+    "aliases": "1548-7091;1548-7105",
+    "jif": 28.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=r8Oz4D"
+  },
+  {
+    "title": "Nature Genetics",
+    "nlm_title": "Nature genetics",
+    "issn": "1061-4036",
+    "aliases": "1061-4036;1546-1718",
+    "jif": 25.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=p6vxXp"
+  },
+  {
+    "title": "Nucleic Acids Research",
+    "nlm_title": "Nucleic acids research",
+    "issn": "0305-1048",
+    "aliases": "0305-1048;1362-4962",
+    "jif": 15.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=5NG1MD"
+  },
+  {
+    "title": "Genome Biology",
+    "nlm_title": "Genome biology",
+    "issn": "1474-7596",
+    "aliases": "1474-7596;1474-760X",
+    "jif": 9.2,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=rAXoRD"
+  },
+  {
+    "title": "Genome Research",
+    "nlm_title": "Genome research",
+    "issn": "1088-9051",
+    "aliases": "1088-9051;1549-5469",
+    "jif": 6.3,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pLa0d5"
+  },
+  {
+    "title": "Nature Reviews Molecular Cell Biology",
+    "nlm_title": "Nature reviews. Molecular cell biology",
+    "issn": "1471-0072",
+    "aliases": "1471-0072;1471-0080",
+    "jif": 118.0,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pnaJ6r"
+  },
+  {
+    "title": "Nature Reviews Cancer",
+    "nlm_title": "Nature reviews. Cancer",
+    "issn": "1474-175X",
+    "aliases": "1474-175X;1474-1768",
+    "jif": 60.7,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=poxkV5"
+  },
+  {
+    "title": "Nature Reviews Gastroenterology & Hepatology",
+    "nlm_title": "Nature reviews. Gastroenterology & hepatology",
+    "issn": "1759-5045",
+    "aliases": "1759-5045;1759-5053",
+    "jif": 57.5,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=D4LeLD"
+  },
+  {
+    "title": "Nature Reviews Immunology",
+    "nlm_title": "Nature reviews. Immunology",
+    "issn": "1474-1733",
+    "aliases": "1474-1733;1474-1741",
+    "jif": 47.1,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pLMgG5"
+  },
+  {
+    "title": "Trends in Cancer",
+    "nlm_title": "Trends in cancer",
+    "issn": "2405-8033",
+    "aliases": "2405-8033;2405-8025",
+    "jif": 21.6,
+    "release_year": 2026,
+    "source": "https://www.ablesci.com/journal/detail?id=pokB8p"
+  },
+  {
+    "title": "Nature nanotechnology",
+    "nlm_title": "Nature nanotechnology",
+    "issn": "1748-3387",
+    "aliases": "1748-3387;1748-3395",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Nature reviews. Drug discovery",
+    "nlm_title": "Nature reviews. Drug discovery",
+    "issn": "1474-1776",
+    "aliases": "1474-1776;1474-1784",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Nature reviews. Genetics",
+    "nlm_title": "Nature reviews. Genetics",
+    "issn": "1471-0056",
+    "aliases": "1471-0056;1471-0064",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Nature reviews. Neuroscience",
+    "nlm_title": "Nature reviews. Neuroscience",
+    "issn": "1471-003X",
+    "aliases": "1471-003X;1471-0048",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Autophagy",
+    "nlm_title": "Autophagy",
+    "issn": "1554-8627",
+    "aliases": "1554-8627;1554-8635",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Nature chemical biology",
+    "nlm_title": "Nature chemical biology",
+    "issn": "1552-4450",
+    "aliases": "1552-4450;1552-4469",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Protein & cell",
+    "nlm_title": "Protein & cell",
+    "issn": "1674-800X",
+    "aliases": "1674-800X;1674-8018",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Developmental cell",
+    "nlm_title": "Developmental cell",
+    "issn": "1534-5807",
+    "aliases": "1534-5807;1878-1551",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "cell death & disease",
+    "nlm_title": "Cell death & disease",
+    "issn": "2041-4889",
+    "aliases": "2041-4889",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "EMBO reports",
+    "nlm_title": "EMBO reports",
+    "issn": "1469-221X",
+    "aliases": "1469-221X;1469-3178",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Oncogene",
+    "nlm_title": "Oncogene",
+    "issn": "0950-9232",
+    "aliases": "0950-9232;1476-5594",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Science signaling",
+    "nlm_title": "Science signaling",
+    "issn": "1945-0877",
+    "aliases": "1945-0877;1937-9145",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  },
+  {
+    "title": "Nature protocols",
+    "nlm_title": "Nature protocols",
+    "issn": "1754-2189",
+    "aliases": "1754-2189;1750-2799",
+    "jif": null,
+    "release_year": 2026,
+    "source": ""
+  }
+]

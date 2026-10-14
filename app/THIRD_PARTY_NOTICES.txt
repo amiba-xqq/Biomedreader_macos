@@ -1,0 +1,35 @@
+Third-party components bundled with Biomed Reader (刊禾)
+=========================================================
+
+Python 3.12
+Python Software Foundation License
+https://www.python.org/psf/license/
+
+PySide6 / Qt for Python 6.8.3
+GNU Lesser General Public License v3 / commercial alternatives as distributed by Qt
+https://doc.qt.io/qtforpython-6/licenses.html
+
+Qt WebEngine / Chromium (browser components included starting with Biomed Reader 1.9.4)
+Qt WebEngine's Qt-specific parts are distributed with the PySide6/Qt runtime.
+Chromium and its dependencies retain their respective third-party licenses.
+https://doc.qt.io/qt-6.8/qtwebengine-licensing.html
+https://doc.qt.io/qt-6.8/qtwebengine-3rdparty-chromium.html
+The links above identify the upstream browser components and their license notices.
+
+Requests 2.32.5
+Apache License 2.0
+https://requests.readthedocs.io/
+
+Certifi, Charset Normalizer, idna and urllib3 are dependencies of Requests. Their license files
+are retained by the Python package distribution and their project pages provide current terms.
+
+PyInstaller is used to build the executable bundle and is not imported by the application at run
+time. PyInstaller is distributed under GPL 2.0 with an exception permitting distribution of the
+resulting bundled application.
+
+Journal metric references
+Selected numeric JIF references were provided by the user in a workbook and queried from public
+AbleSci journal pages (https://www.ablesci.com/journal). Source URLs and publication-year labels
+are retained. Values have not been independently verified against licensed Clarivate JCR data.
+The displayed metric year 2025 follows the user's configuration; latest AbleSci pages label the
+release as 2026. No full website pages, journal articles, or licensed JCR database are bundled.
