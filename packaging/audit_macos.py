@@ -10,7 +10,10 @@ for path in app.rglob('*'):
     with path.open('rb') as file:header=file.read(4)
     if header not in magic:continue
     output=subprocess.run(['vtool','-show-build',str(path)],capture_output=True,text=True,check=True).stdout
-    versions=re.findall(r'^\s*(?:minos|version)\s+(\d+)\.(\d+)',output,re.M)
+    # vtool also prints LC_BUILD_VERSION tool versions (e.g. ld 1167.5).
+    # Only OS deployment fields constrain the minimum supported macOS.
+    versions=re.findall(r'^\s*minos\s+(\d+)\.(\d+)',output,re.M)
+    versions+=re.findall(r'cmd LC_VERSION_MIN_MACOSX\s+cmdsize \d+\s+version (\d+)\.(\d+)',output)
     assert versions,(path,'No deployment target')
     assert all((int(major),int(minor))<=(12,0) for major,minor in versions),(path,versions)
     count+=1
