@@ -22,7 +22,16 @@ for report in (Path.home()/'Library/Logs/DiagnosticReports').glob('*.ips'):
 # Hosted runners may not save .ips reports. Capture the debugger in memory and
 # emit only function names, never raw output, addresses, paths or variables.
 root=Path(__file__).resolve().parents[1]
-trace=subprocess.run([sys.executable,'-X','faulthandler',str(root/'app/main.py'),'--browser-self-test'],cwd=root/'build/source-smoke',capture_output=True,text=True,timeout=60)
+trace_code="""import sys,runpy
+from pathlib import Path
+main=Path(sys.argv[1]);sys.path.insert(0,str(main.parent));sys.argv=[str(main),'--browser-self-test']
+def trace(frame,event,arg):
+    if event=='line' and frame.f_code.co_filename==str(main):print('TRACE_LINE',frame.f_lineno,flush=True)
+    return trace
+sys.settrace(trace);runpy.run_path(str(main),run_name='__main__')
+"""
+trace=subprocess.run([sys.executable,'-X','faulthandler','-c',trace_code,str(root/'app/main.py')],cwd=root/'build/source-smoke',capture_output=True,text=True,timeout=60)
+print('Last application lines:',re.findall(r'TRACE_LINE (\d+)',trace.stdout)[-20:])
 for number,name in re.findall(r'File "[^"]+", line (\d+), in ([A-Za-z0-9_<>]+)',trace.stderr):
     print('Python function:',name,'line',number)
 prefix=Path(sysconfig.get_config_var('PYTHONFRAMEWORKPREFIX') or sys.prefix)
