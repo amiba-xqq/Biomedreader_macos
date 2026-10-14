@@ -1,9 +1,10 @@
 """An application-owned light palette, independent of Windows personalization."""
 import os
 import ctypes
+import weakref
 from PySide6.QtCore import QObject,QEvent,QTimer,Qt
 from PySide6.QtGui import QPalette,QColor
-from PySide6.QtWidgets import QApplication,QWidget
+from PySide6.QtWidgets import QApplication,QWidget,QDialog,QMainWindow
 
 
 def light_palette():
@@ -24,10 +25,21 @@ class LightTheme(QObject):
     def __init__(self,application):
         super().__init__(application)
         self.application=application;self.busy=False;self.native_busy=False;self.pending=False
-        application.installEventFilter(self)
+        # Do not install a Python application-wide event filter: Chromium can
+        # dispatch events for native objects while they are being destroyed.
+        # Palette/color-scheme signals cover theme changes on every platform.
+        self.watched_windows=weakref.WeakSet()
+        if os.name=='nt':
+            self.window_scan=QTimer(self);self.window_scan.setInterval(400)
+            self.window_scan.timeout.connect(self.watch_windows);self.window_scan.start()
         application.paletteChanged.connect(self.enforce)
         application.styleHints().colorSchemeChanged.connect(self.enforce)
         self.enforce()
+
+    def watch_windows(self):
+        for widget in self.application.topLevelWidgets():
+            if isinstance(widget,(QDialog,QMainWindow)) and widget not in self.watched_windows:
+                widget.installEventFilter(self);self.watched_windows.add(widget);self.title_bar(widget)
 
     def enforce(self,*_):
         if self.busy:return
