@@ -2,7 +2,7 @@
 
 Never emit report contents, paths, user identifiers, environment or addresses.
 """
-import json,re,time,subprocess,sys
+import json,re,time,subprocess,sys,sysconfig
 from pathlib import Path
 for report in (Path.home()/'Library/Logs/DiagnosticReports').glob('*.ips'):
     if time.time()-report.stat().st_mtime>900:continue
@@ -22,7 +22,13 @@ for report in (Path.home()/'Library/Logs/DiagnosticReports').glob('*.ips'):
 # Hosted runners may not save .ips reports. Capture the debugger in memory and
 # emit only function names, never raw output, addresses, paths or variables.
 root=Path(__file__).resolve().parents[1]
-result=subprocess.run(['/usr/bin/lldb','--batch','-o','run','-o','bt','--',sys.executable,str(root/'app/main.py'),'--browser-self-test'],cwd=root/'build/source-smoke',capture_output=True,text=True,timeout=90)
+trace=subprocess.run([sys.executable,'-X','faulthandler',str(root/'app/main.py'),'--browser-self-test'],cwd=root/'build/source-smoke',capture_output=True,text=True,timeout=60)
+for number,name in re.findall(r'File "[^"]+", line (\d+), in ([A-Za-z0-9_<>]+)',trace.stderr):
+    print('Python function:',name,'line',number)
+prefix=Path(sysconfig.get_config_var('PYTHONFRAMEWORKPREFIX') or sys.prefix)
+framework=prefix/'Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python'
+executable=str(framework) if framework.exists() else sys.executable
+result=subprocess.run(['/usr/bin/lldb','--batch','-o','settings set target.process.stop-on-exec false','-o','settings set target.disable-aslr false','-o','run','-o','bt','--',executable,str(root/'app/main.py'),'--browser-self-test'],cwd=root/'build/source-smoke',capture_output=True,text=True,timeout=90)
 for line in result.stdout.splitlines():
     if 'frame #' not in line or '`' not in line:continue
     name=line.split('`',1)[1].split(' at ',1)[0]
