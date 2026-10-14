@@ -1,5 +1,6 @@
 """Application zoom in logical pixels, layered on top of Qt's native DPI support."""
 import re
+import weakref
 from PySide6.QtCore import QObject,QEvent,QTimer,Signal
 from PySide6.QtWidgets import QApplication,QWidget,QAbstractItemView,QDialog
 
@@ -25,8 +26,21 @@ class InterfaceScale(QObject):
         super().__init__(window)
         self.window=window;self.database=database;self.style=style;self.screen=None;self.busy=False
         self.timer=QTimer(self);self.timer.setSingleShot(True);self.timer.timeout.connect(self.apply)
-        QApplication.instance().installEventFilter(self)
+        # A Python application-wide filter also receives Chromium's transient
+        # native QObjects. PySide can crash while wrapping a dying native object
+        # before eventFilter() is entered. Observe stable application windows
+        # only; discover new dialogs without filtering Chromium internals.
+        self.watched_windows=weakref.WeakSet()
+        self.window.installEventFilter(self);self.watched_windows.add(self.window)
+        self.window_scan=QTimer(self);self.window_scan.setInterval(400)
+        self.window_scan.timeout.connect(self.watch_dialogs);self.window_scan.start()
         self.schedule()
+
+    def watch_dialogs(self):
+        if getattr(self,'stopped',False):return
+        for top in QApplication.topLevelWidgets():
+            if isinstance(top,QDialog) and top not in self.watched_windows:
+                top.installEventFilter(self);self.watched_windows.add(top);self.schedule()
 
     def eventFilter(self,obj,event):
         if event.type() in (QEvent.Type.Show,QEvent.Type.ScreenChangeInternal) and isinstance(obj,QWidget):
@@ -38,7 +52,11 @@ class InterfaceScale(QObject):
 
     def stop(self):
         self.stopped=True
-        self.timer.stop();QApplication.instance().removeEventFilter(self)
+        self.timer.stop();self.window_scan.stop()
+        for top in list(self.watched_windows):
+            try:top.removeEventFilter(self)
+            except RuntimeError:pass
+        self.watched_windows.clear()
         if self.screen:
             try:self.screen.availableGeometryChanged.disconnect(self.schedule)
             except (RuntimeError,TypeError):pass
