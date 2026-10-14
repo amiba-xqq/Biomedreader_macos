@@ -41,6 +41,11 @@ jobs:
           python packaging/make_icon.py
       - name: Test hiding and macOS paths
         run: QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -v
+      - name: Test source browser startup
+        run: |
+          mkdir -p build/source-smoke
+          cd build/source-smoke
+          python ../../app/main.py --browser-self-test
       - name: Build native application
         run: python -m PyInstaller --noconfirm --clean packaging/BiomedReader-macos.spec
       - name: Verify deployment target, signature and packaged startup
@@ -51,6 +56,11 @@ jobs:
           cd build/smoke
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --self-test
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --browser-self-test
+      - name: Collect macOS crash diagnostics
+        if: failure()
+        run: |
+          sleep 5
+          python packaging/crash_summary.py
       - name: Make and verify DMG
         run: |
           mkdir -p build/dmg outputs
