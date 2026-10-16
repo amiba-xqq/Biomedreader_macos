@@ -20,7 +20,7 @@ from data_location import active_data_directory
 from light_theme import configure_light_theme,light_palette
 
 
-APP_VERSION = "1.9.17"
+APP_VERSION = "1.9.18"
 
 
 def resource_path(relative: str) -> Path:

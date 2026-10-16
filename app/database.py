@@ -929,6 +929,28 @@ class Database:
                     saved_at, now,
                 ),
             )
+            if not favorite:
+                self._remove_unfavorited_pdf(connection,article_key)
+
+    def _remove_unfavorited_pdf(self,connection,article_key):
+        """Remove only this application's unused PDF copy, never its source file.
+
+        The caller's write transaction protects the membership check. A locked
+        file raises an error and rolls back the cancellation, retaining its link.
+        Shared filenames are retained while any other article links to them.
+        """
+        if connection.execute('SELECT 1 FROM favorite_group_articles WHERE article_key=?',(article_key,)).fetchone():return
+        if connection.execute('SELECT 1 FROM favorites WHERE article_key=? AND is_favorite=1',(article_key,)).fetchone():return
+        row=connection.execute('SELECT filename,storage_location FROM article_pdfs WHERE article_key=?',(article_key,)).fetchone()
+        if not row:return
+        filename=row['filename']
+        valid=(isinstance(filename,str) and Path(filename).name==filename and '/' not in filename and '\\' not in filename and Path(filename).suffix.lower()=='.pdf')
+        shared=connection.execute('SELECT 1 FROM article_pdfs WHERE filename=? AND article_key<>?',(filename,article_key)).fetchone()
+        if valid and row['storage_location']=='data' and not shared:
+            target=self.paper_directory/filename
+            if not target.is_symlink() and target.resolve().parent==self.paper_directory.resolve():
+                target.unlink(missing_ok=True)
+        connection.execute('DELETE FROM article_pdfs WHERE article_key=?',(article_key,))
 
     def save_favorite_notes(self, article_key: str, tags: str, note: str) -> None:
         now = utc_now()

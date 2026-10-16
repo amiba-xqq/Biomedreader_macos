@@ -319,6 +319,7 @@ class ArticleDialog(QDialog):
         self.database = database
         self.article = article
         self.profile_id = profile_id
+        self.allow_pdf = allow_pdf
         self.source_mode = database.profile_cache_mode(profile_id) if profile_id is not None else 'both'
         self.cache_generation = database.cache_refreshed_at(profile_id) if profile_id is not None else ""
         self.setWindowTitle("文章详情")
@@ -485,11 +486,16 @@ class ArticleDialog(QDialog):
 
     def _toggle_favorite(self) -> None:
         favorite = not self.is_saved_here()
-        self.database.set_favorite(
-            self.article["article_key"], favorite, self.tags.text().strip(), self.note.toPlainText().strip(), profile_id=self.profile_id
-        )
+        try:
+            self.database.set_favorite(
+                self.article["article_key"], favorite, self.tags.text().strip(), self.note.toPlainText().strip(), profile_id=self.profile_id
+            )
+        except (OSError,sqlite3.Error) as error:
+            QMessageBox.warning(self,'取消收藏失败','关联 PDF 可能正在被占用，请关闭阅读器后重试。\n'+str(error))
+            return
         self.article["is_favorite"] = 1 if favorite else 0
         self.favorite_button.setText(("取消本组收藏" if favorite else "加入本组收藏") if self.profile_id is not None else ("取消收藏" if favorite else "加入收藏"))
+        if self.allow_pdf:self.update_pdf_state()
         self.favorite_changed.emit()
 
     def _save_notes(self) -> None:
@@ -1598,7 +1604,11 @@ class ResultsPage(QWidget):
         if not article:
             return
         new_value = article["article_key"] not in self.database.favorite_keys_for_profile(self.profile_id)
-        self.database.set_favorite(article["article_key"], new_value, profile_id=self.profile_id)
+        try:
+            self.database.set_favorite(article["article_key"], new_value, profile_id=self.profile_id)
+        except (OSError,sqlite3.Error) as error:
+            QMessageBox.warning(self,'取消收藏失败','关联 PDF 可能正在被占用，请关闭阅读器后重试。\n'+str(error))
+            return
         self.reload_cache()
         self.cache_changed.emit()
 
@@ -2335,7 +2345,7 @@ class SettingsPage(QWidget):
         layout.addWidget(paper_box)
 
         layout.addStretch()
-        runtime = QLabel(f"刊禾 · Biomed Reader 1.9.17 · Python {sys.version.split()[0]} · 已内置 Python 和依赖库")
+        runtime = QLabel(f"刊禾 · Biomed Reader 1.9.18 · Python {sys.version.split()[0]} · 已内置 Python 和依赖库")
         runtime.setObjectName("Muted")
         layout.addWidget(runtime)
 

@@ -67,8 +67,8 @@ jobs:
           cp -R 'dist/Biomed Reader.app' build/dmg/
           ln -s /Applications build/dmg/Applications
           cp README.md build/dmg/README.md
-          hdiutil create -volname 'Biomed Reader' -srcfolder build/dmg -format UDZO -ov 'outputs/BiomedReader_1.9.17_macOS12_${{ matrix.label }}.dmg'
-          hdiutil verify 'outputs/BiomedReader_1.9.17_macOS12_${{ matrix.label }}.dmg'
+          hdiutil create -volname 'Biomed Reader' -srcfolder build/dmg -format UDZO -ov 'outputs/BiomedReader_1.9.18_macOS12_${{ matrix.label }}.dmg'
+          hdiutil verify 'outputs/BiomedReader_1.9.18_macOS12_${{ matrix.label }}.dmg'
           cd outputs
           shasum -a 256 *.dmg > 'SHA256_${{ matrix.label }}.txt'
       - uses: actions/upload-artifact@v4
@@ -77,6 +77,7 @@ jobs:
           path: outputs/*
           retention-days: 14
   publish:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -92,7 +93,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v1.9.17 --repo '${{ github.repository }}' >/dev/null 2>&1; then
-            gh release create v1.9.17 --repo '${{ github.repository }}' --target '${{ github.sha }}' --title '刊禾 · Biomed Reader 1.9.17' --notes-file RELEASE_NOTES.md
+          if ! gh release view v1.9.18 --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            gh release create v1.9.18 --repo '${{ github.repository }}' --target '${{ github.sha }}' --title '刊禾 · Biomed Reader 1.9.18' --notes-file RELEASE_NOTES.md
           fi
-          gh release upload v1.9.17 release-assets/* --repo '${{ github.repository }}' --clobber
+          gh release upload v1.9.18 release-assets/* --repo '${{ github.repository }}' --clobber

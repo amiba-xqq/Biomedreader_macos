@@ -1,6 +1,6 @@
 # 刊禾 · Biomed Reader
 
-面向生物医学文献的桌面阅读工具。当前版本 **1.9.17**，支持 PubMed、bioRxiv、medRxiv 检索，以及离线缓存、收藏、PDF 关联和期刊目录管理。
+面向生物医学文献的桌面阅读工具。当前版本 **1.9.18**，支持 PubMed、bioRxiv、medRxiv 检索，以及离线缓存、收藏、PDF 关联和期刊目录管理。
 
 ## 下载与安装
 
@@ -8,8 +8,8 @@
 
 | 电脑 | 文件 |
 |---|---|
-| Apple Silicon：M1、M2、M3、M4 等 | `BiomedReader_1.9.17_macOS12_AppleSilicon.dmg` |
-| Intel Mac | `BiomedReader_1.9.17_macOS12_Intel.dmg` |
+| Apple Silicon：M1、M2、M3、M4 等 | `BiomedReader_1.9.18_macOS12_AppleSilicon.dmg` |
+| Intel Mac | `BiomedReader_1.9.18_macOS12_Intel.dmg` |
 
 最低系统为 **macOS 12 Monterey**。在“苹果菜单 → 关于本机”中查看芯片和系统版本。两个 DMG 分别包含对应架构的完整应用、Python 3.12、PySide6/Qt 6.8.3、内置浏览器和期刊数据，不需要自己安装 Python。
 
@@ -113,3 +113,10 @@ python packaging/audit_macos.py "dist/Biomed Reader.app"
 ## 第三方组件
 
 参见 [第三方声明](app/THIRD_PARTY_NOTICES.txt)。应用使用 PySide6/Qt、QtWebEngine、Python、requests、PyInstaller 等组件。期刊目录来自 NLM；内置年度 JIF 来自已提供的本地表格，缺失值保留为空。没有 Clarivate API Key 或自动补全科研通 JIF 功能。
+
+## 1.9.18 更新
+
+- 取消最后一处收藏时，删除数据目录 `paper` 下的关联 PDF 副本并清除链接；其它分组仍引用时保留。
+- 最初下载的原文件、文章缓存、隐藏状态和笔记保留。PDF 被占用时提示重试，收藏状态和链接保留。
+- PubMed 增量请求增加明确的发表日期上下限；大结果集分页限定在同一日期区间。
+- 仅 PubMed 的检查点不再受预印本年限和候选数影响。增量结果与已有缓存合并，不会隐藏旧文章。

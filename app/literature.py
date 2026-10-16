@@ -384,10 +384,12 @@ class LiteratureClient:
                 pubmed_query += f' AND ("{year_from or 1000}/01/01"[Date - Publication] : "{year_to or 3000}/12/31"[Date - Publication])'
             if updated_since:
                 pubmed_query += f' AND ("{updated_since:%Y/%m/%d}"[Date - Publication] : "{date.today():%Y/%m/%d}"[Date - Publication])'
+                notify(f'PubMed 增量检索：发表日期 {updated_since} 至 {date.today()}，合并已有缓存。')
             for ordering in (("relevance", "pub_date") if maximum_results else ("pub_date",)):
                 try:
                     pmids = self.pubmed_ids(pubmed_query, ordering, per_stream_limit,
-                                            report, notify, ncbi_delay)
+                                            report, notify, ncbi_delay,
+                                            **({'date_from':updated_since,'date_to':date.today()} if updated_since else {}))
                     pmids = [pmid for pmid in dict.fromkeys(pmids) if pmid not in fetched_pmids]
 
                     for start in range(0, len(pmids), 100):
@@ -433,7 +435,7 @@ class LiteratureClient:
         notify(f"已合并为 {len(report.candidates)} 篇文章。")
         return report
 
-    def pubmed_ids(self, query, ordering, limit, report, notify, delay):
+    def pubmed_ids(self, query, ordering, limit, report, notify, delay,date_from=None,date_to=None):
         """Split dense result sets by publication date to respect PubMed's 9,999 ID boundary.
 
         ESearch cannot return arbitrary numbers of PubMed IDs with retstart alone. Date intervals
@@ -443,6 +445,9 @@ class LiteratureClient:
         def retrieve(term, count):
             params = dict(db="pubmed",term=term,retmode="json",retmax=count,sort=ordering,
                           tool="BiomedReader", email=self.contact_email)
+            if date_from is not None:
+                params.update(datetype='pdat',mindate=date_from.strftime('%Y/%m/%d'),
+                              maxdate=(date_to or date.today()).strftime('%Y/%m/%d'))
             if self.ncbi_api_key:
                 params["api_key"] = self.ncbi_api_key
             response = self.session.get(NCBI_ESEARCH_URL, params=params, timeout=(10,60))
@@ -458,7 +463,7 @@ class LiteratureClient:
             if not limit and int(first.get("count",0)):
                 return retrieve(query,int(first["count"])).get("idlist",[])
             return first.get("idlist",[])
-        pending = [(date(1000,1,1), date.today().replace(year=date.today().year+2))]
+        pending = [(date_from or date(1000,1,1), date_to or date.today().replace(year=date.today().year+2))]
         identifiers = set()
         while pending:
             start, end = pending.pop()

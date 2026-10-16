@@ -34,11 +34,16 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
         filters['biorxiv_website_scope']='fulltext' if scope=='default' else scope
         filters['preprint_servers']=settings.get('preprint_servers','biorxiv')
         filters['website_order']='relevance' if profile.get('sort_mode')=='最相关' else 'newest'
+    legacy_signature = hashlib.sha256(json.dumps(filters, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    if mode=='pubmed':
+        # Preprint preferences do not alter a PubMed-only retrieval baseline.
+        filters.pop('biorxiv_years',None)
+        filters.pop('biorxiv_maximum_results',None)
     signature = hashlib.sha256(json.dumps(filters, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     started_at = datetime.now(timezone.utc).isoformat()
     previous = database.refresh_checkpoint(profile['id'], storage_mode)
     since = None
-    if not force_full and previous and previous['signature'] == signature:
+    if not force_full and previous and previous['signature'] in (signature,legacy_signature):
         try:
             checkpoint_date = datetime.fromisoformat(previous.get('completed_at') or previous['started_at']).astimezone().date()
             if checkpoint_date <= date.today():
