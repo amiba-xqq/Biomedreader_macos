@@ -18,7 +18,7 @@ from biorxiv import plain_text
 from biorxiv_website import search_website
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date
+from datetime import date,datetime,timezone
 
 
 NCBI_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
@@ -35,6 +35,9 @@ class SearchReport:
     incremental: bool = False
     new_count: int = 0
     reused_count: int = 0
+    completed_sources: dict[str,str] = field(default_factory=dict)
+    refresh_modes: dict[str,str] = field(default_factory=dict)
+    source_completion_tracked: bool = False
 
 
 class LiteratureClient:
@@ -208,9 +211,11 @@ class LiteratureClient:
         website_order: str = 'newest',
         pubmed_search_scope: str = 'default',
         candidate_callback=None,
+        source_updated_since=None,
+        cached_pubmed=None,
     ) -> SearchReport:
         """Query only selected sources, merging candidates without touching SQLite or images."""
-        report = SearchReport()
+        report = SearchReport(source_completion_tracked=True)
         selected_sources = set(sources if sources is not None else ("bioRxiv", "PubMed"))
         if not selected_sources or not selected_sources.issubset({"bioRxiv", "PubMed"}):
             raise ValueError("请选择 bioRxiv、PubMed 或同时使用两者。")
@@ -289,10 +294,11 @@ class LiteratureClient:
                 with ThreadPoolExecutor(max_workers=2, thread_name_prefix="literature") as executor:
                     jobs = {executor.submit(client.search, query_expression, journal_issns, budgets[source],
                                 progress, year_from, year_to, cancelled, (source,), article_type,
-                                biorxiv_years, updated_since, biorxiv_search_method, website_fetch,
+                                biorxiv_years, (source_updated_since or {}).get(source,updated_since), biorxiv_search_method, website_fetch,
                                 biorxiv_website_scope=biorxiv_website_scope,
                                 preprint_servers=preprint_servers,website_order=website_order,
-                                pubmed_search_scope=pubmed_search_scope,candidate_callback=candidate_callback): source
+                                pubmed_search_scope=pubmed_search_scope,candidate_callback=candidate_callback,
+                                cached_pubmed=cached_pubmed if source=='PubMed' else None): source
                             for source, client in (("PubMed", self), ("bioRxiv", bio_client))}
                     for job in as_completed(jobs):
                         source = jobs[job]
@@ -302,6 +308,7 @@ class LiteratureClient:
                             report.source_counts[source] = partial.source_counts[source]
                             report.request_counts[source] = partial.request_counts[source]
                             report.source_errors.extend(partial.source_errors)
+                            report.completed_sources.update(partial.completed_sources)
                             for article, relevance in partial.candidates:
                                 merge_candidate(article, relevance)
                         except (requests.RequestException, ValueError) as error:
@@ -391,6 +398,14 @@ class LiteratureClient:
                                             report, notify, ncbi_delay,
                                             **({'date_from':updated_since,'date_to':date.today()} if updated_since else {}))
                     pmids = [pmid for pmid in dict.fromkeys(pmids) if pmid not in fetched_pmids]
+                    if cached_pubmed:
+                        reusable=[pmid for pmid in pmids if pmid in cached_pubmed]
+                        for pmid in reusable:
+                            article=cached_pubmed[pmid]
+                            merge_candidate(article,float(article.get('relevance_score') or 0))
+                            fetched_pmids.add(pmid)
+                        pmids=[pmid for pmid in pmids if pmid not in fetched_pmids]
+                        if reusable:notify(f'PubMed 续查：复用 {len(reusable)} 篇已缓存记录，本批补取 {len(pmids)} 篇缺失记录。')
 
                     for start in range(0, len(pmids), 100):
                         notify(f"PubMed：已取得 {report.source_counts['PubMed']} 条记录……")
@@ -433,6 +448,8 @@ class LiteratureClient:
                 except (requests.RequestException,ValueError):
                     pass
         notify(f"已合并为 {len(report.candidates)} 篇文章。")
+        if not report.source_errors:
+            report.completed_sources={source:datetime.now(timezone.utc).isoformat() for source in selected_sources}
         return report
 
     def pubmed_ids(self, query, ordering, limit, report, notify, delay,date_from=None,date_to=None):

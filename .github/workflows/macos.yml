@@ -39,7 +39,7 @@ jobs:
         run: |
           python packaging/prepare_assets.py
           python packaging/make_icon.py
-      - name: Test hiding and macOS paths
+      - name: Test cache recovery, PDF lifecycle, hiding and macOS paths
         run: QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -v
       - name: Test source browser startup
         run: |
@@ -67,8 +67,8 @@ jobs:
           cp -R 'dist/Biomed Reader.app' build/dmg/
           ln -s /Applications build/dmg/Applications
           cp README.md build/dmg/README.md
-          hdiutil create -volname 'Biomed Reader' -srcfolder build/dmg -format UDZO -ov 'outputs/BiomedReader_1.9.18_macOS12_${{ matrix.label }}.dmg'
-          hdiutil verify 'outputs/BiomedReader_1.9.18_macOS12_${{ matrix.label }}.dmg'
+          hdiutil create -volname 'Biomed Reader' -srcfolder build/dmg -format UDZO -ov 'outputs/BiomedReader_1.9.19_macOS12_${{ matrix.label }}.dmg'
+          hdiutil verify 'outputs/BiomedReader_1.9.19_macOS12_${{ matrix.label }}.dmg'
           cd outputs
           shasum -a 256 *.dmg > 'SHA256_${{ matrix.label }}.txt'
       - uses: actions/upload-artifact@v4
@@ -93,7 +93,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v1.9.18 --repo '${{ github.repository }}' >/dev/null 2>&1; then
-            gh release create v1.9.18 --repo '${{ github.repository }}' --target '${{ github.sha }}' --title '刊禾 · Biomed Reader 1.9.18' --notes-file RELEASE_NOTES.md
+          if ! gh release view v1.9.19 --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            gh release create v1.9.19 --repo '${{ github.repository }}' --target '${{ github.sha }}' --title '刊禾 · Biomed Reader 1.9.19' --notes-file RELEASE_NOTES.md
           fi
-          gh release upload v1.9.18 release-assets/* --repo '${{ github.repository }}' --clobber
+          gh release upload v1.9.19 release-assets/* --repo '${{ github.repository }}' --clobber

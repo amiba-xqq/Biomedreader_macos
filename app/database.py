@@ -413,6 +413,10 @@ class Database:
                                "PRIMARY KEY(profile_id,source_mode))")
             if 'completed_at' not in {row[1] for row in connection.execute('PRAGMA table_info(refresh_checkpoints)')}:
                 connection.execute('ALTER TABLE refresh_checkpoints ADD COLUMN completed_at TEXT')
+            connection.execute('CREATE TABLE IF NOT EXISTS source_refresh_checkpoints ('
+                'profile_id INTEGER NOT NULL REFERENCES search_profiles(id) ON DELETE CASCADE,'
+                'source_mode TEXT NOT NULL,source TEXT NOT NULL,signature TEXT NOT NULL,'
+                'started_at TEXT NOT NULL,completed_at TEXT,PRIMARY KEY(profile_id,source_mode,source))')
             connection.execute("DELETE FROM settings WHERE key LIKE 'ablesci_%'")
             # Archive the old Europe PMC modes once, keeping favorites/PDFs intact.
             # Never relabel an old mixed cache as a new PubMed + bioRxiv response.
@@ -695,11 +699,16 @@ class Database:
             connection.execute("DELETE FROM search_profiles WHERE id = ?", (profile_id,))
 
     def store_refresh_results(self, profile_id: int, candidates: list[tuple[dict[str, Any], float]], source_mode: str | None = None,
-                              refresh_checkpoint: dict | None = None, partial: bool = False) -> None:
+                              refresh_checkpoint: dict | None = None, partial: bool = False,source_checkpoints: dict | None = None) -> None:
         """Commit one completed refresh as a single transaction without deleting old cache rows."""
         now = utc_now()
         source_mode = source_mode or cache_mode(self.get_settings())
         with self.connect() as connection:
+            for source,checkpoint in (source_checkpoints or {}).items():
+                connection.execute('INSERT INTO source_refresh_checkpoints VALUES(?,?,?,?,?,?) '
+                    'ON CONFLICT(profile_id,source_mode,source) DO UPDATE SET signature=excluded.signature,'
+                    'started_at=excluded.started_at,completed_at=excluded.completed_at',
+                    (profile_id,source_mode,source,checkpoint['signature'],checkpoint['started_at'],checkpoint.get('completed_at')))
             if not partial:
                 connection.execute("DELETE FROM refresh_checkpoints WHERE profile_id=? AND source_mode=?", (profile_id, source_mode))
             if refresh_checkpoint:
@@ -777,6 +786,11 @@ class Database:
             row = connection.execute("SELECT signature,started_at,completed_at FROM refresh_checkpoints WHERE profile_id=? AND source_mode=?",
                                      (profile_id, source_mode)).fetchone()
             return dict(row) if row else None
+
+    def source_refresh_checkpoints(self,profile_id,source_mode):
+        with self.connect() as connection:
+            return {row['source']:dict(row) for row in connection.execute(
+                'SELECT source,signature,started_at,completed_at FROM source_refresh_checkpoints WHERE profile_id=? AND source_mode=?',(profile_id,source_mode))}
 
     def hidden_article_tokens(self,profile_id):
         with self.connect() as connection:

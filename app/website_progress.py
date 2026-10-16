@@ -9,6 +9,7 @@ import json
 import sqlite3
 import time
 from pathlib import Path
+from contextlib import contextmanager
 
 
 class WebsiteProgress:
@@ -24,8 +25,12 @@ class WebsiteProgress:
             connection.execute('DELETE FROM website_pages WHERE saved<?', (time.time()-self.lifetime,))
         self.head = None
 
+    @contextmanager
     def connect(self):
-        return sqlite3.connect(self.path, timeout=10)
+        connection=sqlite3.connect(self.path,timeout=10)
+        try:
+            with connection:yield connection
+        finally:connection.close()
 
     def check_head(self, rows, next_url, total):
         value = json.dumps([rows, next_url, total], sort_keys=True, ensure_ascii=False)

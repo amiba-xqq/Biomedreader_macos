@@ -805,7 +805,8 @@ class SearchTask(QRunnable):
             for article, _ in report.candidates:
                 if not article.get("journal_title"):
                     article["journal_title"] = catalogue.get(article.get("issn"),"")
-            self.database.store_refresh_results(int(self.profile["id"]), report.candidates, cache_mode(settings), checkpoint)
+            self.database.store_refresh_results(int(self.profile["id"]), report.candidates, cache_mode(settings), checkpoint,
+                                                partial=bool(report.source_errors))
             # Only discard temporary pages after the entire refresh is committed,
             # including both preprint hosts. A later full refresh must read anew.
             for job in client.completed_website_jobs:
@@ -1532,7 +1533,10 @@ class ResultsPage(QWidget):
             + "，".join(f"{'预印本' if source=='bioRxiv' else source} 返回 {report.source_counts[source]} 条" for source in report.selected_sources) + "。"
         )
         if report.source_errors:
-            message += "\n部分请求失败：" + "；".join(report.source_errors[:4])
+            message = message.replace('刷新完成：','部分刷新：')
+            message += "\n部分请求失败，未更新整体成功刷新时间：" + "；".join(report.source_errors[:4])
+        if report.refresh_modes:
+            message+='\n'+'；'.join(f'{source}：{mode}' for source,mode in report.refresh_modes.items())
         if report.incremental:
             message += f"\n增量刷新：复用 {report.reused_count} 篇，新增 {report.new_count} 篇；已更新重叠记录。"
         if identifier == self.profile_id:
@@ -2345,7 +2349,7 @@ class SettingsPage(QWidget):
         layout.addWidget(paper_box)
 
         layout.addStretch()
-        runtime = QLabel(f"刊禾 · Biomed Reader 1.9.18 · Python {sys.version.split()[0]} · 已内置 Python 和依赖库")
+        runtime = QLabel(f"刊禾 · Biomed Reader 1.9.19 · Python {sys.version.split()[0]} · 已内置 Python 和依赖库")
         runtime.setObjectName("Muted")
         layout.addWidget(runtime)
 
