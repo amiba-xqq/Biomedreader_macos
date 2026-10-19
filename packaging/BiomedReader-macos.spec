@@ -12,6 +12,6 @@ exe=EXE(pyz,a.scripts,[],exclude_binaries=True,name='BiomedReader',debug=False,b
 coll=COLLECT(exe,a.binaries,a.datas,strip=False,upx=False,name='BiomedReader')
 app=BUNDLE(coll,name='Biomed Reader.app',icon=str(root/'build/BiomedReader.icns'),
     bundle_identifier='org.orangereader.biomedliterature',
-    info_plist={'CFBundleDisplayName':'刊禾 · Biomed Reader','CFBundleShortVersionString':'1.9.19',
-        'CFBundleVersion':'1.9.19','LSMinimumSystemVersion':'12.0','NSHighResolutionCapable':True,
+    info_plist={'CFBundleDisplayName':'刊禾 · Biomed Reader','CFBundleShortVersionString':'2.0',
+        'CFBundleVersion':'2.0','LSMinimumSystemVersion':'12.0','NSHighResolutionCapable':True,
         'NSRequiresAquaSystemAppearance':True})

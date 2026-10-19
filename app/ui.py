@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from version import APP_VERSION
 import html
 import json
 import math
@@ -914,7 +915,7 @@ class ArticleCard(QFrame):
         self.setObjectName("ArticleCard")
         preprint = any(source in str(article.get("source_name") or "") for source in ('bioRxiv','medRxiv'))
         visited = bool(article.get("doi_visited"))
-        background = "#F1ECE6" if visited else "#FFFFFF"
+        background = "#FFFFFF"
         foreground = "#82776F" if visited else "#30251D"
         self.setStyleSheet(f"QFrame#ArticleCard {{background:{background};border:1px solid #E8D5C4;border-radius:12px;}} QLabel {{background:transparent;color:{foreground};}}")
         compact=density=='compact'
@@ -1003,6 +1004,9 @@ class ResultsPage(QWidget):
         self.thread_pool = thread_pool
         self.website=WebsiteBrowser(database.path.parent,self)
         self.profile_id: int | None = None
+        # Presentation overrides belong to this window/session only. A fresh
+        # application always starts each profile from the configured default.
+        self._profile_presentations = {}
         self.current_task: SearchTask | None = None
         self._result_token=0
         self._result_keys=[]
@@ -1067,7 +1071,7 @@ class ResultsPage(QWidget):
         view_row.addWidget(self.view_mode)
         self.density_label=QLabel('卡片密度');self.card_density=QComboBox()
         self.card_density.addItem('宽松','loose');self.card_density.addItem('紧密','compact')
-        self.card_density.setCurrentIndex(max(0,self.card_density.findData(database.get_settings().get('keyword_card_density','loose'))))
+        self.card_density.setCurrentIndex(self.card_density.findData('compact'))
         self.card_density.currentIndexChanged.connect(self.change_card_density)
         view_row.addWidget(self.density_label);view_row.addWidget(self.card_density)
         self.visible_sources={'PubMed','bioRxiv','medRxiv'}
@@ -1149,8 +1153,15 @@ class ResultsPage(QWidget):
         self.sort_mode.blockSignals(True)
         self.sort_mode.setCurrentText(profile["sort_mode"])
         self.sort_mode.blockSignals(False)
+        default = self.database.get_settings().get('keyword_default_view', 'cards_compact')
+        default_view = 'table' if default == 'table' else 'cards'
+        default_density = 'loose' if default == 'cards_loose' else 'compact'
+        view, density = self._profile_presentations.get(profile_id, (default_view, default_density))
         self.view_mode.blockSignals(True)
-        self.view_mode.setCurrentIndex(max(0, self.view_mode.findData(profile.get("view_mode", "table"))))
+        self.card_density.blockSignals(True)
+        self.view_mode.setCurrentIndex(max(0, self.view_mode.findData(view)))
+        self.card_density.setCurrentIndex(max(0, self.card_density.findData(density)))
+        self.card_density.blockSignals(False)
         self.view_mode.blockSignals(False)
         mode = self.database.profile_cache_mode(profile_id)
         saved = self.database.card_position(profile_id, mode)
@@ -1349,7 +1360,7 @@ class ResultsPage(QWidget):
     def change_view(self):
         self.save_position()
         if self.profile_id is not None:
-            self.database.set_profile_view(self.profile_id, self.view_mode.currentData())
+            self._profile_presentations[self.profile_id] = (self.view_mode.currentData(), self.card_density.currentData())
             self._show_active_view()
             if self.view_mode.currentData()=='cards':
                 saved=self.database.card_position(self.profile_id,self.position_source_mode)
@@ -1414,7 +1425,8 @@ class ResultsPage(QWidget):
             self.card_grid.setColumnStretch(column, 1)
 
     def change_card_density(self):
-        self.database.save_settings({'keyword_card_density':self.card_density.currentData()})
+        if self.profile_id is not None:
+            self._profile_presentations[self.profile_id] = (self.view_mode.currentData(), self.card_density.currentData())
         if self.view_mode.currentData()=='cards':
             self._render_card_articles(self.displayed_articles)
             self.restore_position(0)
@@ -2185,6 +2197,16 @@ class SettingsPage(QWidget):
             if hasattr(window,'interface_scale'):window.interface_scale.schedule()
         self.auto_scale.toggled.connect(save_appearance);self.scale_percent.valueChanged.connect(save_appearance)
         appearance_form.addRow(self.auto_scale);appearance_form.addRow('字体和布局缩放',self.scale_percent)
+        self.keyword_default_view = QComboBox()
+        self.keyword_default_view.addItem('宽松的嵌入式卡片', 'cards_loose')
+        self.keyword_default_view.addItem('紧密的嵌入式卡片', 'cards_compact')
+        self.keyword_default_view.addItem('表格', 'table')
+        self.keyword_default_view.setCurrentIndex(max(0, self.keyword_default_view.findData(
+            settings.get('keyword_default_view', 'cards_compact'))))
+        self.keyword_default_view.setToolTip('立即保存。每次重新打开软件，各关键词方案使用此默认形式；方案内临时切换形式和密度仅在本次运行有效。')
+        self.keyword_default_view.currentIndexChanged.connect(lambda: database.save_settings(
+            {'keyword_default_view': self.keyword_default_view.currentData()}))
+        appearance_form.addRow('关键词方案默认展现形式', self.keyword_default_view)
         layout.addWidget(appearance)
         self.biorxiv_years = QSpinBox()
         self.biorxiv_years.setRange(1, 1000)
@@ -2349,7 +2371,7 @@ class SettingsPage(QWidget):
         layout.addWidget(paper_box)
 
         layout.addStretch()
-        runtime = QLabel(f"刊禾 · Biomed Reader 1.9.19 · Python {sys.version.split()[0]} · 已内置 Python 和依赖库")
+        runtime = QLabel(f"刊禾 · Biomed Reader {APP_VERSION} · Python {sys.version.split()[0]} · 已内置 Python 和依赖库")
         runtime.setObjectName("Muted")
         layout.addWidget(runtime)
 

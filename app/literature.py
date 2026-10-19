@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from version import APP_VERSION
+
 import hashlib
 import json
 import math
@@ -57,7 +59,7 @@ class LiteratureClient:
             status_forcelist=(429,500,502,503,504),allowed_methods=frozenset(["GET"]),
             respect_retry_after_header=True)))
         self.session.headers.update(
-            {"User-Agent": f"BiomedReader/1.9.13 ({self.contact_email})"}
+            {"User-Agent": f"BiomedReader/{APP_VERSION} ({self.contact_email})"}
         )
 
     @staticmethod

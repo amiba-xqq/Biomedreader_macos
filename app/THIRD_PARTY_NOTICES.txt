@@ -1,4 +1,4 @@
-Third-party components bundled with Biomed Reader (刊禾)
+Third-party components bundled with Biomed Reader 2.0 (刊禾)
 =========================================================
 
 Python 3.12
@@ -9,7 +9,7 @@ PySide6 / Qt for Python 6.8.3
 GNU Lesser General Public License v3 / commercial alternatives as distributed by Qt
 https://doc.qt.io/qtforpython-6/licenses.html
 
-Qt WebEngine / Chromium (browser components included starting with Biomed Reader 1.9.4)
+Qt WebEngine / Chromium
 Qt WebEngine's Qt-specific parts are distributed with the PySide6/Qt runtime.
 Chromium and its dependencies retain their respective third-party licenses.
 https://doc.qt.io/qt-6.8/qtwebengine-licensing.html

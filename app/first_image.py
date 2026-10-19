@@ -5,6 +5,8 @@ login or JavaScript may not expose its figures in the returned HTML; in that cas
 """
 from __future__ import annotations
 
+from version import APP_VERSION
+
 import hashlib
 import json
 import re
@@ -119,7 +121,7 @@ class FirstArticleImageService:
         self.cache = Path(cache)
         self.cache.mkdir(parents=True, exist_ok=True)
         self.session = requests.Session()
-        self.session.headers["User-Agent"] = "BiomedReader/1.7.0"
+        self.session.headers["User-Agent"] = f"BiomedReader/{APP_VERSION}"
 
     def get(self, url: str):
         """Bound transfers and validate each redirect before fetching publisher content."""

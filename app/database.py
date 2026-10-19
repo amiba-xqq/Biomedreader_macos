@@ -349,6 +349,7 @@ class Database:
             connection.execute("DELETE FROM settings WHERE key IN ('clarivate_api_key','jcr_year','ncbi_api_key')")
             old_default=connection.execute("SELECT value FROM settings WHERE key='default_maximum_results'").fetchone()
             defaults = {
+                "keyword_default_view": "cards_compact",
                 "search_sources": "both",
                 "biorxiv_search_method": "metadata",
                 "biorxiv_website_scope": "title_abstract",

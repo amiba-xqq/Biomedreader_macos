@@ -5,6 +5,8 @@ missing figures and rate limits return text-only status, never a stock/guessed i
 """
 from __future__ import annotations
 
+from version import APP_VERSION
+
 import hashlib
 import html
 import re
@@ -188,7 +190,7 @@ class FigureService:
         cache.mkdir(parents=True,exist_ok=True)
         self.session = requests.Session()
         self.session.max_redirects = 4
-        self.session.headers["User-Agent"] = "BiomedReader/1.7.0"
+        self.session.headers["User-Agent"] = f"BiomedReader/{APP_VERSION}"
 
     def get(self, url):
         if not safe_url(url):
