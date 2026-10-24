@@ -914,19 +914,16 @@ class Database:
                         (score,row['profile_id'],row['source_mode'],article_key))
 
     def set_favorite(self, article_key: str, favorite: bool, tags: str = "", note: str = "", profile_id: int | None = None) -> None:
+        # Unfavoriting is global. UI entry points must confirm before calling.
+        if not favorite:profile_id=None
         now = utc_now()
         with self.connect() as connection:
             if profile_id is not None:
                 profile = connection.execute("SELECT * FROM search_profiles WHERE id=?", (profile_id,)).fetchone()
                 if not profile:
                     raise ValueError("关键词方案已不存在，请重新打开页面。")
-                group_id = self._ensure_profile_group(connection, profile_id, profile["name"], profile["query_expression"]) if favorite else None
-                if favorite:
-                    connection.execute("INSERT OR IGNORE INTO favorite_group_articles VALUES(?,?)", (group_id, article_key))
-                else:
-                    connection.execute("DELETE FROM favorite_group_articles WHERE article_key=? AND group_id IN "
-                        "(SELECT id FROM favorite_groups WHERE profile_id=?)", (article_key, profile_id))
-                    favorite = bool(connection.execute("SELECT 1 FROM favorite_group_articles WHERE article_key=?", (article_key,)).fetchone())
+                group_id = self._ensure_profile_group(connection, profile_id, profile["name"], profile["query_expression"])
+                connection.execute("INSERT OR IGNORE INTO favorite_group_articles VALUES(?,?)", (group_id, article_key))
             elif not favorite:
                 connection.execute("DELETE FROM favorite_group_articles WHERE article_key=?", (article_key,))
             existing = connection.execute(
@@ -955,6 +952,14 @@ class Database:
             )
             if not favorite:
                 self._remove_unfavorited_pdf(connection,article_key)
+
+    def cancel_favorites(self,article_keys):
+        """Commit per article so a locked PDF retains that article and its groups."""
+        removed=[];failed=[]
+        for key in dict.fromkeys(article_keys):
+            try:self.set_favorite(key,False);removed.append(key)
+            except (OSError,sqlite3.Error) as error:failed.append({'article_key':key,'error':str(error)})
+        return dict(removed=removed,failed=failed)
 
     def _remove_unfavorited_pdf(self,connection,article_key):
         """Remove only this application's unused PDF copy, never its source file.

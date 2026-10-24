@@ -49,6 +49,13 @@ def install_exception_handler(log_path: Path) -> None:
 
 
 def main() -> int:
+    if '--update-self-test' in sys.argv:
+        from software_update import check_release
+        index=sys.argv.index('--update-self-test')
+        try:report=dict(passed=True,**check_release());status=0
+        except Exception as error:report=dict(passed=False,error=str(error));status=1
+        Path(sys.argv[index+1]).write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8')
+        return status
     if '--pdf-self-test' in sys.argv:
         from pdf_import import pdf_runtime_self_test
         index=sys.argv.index('--pdf-self-test')

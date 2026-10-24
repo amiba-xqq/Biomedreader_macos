@@ -28,22 +28,21 @@ class Update1918Tests(unittest.TestCase):
         self.assertIsNone(self.db.linked_pdf(key));self.assertEqual(self.db.result_count(self.profile,'pubmed'),1)
         self.assertTrue(self.db.hidden_article_tokens(self.profile))
 
-    def test_second_profile_keeps_pdf_until_last_membership_removed(self):
+    def test_cancellation_from_profile_removes_all_memberships(self):
         target=self.link();key=self.article['article_key']
         profile=dict(self.db.get_profile(self.profile));profile.pop('id');profile.update(name='Other',journal_issns=['0092-8674'])
         other=self.db.save_profile(profile)
         self.db.set_favorite(key,True,profile_id=other)
         self.db.set_favorite(key,False,profile_id=self.profile)
-        self.assertTrue(target.exists());self.assertEqual(len(self.db.favorite_articles()),1)
-        self.db.set_favorite(key,False,profile_id=other)
-        self.assertFalse(target.exists())
+        self.assertFalse(target.exists());self.assertEqual(len(self.db.favorite_articles()),0)
+        self.assertNotIn(key,self.db.favorite_keys_for_profile(other))
 
-    def test_custom_group_membership_keeps_pdf(self):
+    def test_cancellation_also_removes_custom_group_membership(self):
         target=self.link();key=self.article['article_key']
         group,_=self.db.create_favorite_group('Custom','DNA')
         self.db.transfer_favorites([key],[group])
         self.db.set_favorite(key,False,profile_id=self.profile)
-        self.assertTrue(target.exists());self.assertEqual(len(self.db.grouped_favorites()['Custom']),1)
+        self.assertFalse(target.exists());self.assertFalse(self.db.grouped_favorites().get('Custom'))
         self.db.set_favorite(key,False);self.assertFalse(target.exists())
 
     def test_locked_file_rolls_back_cancellation_and_preserves_link(self):
@@ -78,7 +77,8 @@ class Update1918Tests(unittest.TestCase):
     def test_detail_disables_original_button_after_cancel(self):
         target=self.link();article={**self.article,'is_favorite':1}
         dialog=ArticleDialog(self.db,article,allow_pdf=True)
-        before=dialog.browser.toPlainText();dialog._toggle_favorite()
+        before=dialog.browser.toPlainText()
+        with patch('ui.confirm_unfavorite',return_value=True):dialog._toggle_favorite()
         self.assertFalse(target.exists());self.assertFalse(dialog.open_pdf_button.isEnabled())
         self.assertEqual(dialog.browser.toPlainText(),before)
         dialog.close();dialog.deleteLater();self.app.processEvents()

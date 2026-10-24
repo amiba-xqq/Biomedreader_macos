@@ -65,6 +65,7 @@ from website_browser import WebsiteBrowser
 from paged_table import PagedArticleTable,PAGE_SIZE
 from article_types import ARTICLE_TYPES, matches_type, normalize_types
 from network_transport import refresh_error_message, write_network_diagnostic
+from favorite_tools import confirm_unfavorite,filter_grouped_favorites,FavoriteSearchDialog
 
 
 class CandidateInput(QLineEdit):
@@ -367,7 +368,7 @@ class ArticleDialog(QDialog):
 
         button_row = QHBoxLayout()
         self.favorite_button = QPushButton(
-            "取消本组收藏" if self.is_saved_here() and profile_id is not None else
+            "取消收藏" if self.is_saved_here() and profile_id is not None else
             "取消收藏" if self.is_saved_here() else "加入本组收藏" if profile_id is not None else "加入收藏"
         )
         save_button = QPushButton("保存标签和笔记")
@@ -499,6 +500,7 @@ class ArticleDialog(QDialog):
 
     def _toggle_favorite(self) -> None:
         favorite = not self.is_saved_here()
+        if not favorite and not confirm_unfavorite(self,[self.article]):return
         try:
             self.database.set_favorite(
                 self.article["article_key"], favorite, self.tags.text().strip(), self.note.toPlainText().strip(), profile_id=self.profile_id
@@ -507,7 +509,7 @@ class ArticleDialog(QDialog):
             QMessageBox.warning(self,'取消收藏失败','关联 PDF 可能正在被占用，请关闭阅读器后重试。\n'+str(error))
             return
         self.article["is_favorite"] = 1 if favorite else 0
-        self.favorite_button.setText(("取消本组收藏" if favorite else "加入本组收藏") if self.profile_id is not None else ("取消收藏" if favorite else "加入收藏"))
+        self.favorite_button.setText(("取消收藏" if favorite else "加入本组收藏") if self.profile_id is not None else ("取消收藏" if favorite else "加入收藏"))
         if self.allow_pdf:self.update_pdf_state()
         self.favorite_changed.emit()
 
@@ -985,7 +987,7 @@ class ArticleCard(QFrame):
         favorite = self.favorite_button = QPushButton("已收藏♥" if article.get("is_favorite_in_profile", article.get("is_favorite")) else "收藏♡")
         favorite.setFont(QFont('Segoe UI Symbol',10))
         favorite.setStyleSheet('font-family:"Segoe UI Symbol","Microsoft YaHei UI","Apple Symbols","PingFang SC";')
-        favorite.setToolTip('取消本组收藏' if article.get('is_favorite_in_profile',article.get('is_favorite')) else '收藏到当前关键词组')
+        favorite.setToolTip('取消收藏' if article.get('is_favorite_in_profile',article.get('is_favorite')) else '收藏到当前关键词组')
         favorite.clicked.connect(lambda: self.favorite_requested.emit(self.article))
         controls.addWidget(self.expand)
         controls.addStretch()
@@ -1639,6 +1641,7 @@ class ResultsPage(QWidget):
         if not article:
             return
         new_value = article["article_key"] not in self.database.favorite_keys_for_profile(self.profile_id)
+        if not new_value and not confirm_unfavorite(self,[article]):return
         try:
             self.database.set_favorite(article["article_key"], new_value, profile_id=self.profile_id)
         except (OSError,sqlite3.Error) as error:
@@ -1779,7 +1782,7 @@ class FavoriteExportDialog(QDialog):
         self.setWindowTitle("打包分享收藏")
         self.resize(1050, 700)
         layout = QVBoxLayout(self)
-        explanation = QLabel("勾选分组后，右侧仅展示这些分组的文章并自动勾选新增分组中的文章。最终只打包右侧勾选的文章；分组关系、标签和笔记一并分享。")
+        explanation = self.explanation = QLabel("勾选分组后，右侧仅展示这些分组的文章并自动勾选新增分组中的文章。最终只打包右侧勾选的文章；分组关系、标签和笔记一并分享。")
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
         columns = QHBoxLayout()
@@ -1827,7 +1830,7 @@ class FavoriteExportDialog(QDialog):
         controls.addWidget(self.include_pdf)
         controls.addStretch()
         layout.addLayout(controls)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons = self.action_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.button(QDialogButtonBox.StandardButton.Save).setText("保存分享压缩包")
         buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("取消")
         buttons.accepted.connect(self.validate)
@@ -1877,11 +1880,22 @@ class FavoriteExportDialog(QDialog):
         self.accept()
 
 
+class BulkUnfavoriteDialog(FavoriteExportDialog):
+    def __init__(self,database,selected=(),parent=None):
+        super().__init__(database,selected,parent)
+        self.setWindowTitle('批量取消收藏')
+        self.explanation.setText('左侧选择分组以限定右侧文章范围；选中分组会勾选其中的文章。最终按右侧全部已勾选项取消收藏（包括因搜索暂时隐藏的勾选项），并从所有分组移除。点击后还需确认 PDF 删除提示。')
+        self.include_pdf.hide()
+        self.action_buttons.button(QDialogButtonBox.StandardButton.Save).setText('批量取消收藏')
+
+
 class FavoritesPage(QWidget):
     def __init__(self, database: Database):
         super().__init__()
         self.database = database
         self.current_group: str | None = None
+        self.search_filter=None;self.filtered_grouped={}
+        self.cancel_task=None
         self.all_articles: list[dict[str, Any]] = []
         self.visible_articles=[];self.favorite_page_number=0;self.selected_favorite_keys=set()
         self.bundle_task = None
@@ -1936,6 +1950,13 @@ class FavoritesPage(QWidget):
         share_row.addWidget(self.bundle_status, 1)
         layout.addLayout(share_row)
         if sys.platform=='darwin':layout.addWidget(self.word_export_button,alignment=Qt.AlignmentFlag.AlignLeft)
+        tools=QHBoxLayout()
+        self.search_favorites_button=QPushButton('搜索已收藏文章…');self.search_favorites_button.clicked.connect(self.search_favorites)
+        self.clear_search_button=QPushButton('清除搜索');self.clear_search_button.clicked.connect(self.clear_favorite_search)
+        self.bulk_cancel_button=QPushButton('批量取消收藏…');self.bulk_cancel_button.clicked.connect(self.bulk_unfavorite)
+        self.search_status=QLabel();self.search_status.setWordWrap(True);self.search_status.setTextFormat(Qt.TextFormat.PlainText)
+        for button in (self.search_favorites_button,self.clear_search_button,self.bulk_cancel_button):tools.addWidget(button)
+        tools.addWidget(self.search_status,1);layout.addLayout(tools)
         self.stack = QStackedWidget()
         self.group_scroll = QScrollArea()
         self.group_scroll.setWidgetResizable(True)
@@ -1987,7 +2008,10 @@ class FavoritesPage(QWidget):
         self.reload()
 
     def reload(self) -> None:
-        self.all_articles = self.database.favorite_articles()
+        self.filtered_grouped=filter_grouped_favorites(self.database,self.database.grouped_favorites(),self.search_filter)
+        self.all_articles=list({row['article_key']:row for articles in self.filtered_grouped.values() for row in articles}.values())
+        self.clear_search_button.setVisible(self.search_filter is not None)
+        self.search_status.setText(f"搜索“{self.search_filter['query']}”：{len(self.all_articles)} 篇，{len(self.filtered_grouped)} 个匹配分组" if self.search_filter else '')
         if self.view_mode.currentText() == "不分组展示":
             self.current_group = None
             self.group_back.hide()
@@ -2003,7 +2027,7 @@ class FavoritesPage(QWidget):
 
     def _show_group_cards(self) -> None:
         self.group_container.clear()
-        grouped = self.database.grouped_favorites()
+        grouped = self.filtered_grouped
         by_name={g['name']:g for g in self.database.list_custom_groups()}
         entries=[dict(id=str(by_name[name]['id']) if name in by_name else '__ungrouped__',name=name,articles=articles) for name,articles in grouped.items()]
         entries=self.database._ordered_cards(entries,'favorite_card_order')
@@ -2015,6 +2039,46 @@ class FavoritesPage(QWidget):
                 card.set_import_progress(state['completed'],state['total'],f"正在联网搜索\n共 {state['total']} 个 PDF，已完成 {state['completed']} 个")
         self.group_container.reflow()
         self.stack.setCurrentWidget(self.group_scroll)
+
+    def search_favorites(self):
+        dialog=FavoriteSearchDialog(self.database,self.search_filter,self.current_group,self)
+        if dialog.exec()!=QDialog.DialogCode.Accepted:return
+        self.search_filter=dialog.selection;self.current_group=None;self.favorite_page_number=0;self.selected_favorite_keys.clear();self.reload()
+
+    def clear_favorite_search(self):
+        self.search_filter=None;self.current_group=None;self.favorite_page_number=0;self.selected_favorite_keys.clear();self.reload()
+
+    def bulk_unfavorite(self):
+        if self.cancel_task or self.pdf_task or self.bundle_task or self.pdf_import_dialog is not None:
+            QMessageBox.information(self,'请稍后操作','请等待当前收藏导入、分享或批量操作完成；若打开了 PDF 选择窗口，请先关闭该窗口。');return
+        dialog=BulkUnfavoriteDialog(self.database,self.selected_article_keys(),self)
+        if dialog.exec()!=QDialog.DialogCode.Accepted:return
+        keys=set(dialog.checked(dialog.articles));rows=[article for article in dialog.article_records if article['article_key'] in keys]
+        if not confirm_unfavorite(self,rows):return
+        self._cancel_titles={article['article_key']:article['title'] for article in rows}
+        for button in (self.bulk_cancel_button,self.pdf_import_button,self.import_bundle_button,self.export_bundle_button,self.add_group_button,self.transfer_button,self.group_settings_button):button.setEnabled(False)
+        self.bundle_status.setText(f'正在取消 {len(keys)} 篇收藏，请等待完成……')
+        self.cancel_task=BackgroundOperation(lambda progress:self.database.cancel_favorites(keys))
+        self.cancel_task.signals.finished.connect(self.bulk_cancel_finished);self.cancel_task.signals.failed.connect(self.bulk_cancel_failed)
+        QThreadPool.globalInstance().start(self.cancel_task)
+
+    def finish_bulk_cancel(self):
+        self.cancel_task=None
+        for button in (self.bulk_cancel_button,self.pdf_import_button,self.import_bundle_button,self.export_bundle_button,self.add_group_button,self.transfer_button,self.group_settings_button):button.setEnabled(True)
+        self.selected_favorite_keys.clear();self.reload()
+
+    def bulk_cancel_finished(self,report):
+        self.finish_bulk_cancel();message=f"已从全部分组取消 {len(report['removed'])} 篇收藏。"
+        self.bundle_status.setText(message)
+        if report['failed']:
+            details='\n'.join(self._cancel_titles.get(row['article_key'],row['article_key'])+'：'+row['error'] for row in report['failed'])
+            box=QMessageBox(QMessageBox.Icon.Warning,'部分文章未取消',message+f"\n{len(report['failed'])} 篇未成功，已保留收藏及链接。请关闭 PDF 阅读器后重试。",QMessageBox.StandardButton.Ok,self)
+            box.setDetailedText(details);box.exec()
+        else:QMessageBox.information(self,'批量取消完成',message)
+
+    def bulk_cancel_failed(self,message):
+        self.finish_bulk_cancel();self.bundle_status.setText('批量操作未完整完成。')
+        QMessageBox.warning(self,'批量取消未完成',message+'\n请检查当前收藏，未能删除的 PDF 与收藏会保留。')
 
     def export_mac_word(self):
         from mac_word_export import show_word_export
@@ -2042,6 +2106,7 @@ class FavoritesPage(QWidget):
         self.pdf_progress_state=dict(total=len(selection['files']),completed=0,successes=[],failures=[])
         self._pdf_completed=-1
         self.pdf_import_button.setEnabled(False);self.pdf_cancel_button.show()
+        self.bulk_cancel_button.setEnabled(False)
         for button in (self.add_group_button,self.transfer_button,self.import_bundle_button,self.group_settings_button):button.setEnabled(False)
         self.window().settings_page.setEnabled(False)
         self.pdf_task.signals.progress.connect(self.pdf_import_progress)
@@ -2067,6 +2132,7 @@ class FavoritesPage(QWidget):
         from pdf_import_ui import PDFFailureDialog
         self.pdf_task=None;self.pdf_progress_state=None
         self.pdf_import_button.setEnabled(True);self.pdf_cancel_button.hide();self.pdf_cancel_button.setEnabled(True)
+        self.bulk_cancel_button.setEnabled(True)
         for button in (self.add_group_button,self.transfer_button,self.import_bundle_button,self.group_settings_button):button.setEnabled(True)
         if not self.window().batch_refresh.active:self.window().settings_page.setEnabled(True)
         self.reload();self.bundle_status.setText(f"PDF 导入结束：成功 {len(report['successes'])}/{report['total']} 个。")
@@ -2076,7 +2142,7 @@ class FavoritesPage(QWidget):
     def _show_group(self, group_name: str) -> None:
         if self.current_group!=group_name:self.favorite_page_number=0;self.selected_favorite_keys.clear()
         self.current_group = group_name
-        articles = self.database.grouped_favorites().get(group_name, [])
+        articles = self.filtered_grouped.get(group_name, [])
         mode = "收藏时间" if self.sort_mode.currentText() == "收藏时间" else "最新发表"
         self.group_label.setText(f"{group_name} · {len(articles)} 篇")
         self.group_back.show()
@@ -2430,6 +2496,10 @@ class SettingsPage(QWidget):
         journal_layout.addLayout(sync_buttons)
         # The reusable catalogue panel is mounted on JournalScopesPage, not in Settings.
         journal_box.hide()
+
+        update_box=QGroupBox('软件更新');update_layout=QVBoxLayout(update_box)
+        from software_update import SoftwareUpdateWidget
+        self.software_update=SoftwareUpdateWidget();update_layout.addWidget(self.software_update);layout.addWidget(update_box)
 
         data_box = QGroupBox("本地数据")
         data_layout = QHBoxLayout(data_box)
@@ -3169,6 +3239,10 @@ class MainWindow(QMainWindow):
         self.favorites.reload()
 
     def closeEvent(self, event):  # noqa: N802 - Qt naming convention
+        if self.settings_page.software_update.task:
+            self.settings_page.software_update.cancel();event.ignore();return
+        if self.favorites.cancel_task:
+            self.favorites.bundle_status.setText('正在处理批量取消收藏，请等待完成后关闭软件。');event.ignore();return
         if self.favorites.pdf_task:
             self.favorites.cancel_pdf_import();event.ignore();return
         if getattr(self.settings_page,'move_task',None):
@@ -3184,3 +3258,4 @@ class MainWindow(QMainWindow):
             self.results.current_task.cancelled = True
         QSettings("OrangeReader", "BiomedLiterature").setValue("window_geometry", self.saveGeometry())
         super().closeEvent(event)
+
