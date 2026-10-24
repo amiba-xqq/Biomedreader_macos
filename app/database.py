@@ -238,6 +238,10 @@ class Database:
                 ("search_profiles", "search_sources", "TEXT"),
                 ("search_profiles", "display_cache_mode", "TEXT"),
                 ("articles", "publication_types_json", "TEXT NOT NULL DEFAULT '[]'"),
+                ("articles", "volume", "TEXT NOT NULL DEFAULT ''"),
+                ("articles", "issue", "TEXT NOT NULL DEFAULT ''"),
+                ("articles", "pages", "TEXT NOT NULL DEFAULT ''"),
+                ("articles", "bibliography_checked_at", "TEXT NOT NULL DEFAULT ''"),
                 ("favorite_groups", "profile_id", "INTEGER"),
                 ("article_pdfs", "storage_location", "TEXT NOT NULL DEFAULT 'legacy'"),
             ):
@@ -769,6 +773,9 @@ class Database:
                 )
                 connection.execute("UPDATE articles SET publication_types_json=? WHERE article_key=?",
                                    (json.dumps(article.get("publication_types") or []), article["article_key"]))
+                for field in ('volume','issue','pages'):
+                    if article.get(field):
+                        connection.execute(f'UPDATE articles SET {field}=? WHERE article_key=?', (str(article[field]),article['article_key']))
                 connection.execute("INSERT OR REPLACE INTO profile_results VALUES(?,?,?,?,?,?)",
                                    (profile_id, source_mode, article["article_key"], json.dumps(article, ensure_ascii=False), relevance_score, now))
             if partial:
@@ -851,11 +858,13 @@ class Database:
             if state:
                 rows = connection.execute(
                     "SELECT r.*,COALESCE(f.is_favorite,0) AS is_favorite,COALESCE(f.saved_at,'') AS favorite_saved_at,"
-                    "COALESCE(f.tags,'') AS tags,COALESCE(f.personal_note,'') AS personal_note,j.jif,j.jif_year "
+                    "COALESCE(f.tags,'') AS tags,COALESCE(f.personal_note,'') AS personal_note,j.jif,j.jif_year,"
+                    "a.volume AS bib_volume,a.issue AS bib_issue,a.pages AS bib_pages "
                     "FROM profile_results r LEFT JOIN favorites f ON f.article_key=r.article_key "
                     "LEFT JOIN articles a ON a.article_key=r.article_key LEFT JOIN journals j ON j.issn=a.issn "
                     "WHERE r.profile_id=? AND r.source_mode=?"+key_clause, (profile_id, source_mode,*key_parameters)).fetchall()
-                return self.attach_jif([{**json.loads(row["article_json"]), **{k: row[k] for k in
+                return self.attach_jif([{**json.loads(row["article_json"]),
+                         **{k:row['bib_'+k] for k in ('volume','issue','pages') if row['bib_'+k]}, **{k: row[k] for k in
                          ("relevance_score", "fetched_at", "is_favorite", "favorite_saved_at", "tags", "personal_note", "jif", "jif_year")}}
                         for row in rows])
             if source_mode.endswith('_website'):
@@ -986,6 +995,65 @@ class Database:
                 """,
                 (article_key, favorite, tags, note, saved_at, now),
             )
+
+    def article_record(self, article_key):
+        with self.connect() as connection:
+            row=connection.execute('SELECT * FROM articles WHERE article_key=?',(article_key,)).fetchone()
+            return dict(row) if row else {}
+
+    def save_bibliography(self, article_key, metadata):
+        """Enrich old caches without changing result sets or refresh checkpoints."""
+        with self.connect() as connection:
+            for field in ('volume','issue','pages'):
+                if metadata.get(field):
+                    connection.execute(f'UPDATE articles SET {field}=? WHERE article_key=?',(str(metadata[field]),article_key))
+            connection.execute('UPDATE articles SET bibliography_checked_at=? WHERE article_key=?',(utc_now(),article_key))
+
+    def save_pdf_favorite(self, article, source_pdf, group_id):
+        """Commit metadata, group membership and the linked application-owned copy together."""
+        copied=None
+        try:
+            with self.connect() as connection:
+                if not connection.execute('SELECT 1 FROM favorite_groups WHERE id=?',(group_id,)).fetchone():
+                    raise ValueError('目标收藏分组已不存在。')
+                doi=str(article.get('doi') or '').strip().lower();pmid=str(article.get('pmid') or '')
+                old=connection.execute("SELECT * FROM articles WHERE article_key=? OR (?<>'' AND lower(doi)=?) OR (?<>'' AND pmid=?) LIMIT 1",
+                    (article['article_key'],doi,doi,pmid,pmid)).fetchone()
+                key=old['article_key'] if old else article['article_key']
+                columns=('article_key','doi','pmid','pmcid','title','abstract','authors','journal_title','issn',
+                    'publication_date','publication_year','cited_by_count','is_open_access','landing_page_url',
+                    'graphical_abstract_url','source_name','volume','issue','pages','publication_types_json','first_seen_at','updated_at')
+                now=utc_now();values={field:article.get(field) or '' for field in columns}
+                values.update(article_key=key,publication_year=article.get('publication_year'),
+                    cited_by_count=article.get('cited_by_count') or 0,is_open_access=article.get('is_open_access') or 0,
+                    publication_types_json=json.dumps(article.get('publication_types') or []),first_seen_at=now,updated_at=now)
+                if old:
+                    sources=set(filter(None,(str(old['source_name'])+' + '+str(values['source_name'])).split(' + ')))
+                    values['source_name']=' + '.join(sorted(sources))
+                    for field in columns:
+                        if field not in ('article_key','first_seen_at') and values[field] not in ('',None):
+                            connection.execute(f'UPDATE articles SET {field}=? WHERE article_key=?',(values[field],key))
+                else:
+                    connection.execute('INSERT INTO articles('+','.join(columns)+') VALUES('+','.join('?' for _ in columns)+')',
+                        [values[field] for field in columns])
+                connection.execute("INSERT INTO favorites(article_key,is_favorite,saved_at,updated_at) VALUES(?,1,?,?) "
+                    "ON CONFLICT(article_key) DO UPDATE SET is_favorite=1,updated_at=excluded.updated_at",(key,now,now))
+                connection.execute('INSERT OR IGNORE INTO favorite_group_articles VALUES(?,?)',(group_id,key))
+                # Keep any older linked copy intact; never alter the selected source file.
+                already=connection.execute('SELECT filename FROM article_pdfs WHERE article_key=?',(key,)).fetchone()
+                linked=self.paper_directory/already[0] if already else None
+                if linked and linked.is_file() and Path(source_pdf).resolve()==linked.resolve():
+                    copied=linked;created=False
+                else:
+                    copied=copy_pdf(Path(source_pdf),article['title'],key,self.paper_directory)
+                    created=copied.resolve()!=Path(source_pdf).resolve()
+                connection.execute("INSERT INTO article_pdfs(article_key,filename,linked_at,storage_location) VALUES(?,?,?,'data') "
+                    "ON CONFLICT(article_key) DO UPDATE SET filename=excluded.filename,linked_at=excluded.linked_at,storage_location='data'",(key,copied.name,now))
+            return key
+        except Exception:
+            if copied and locals().get('created'):
+                copied.unlink(missing_ok=True)
+            raise
 
     def favorite_articles(self) -> list[dict[str, Any]]:
         with self.connect() as connection:

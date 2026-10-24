@@ -1,6 +1,6 @@
 """Reusable draggable cards using the same gesture and ordering behavior as search cards."""
 from PySide6.QtCore import Qt,Signal
-from PySide6.QtWidgets import QFrame,QVBoxLayout,QLabel,QWidget
+from PySide6.QtWidgets import QFrame,QVBoxLayout,QLabel,QWidget,QProgressBar
 from keyword_cards import KeywordBoard,KeywordCard
 
 class DirectoryCard(QFrame):
@@ -18,7 +18,16 @@ class DirectoryCard(QFrame):
         heading.setStyleSheet('font-size:13pt;font-weight:700;border:none;')
         note=QLabel(subtitle);note.setWordWrap(True);note.setStyleSheet('color:#8B7768;border:none;')
         layout.addWidget(heading);layout.addStretch();layout.addWidget(note)
+        self.import_status=QLabel();self.import_status.setWordWrap(True);self.import_status.setStyleSheet('font-size:9pt;color:#C96812;border:none;')
+        self.import_progress=QProgressBar();self.import_progress.setFixedHeight(8);self.import_progress.setTextVisible(False)
+        self.import_progress.setStyleSheet('QProgressBar {background:#FFF3E0;border:none;} QProgressBar::chunk {background:#F28C20;}')
+        layout.addWidget(self.import_status);layout.addWidget(self.import_progress)
+        self.import_status.hide();self.import_progress.hide()
         for child in self.findChildren(QWidget):child.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents,True)
+
+    def set_import_progress(self,completed,total,text):
+        self.busy=True;self.import_progress.setRange(0,max(1,total));self.import_progress.setValue(completed)
+        self.import_status.setText(text);self.import_status.show();self.import_progress.show()
 
 class CardBoard(KeywordBoard):
     def __init__(self,columns=4):

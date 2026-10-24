@@ -18,7 +18,7 @@ from pdf_library import copy_pdf
 FORMAT = 'biomed-reader-favorites'
 FIELDS = ('article_key','doi','pmid','pmcid','title','abstract','authors','journal_title','issn',
           'publication_date','publication_year','cited_by_count','is_open_access','landing_page_url',
-          'graphical_abstract_url','source_name','publication_types_json')
+          'graphical_abstract_url','source_name','publication_types_json','volume','issue','pages')
 
 
 def export_bundle(database, destination, group_names=(), article_keys=(), include_pdf=True, progress=lambda s:None):
@@ -161,6 +161,8 @@ def import_bundle(database, source, progress=lambda s:None):
                         (incoming,doi,doi,pmid,pmid,incoming)).fetchone()
                     key=old[0] if old else 'doi:'+doi if doi else 'pmid:'+pmid if pmid else incoming
                     values={field:article.get(field) for field in FIELDS}
+                    for field in ('volume','issue','pages'):
+                        values[field]=str(values.get(field) or '')
                     values.update(article_key=key,doi=doi,pmid=pmid,source_name=article.get('source_name') or '分享导入',
                                   cited_by_count=article.get('cited_by_count') or 0,is_open_access=article.get('is_open_access') or 0,
                                   publication_types_json=article.get('publication_types_json') or '[]')

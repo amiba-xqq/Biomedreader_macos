@@ -1,0 +1,2730 @@
+{
+  "Acta biomaterialia": {
+    "style": "elsevier-with-titles",
+    "issn": "1742-7061"
+  },
+  "Acta neuropathologica": {
+    "style": "springer-basic-brackets-no-et-al-alphabetical",
+    "issn": "0001-6322"
+  },
+  "Acta pharmaceutica Sinica. B": {
+    "style": "acta-pharmaceutica-sinica-b",
+    "issn": "2211-3835"
+  },
+  "Acta pharmacologica Sinica": {
+    "style": "nature",
+    "issn": "1671-4083"
+  },
+  "Advanced drug delivery reviews": {
+    "style": "elsevier-with-titles",
+    "issn": "0169-409X"
+  },
+  "Advanced healthcare materials": {
+    "style": "advanced-healthcare-materials",
+    "issn": "2192-2640"
+  },
+  "Advances in methods and practices in psychological science": {
+    "style": "sage-vancouver",
+    "issn": "2515-2459",
+    "fallback": true,
+    "publisher": "SAGE Publications",
+    "fallback_label": "SAGE 通用 Vancouver"
+  },
+  "Advances in nutrition (Bethesda, Md.)": {
+    "style": "journal-of-nutrition",
+    "issn": "2161-8313"
+  },
+  "Age and ageing": {
+    "style": "oxford-journals-scimed-numeric",
+    "issn": "0002-0729"
+  },
+  "Ageing research reviews": {
+    "style": "elsevier-harvard",
+    "issn": "1568-1637"
+  },
+  "Aging and disease": {
+    "style": "aging-and-disease",
+    "issn": "2152-5250"
+  },
+  "Aging cell": {
+    "style": "aging-cell",
+    "issn": "1474-9718"
+  },
+  "Alcohol research & health : the journal of the National Institute on Alcohol Abuse and Alcoholism": {
+    "style": "nlm-citation-sequence",
+    "issn": "1535-7414",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Alimentary pharmacology & therapeutics": {
+    "style": "nlm-citation-sequence",
+    "issn": "0269-2813",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Allergologie select": {
+    "style": "nlm-citation-sequence",
+    "issn": "2512-8957",
+    "fallback": true,
+    "publisher": "Dustri-Verlag Dr. Karl Feistle",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Allergology international : official journal of the Japanese Society of Allergology": {
+    "style": "allergology-international",
+    "issn": "1323-8930"
+  },
+  "Allergy": {
+    "style": "allergy",
+    "issn": "0105-4538"
+  },
+  "Alzheimer's & dementia (New York, N. Y.)": {
+    "style": "elsevier-vancouver",
+    "issn": "2352-8737"
+  },
+  "Alzheimer's & dementia : the journal of the Alzheimer's Association": {
+    "style": "elsevier-vancouver",
+    "issn": "1552-5260"
+  },
+  "Alzheimer's research & therapy": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1758-9193"
+  },
+  "American journal of clinical dermatology": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1175-0561"
+  },
+  "American journal of hematology": {
+    "style": "american-medical-association",
+    "issn": "0361-8609",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "American journal of human genetics": {
+    "style": "cell",
+    "issn": "0002-9297"
+  },
+  "American journal of kidney diseases : the official journal of the National Kidney Foundation": {
+    "style": "american-medical-association",
+    "issn": "0272-6386"
+  },
+  "American journal of obstetrics and gynecology": {
+    "style": "american-medical-association",
+    "issn": "0002-9378"
+  },
+  "American journal of public health": {
+    "style": "american-medical-association",
+    "issn": "0090-0036"
+  },
+  "American journal of respiratory and critical care medicine": {
+    "style": "american-journal-of-respiratory-and-critical-care-medicine",
+    "issn": "1073-449X"
+  },
+  "American journal of transplantation : official journal of the American Society of Transplantation and the American Society of Transplant Surgeons": {
+    "style": "elsevier-vancouver",
+    "issn": "1600-6135",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Amyloid : the international journal of experimental and clinical investigation : the official journal of the International Society of Amyloidosis": {
+    "style": "nlm-citation-sequence",
+    "issn": "1350-6129",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Anaesthesia": {
+    "style": "anaesthesia",
+    "issn": "0003-2409"
+  },
+  "Anesthesiology": {
+    "style": "anesthesiology",
+    "issn": "0003-3022"
+  },
+  "Annals of internal medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "0003-4819"
+  },
+  "Annals of neurology": {
+    "style": "annals-of-neurology",
+    "issn": "0364-5134"
+  },
+  "Annals of oncology : official journal of the European Society for Medical Oncology": {
+    "style": "annals-of-oncology",
+    "issn": "0923-7534"
+  },
+  "Annals of surgery": {
+    "style": "annals-of-surgery",
+    "issn": "0003-4932"
+  },
+  "Annals of the rheumatic diseases": {
+    "style": "bmj",
+    "issn": "0003-4967"
+  },
+  "Annual review of biochemistry": {
+    "style": "annual-reviews",
+    "issn": "0066-4154"
+  },
+  "Annual review of biomedical data science": {
+    "style": "nlm-citation-sequence",
+    "issn": "2574-3414",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Annual review of biomedical engineering": {
+    "style": "annual-reviews",
+    "issn": "1523-9829"
+  },
+  "Annual review of biophysics": {
+    "style": "annual-reviews-alphabetical",
+    "issn": "1936-122X"
+  },
+  "Annual review of cancer biology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2472-3428",
+    "fallback": true,
+    "publisher": "Annual Reviews",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Annual review of cell and developmental biology": {
+    "style": "annual-reviews-author-date",
+    "issn": "1081-0706"
+  },
+  "Annual review of chemical and biomolecular engineering": {
+    "style": "annual-reviews",
+    "issn": "1947-5438"
+  },
+  "Annual review of clinical psychology": {
+    "style": "annual-reviews-author-date",
+    "issn": "1548-5943"
+  },
+  "Annual review of ecology, evolution, and systematics": {
+    "style": "annual-reviews-author-date",
+    "issn": "1543-592X"
+  },
+  "Annual review of food science and technology": {
+    "style": "annual-reviews-author-date",
+    "issn": "1941-1413"
+  },
+  "Annual review of genetics": {
+    "style": "annual-reviews-alphabetical",
+    "issn": "0066-4197"
+  },
+  "Annual review of genomics and human genetics": {
+    "style": "annual-reviews-alphabetical",
+    "issn": "1527-8204"
+  },
+  "Annual review of immunology": {
+    "style": "annual-reviews",
+    "issn": "0732-0582"
+  },
+  "Annual review of medicine": {
+    "style": "annual-review-of-medicine",
+    "issn": "0066-4219"
+  },
+  "Annual review of microbiology": {
+    "style": "annual-reviews-alphabetical",
+    "issn": "0066-4227"
+  },
+  "Annual review of neuroscience": {
+    "style": "annual-reviews-author-date",
+    "issn": "0147-006X"
+  },
+  "Annual review of nutrition": {
+    "style": "annual-reviews-alphabetical",
+    "issn": "0199-9885"
+  },
+  "Annual review of pathology": {
+    "style": "annual-reviews",
+    "issn": "1553-4006"
+  },
+  "Annual review of pharmacology and toxicology": {
+    "style": "annual-reviews",
+    "issn": "0362-1642"
+  },
+  "Annual review of physiology": {
+    "style": "annual-reviews",
+    "issn": "0066-4278"
+  },
+  "Annual review of phytopathology": {
+    "style": "annual-reviews-alphabetical",
+    "issn": "0066-4286"
+  },
+  "Annual review of psychology": {
+    "style": "annual-reviews-author-date",
+    "issn": "0066-4308"
+  },
+  "Annual review of public health": {
+    "style": "annual-reviews-alphabetical",
+    "issn": "0163-7525"
+  },
+  "Annual review of virology": {
+    "style": "annual-reviews",
+    "issn": "2327-056X"
+  },
+  "Antioxidants & redox signaling": {
+    "style": "mary-ann-liebert-harvard",
+    "issn": "1523-0864"
+  },
+  "Antioxidants (Basel, Switzerland)": {
+    "style": "multidisciplinary-digital-publishing-institute",
+    "issn": "2076-3921"
+  },
+  "Apoptosis : an international journal on programmed cell death": {
+    "style": "springer-basic-brackets",
+    "issn": "1360-8185"
+  },
+  "Applied catalysis. B, Environmental": {
+    "style": "elsevier-with-titles",
+    "issn": "0926-3373"
+  },
+  "Archives of pharmacal research": {
+    "style": "springer-basic-author-date",
+    "issn": "0253-6269"
+  },
+  "Archives of toxicology": {
+    "style": "springer-basic-author-date",
+    "issn": "0340-5761"
+  },
+  "Arteriosclerosis, thrombosis, and vascular biology": {
+    "style": "american-medical-association-no-et-al",
+    "issn": "1079-5642"
+  },
+  "Arthritis & rheumatology (Hoboken, N.J.)": {
+    "style": "american-medical-association",
+    "issn": "2326-5191",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Artificial intelligence in medicine": {
+    "style": "elsevier-vancouver",
+    "issn": "0933-3657"
+  },
+  "Asian journal of pharmaceutical sciences": {
+    "style": "elsevier-vancouver",
+    "issn": "1818-0876"
+  },
+  "Autoimmunity reviews": {
+    "style": "elsevier-vancouver",
+    "issn": "1568-9972"
+  },
+  "Autophagy": {
+    "style": "landes-bioscience-journals",
+    "issn": "1554-8627"
+  },
+  "BMC medicine": {
+    "style": "biomed-central",
+    "issn": "1741-7015"
+  },
+  "BMJ (Clinical research ed.)": {
+    "style": "bmj",
+    "issn": "0959-8138"
+  },
+  "BMJ evidence-based medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2515-446X",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "BMJ global health": {
+    "style": "nlm-citation-sequence",
+    "issn": "2059-7908",
+    "fallback": true,
+    "publisher": "BMJ",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "BMJ medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2754-0413",
+    "fallback": true,
+    "publisher": "BMJ",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Basic research in cardiology": {
+    "style": "springer-basic-brackets-no-et-al-alphabetical",
+    "issn": "0300-8428"
+  },
+  "Best practice & research. Clinical endocrinology & metabolism": {
+    "style": "elsevier-vancouver",
+    "issn": "1521-690X"
+  },
+  "Bio-design and manufacturing": {
+    "style": "nlm-citation-sequence",
+    "issn": "2096-5524",
+    "fallback": true,
+    "publisher": "Zhejiang University Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "BioData mining": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1756-0381"
+  },
+  "BioDrugs : clinical immunotherapeutics, biopharmaceuticals and gene therapy": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1173-8804"
+  },
+  "Bioactive materials": {
+    "style": "elsevier-with-titles",
+    "issn": "2452-199X"
+  },
+  "Biochar": {
+    "style": "springer-basic-brackets",
+    "issn": "2524-7972",
+    "fallback": true,
+    "publisher": "Springer-Verlag",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Biochimica et biophysica acta. Reviews on cancer": {
+    "style": "elsevier-with-titles",
+    "issn": "0304-419X"
+  },
+  "Biocybernetics and biomedical engineering": {
+    "style": "elsevier-vancouver",
+    "issn": "0208-5216"
+  },
+  "Biofabrication": {
+    "style": "institute-of-physics-numeric",
+    "issn": "1758-5082"
+  },
+  "Biological psychiatry": {
+    "style": "biological-psychiatry",
+    "issn": "0006-3223"
+  },
+  "Biological reviews of the Cambridge Philosophical Society": {
+    "style": "biological-reviews",
+    "issn": "1464-7931"
+  },
+  "Biomarker research": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2050-7771"
+  },
+  "Biomaterials": {
+    "style": "elsevier-with-titles",
+    "issn": "0142-9612"
+  },
+  "Biomaterials advances": {
+    "style": "nlm-citation-sequence",
+    "issn": "2772-9516",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Biomaterials research": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1226-4601"
+  },
+  "Biomedicine & pharmacotherapy = Biomedecine & pharmacotherapie": {
+    "style": "elsevier-with-titles",
+    "issn": "0753-3322"
+  },
+  "Bioscience": {
+    "style": "bioscience",
+    "issn": "0006-3568"
+  },
+  "Biosensors & bioelectronics": {
+    "style": "elsevier-harvard",
+    "issn": "0956-5663"
+  },
+  "Biotechnology advances": {
+    "style": "elsevier-harvard",
+    "issn": "0734-9750"
+  },
+  "Blood": {
+    "style": "american-medical-association",
+    "issn": "0006-4971"
+  },
+  "Blood advances": {
+    "style": "nlm-citation-sequence",
+    "issn": "2473-9529",
+    "fallback": true,
+    "publisher": "American Society of Hematology",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Blood cancer discovery": {
+    "style": "american-association-for-cancer-research",
+    "issn": "2643-3230"
+  },
+  "Blood cancer journal": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "2044-5385"
+  },
+  "Bone research": {
+    "style": "springer-basic-brackets",
+    "issn": "2095-4700",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Brain : a journal of neurology": {
+    "style": "american-medical-association",
+    "issn": "0006-8950"
+  },
+  "Brain pathology (Zurich, Switzerland)": {
+    "style": "american-medical-association",
+    "issn": "1015-6305",
+    "fallback": true,
+    "publisher": "Wiley (Blackwell Publishing)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Brain stimulation": {
+    "style": "elsevier-vancouver",
+    "issn": "1935-861X"
+  },
+  "Brain, behavior, and immunity": {
+    "style": "elsevier-harvard",
+    "issn": "0889-1591"
+  },
+  "Breast (Edinburgh, Scotland)": {
+    "style": "elsevier-vancouver",
+    "issn": "0960-9776"
+  },
+  "Briefings in bioinformatics": {
+    "style": "cse-citation-sequence-brackets-8th-edition",
+    "issn": "1467-5463"
+  },
+  "British journal of anaesthesia": {
+    "style": "british-journal-of-anaesthesia",
+    "issn": "0007-0912"
+  },
+  "British journal of cancer": {
+    "style": "british-journal-of-cancer",
+    "issn": "0007-0920"
+  },
+  "British journal of pharmacology": {
+    "style": "british-journal-of-pharmacology",
+    "issn": "0007-1188"
+  },
+  "British journal of sports medicine": {
+    "style": "bmj",
+    "issn": "0306-3674"
+  },
+  "Burns & trauma": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2321-3868"
+  },
+  "CA: a cancer journal for clinicians": {
+    "style": "nlm-citation-sequence",
+    "issn": "0007-9235",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "CMAJ : Canadian Medical Association journal = journal de l'Association medicale canadienne": {
+    "style": "nlm-citation-sequence",
+    "issn": "0820-3946"
+  },
+  "CNS drugs": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1172-7047"
+  },
+  "Cancer biology & medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2095-3941"
+  },
+  "Cancer cell": {
+    "style": "cell",
+    "issn": "1535-6108"
+  },
+  "Cancer cell international": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1475-2867"
+  },
+  "Cancer communications (London, England)": {
+    "style": "nlm-citation-sequence",
+    "issn": "2523-3548",
+    "fallback": true,
+    "publisher": "American Association for the Advancement of Science (AAAS)",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Cancer discovery": {
+    "style": "american-association-for-cancer-research",
+    "issn": "2159-8274"
+  },
+  "Cancer immunology research": {
+    "style": "american-association-for-cancer-research",
+    "issn": "2326-6066"
+  },
+  "Cancer letters": {
+    "style": "elsevier-with-titles",
+    "issn": "0304-3835"
+  },
+  "Cancer metastasis reviews": {
+    "style": "springer-socpsych-brackets",
+    "issn": "0167-7659"
+  },
+  "Cancer research": {
+    "style": "american-association-for-cancer-research",
+    "issn": "0008-5472"
+  },
+  "Cancer treatment reviews": {
+    "style": "elsevier-vancouver",
+    "issn": "0305-7372"
+  },
+  "Cardiovascular diabetology": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1475-2840"
+  },
+  "Cardiovascular research": {
+    "style": "european-society-of-cardiology",
+    "issn": "0008-6363"
+  },
+  "Cell": {
+    "style": "cell",
+    "issn": "0092-8674"
+  },
+  "Cell & bioscience": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2045-3701"
+  },
+  "Cell chemical biology": {
+    "style": "cell",
+    "issn": "2451-9456"
+  },
+  "Cell communication and signaling : CCS": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1478-811X"
+  },
+  "Cell death & disease": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "2041-4889"
+  },
+  "Cell death and differentiation": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "1350-9047"
+  },
+  "Cell death discovery": {
+    "style": "springer-basic-brackets",
+    "issn": "2058-7716",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Cell discovery": {
+    "style": "springer-basic-brackets",
+    "issn": "2056-5968",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Cell genomics": {
+    "style": "cell",
+    "issn": "2666-979X"
+  },
+  "Cell host & microbe": {
+    "style": "cell",
+    "issn": "1931-3128"
+  },
+  "Cell metabolism": {
+    "style": "cell",
+    "issn": "1550-4131"
+  },
+  "Cell reports": {
+    "style": "cell",
+    "issn": "2211-1247"
+  },
+  "Cell reports. Medicine": {
+    "style": "cell",
+    "issn": "2666-3791"
+  },
+  "Cell research": {
+    "style": "cell-research",
+    "issn": "1001-0602"
+  },
+  "Cell stem cell": {
+    "style": "cell",
+    "issn": "1934-5909"
+  },
+  "Cell surface (Amsterdam, Netherlands)": {
+    "style": "elsevier-harvard",
+    "issn": "2468-2330"
+  },
+  "Cell systems": {
+    "style": "cell",
+    "issn": "2405-4712"
+  },
+  "Cellular & molecular biology letters": {
+    "style": "springer-basic-brackets",
+    "issn": "1425-8153",
+    "fallback": true,
+    "publisher": "Springer (Biomed Central Ltd.)",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Cellular & molecular immunology": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "1672-7681"
+  },
+  "Cellular and molecular gastroenterology and hepatology": {
+    "style": "cellular-and-molecular-gastroenterology-and-hepatology",
+    "issn": "2352-345X"
+  },
+  "Cellular and molecular life sciences : CMLS": {
+    "style": "springer-basic-brackets",
+    "issn": "1420-682X"
+  },
+  "Chest": {
+    "style": "chest",
+    "issn": "0012-3692"
+  },
+  "Chinese herbal medicines": {
+    "style": "apa",
+    "issn": "1674-6384"
+  },
+  "Chinese journal of cancer research = Chung-kuo yen cheng yen chiu": {
+    "style": "nlm-citation-sequence",
+    "issn": "1000-9604",
+    "fallback": true,
+    "publisher": "Chinese Journal of Cancer Research",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Chinese medical journal": {
+    "style": "chinese-medical-journal",
+    "issn": "0366-6999"
+  },
+  "Circulation": {
+    "style": "stroke",
+    "issn": "0009-7322"
+  },
+  "Circulation research": {
+    "style": "nlm-citation-sequence",
+    "issn": "0009-7330",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Circulation. Arrhythmia and electrophysiology": {
+    "style": "nlm-citation-sequence",
+    "issn": "1941-3149",
+    "fallback": true,
+    "publisher": "Ovid Technologies (Wolters Kluwer) - American Heart Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Circulation. Cardiovascular imaging": {
+    "style": "nlm-citation-sequence",
+    "issn": "1941-9651",
+    "fallback": true,
+    "publisher": "Ovid Technologies (Wolters Kluwer) - American Heart Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Circulation. Cardiovascular interventions": {
+    "style": "nlm-citation-sequence",
+    "issn": "1941-7640",
+    "fallback": true,
+    "publisher": "Ovid Technologies (Wolters Kluwer) - American Heart Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Circulation. Cardiovascular quality and outcomes": {
+    "style": "nlm-citation-sequence",
+    "issn": "1941-7713",
+    "fallback": true,
+    "publisher": "Ovid Technologies (Wolters Kluwer) - American Heart Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Circulation. Heart failure": {
+    "style": "nlm-citation-sequence",
+    "issn": "1941-3289",
+    "fallback": true,
+    "publisher": "Ovid Technologies (Wolters Kluwer) - American Heart Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Clinical and molecular hepatology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2287-2728",
+    "fallback": true,
+    "publisher": "The Korean Association for the Study of the Liver",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Clinical and translational medicine": {
+    "style": "springer-basic-brackets",
+    "issn": "2001-1326"
+  },
+  "Clinical cancer research : an official journal of the American Association for Cancer Research": {
+    "style": "american-association-for-cancer-research",
+    "issn": "1078-0432"
+  },
+  "Clinical chemistry": {
+    "style": "american-association-for-cancer-research",
+    "issn": "0009-9147"
+  },
+  "Clinical gastroenterology and hepatology : the official clinical practice journal of the American Gastroenterological Association": {
+    "style": "clinical-gastroenterology-and-hepatology",
+    "issn": "1542-3565"
+  },
+  "Clinical infectious diseases : an official publication of the Infectious Diseases Society of America": {
+    "style": "clinical-infectious-diseases",
+    "issn": "1058-4838"
+  },
+  "Clinical journal of the American Society of Nephrology : CJASN": {
+    "style": "clinical-journal-of-the-american-society-of-nephrology",
+    "issn": "1555-9041"
+  },
+  "Clinical microbiology and infection : the official publication of the European Society of Clinical Microbiology and Infectious Diseases": {
+    "style": "elsevier-vancouver",
+    "issn": "1198-743X"
+  },
+  "Clinical microbiology reviews": {
+    "style": "american-society-for-microbiology",
+    "issn": "0893-8512"
+  },
+  "Clinical nuclear medicine": {
+    "style": "clinical-nuclear-medicine",
+    "issn": "0363-9762"
+  },
+  "Clinical nutrition (Edinburgh, Scotland)": {
+    "style": "elsevier-vancouver",
+    "issn": "0261-5614"
+  },
+  "Clinical psychology review": {
+    "style": "apa",
+    "issn": "0272-7358"
+  },
+  "Clinical reviews in allergy & immunology": {
+    "style": "springer-basic-brackets",
+    "issn": "1080-0549"
+  },
+  "Clinical science (London, England : 1979)": {
+    "style": "nlm-citation-sequence",
+    "issn": "0143-5221",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Cold Spring Harbor perspectives in biology": {
+    "style": "nlm-citation-sequence",
+    "issn": "1943-0264",
+    "fallback": true,
+    "publisher": "Cold Spring Harbor Laboratory",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Cold Spring Harbor perspectives in medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2157-1422",
+    "fallback": true,
+    "publisher": "Cold Spring Harbor Laboratory",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Communications medicine": {
+    "style": "springer-basic-brackets",
+    "issn": "2730-664X",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Comprehensive reviews in food science and food safety": {
+    "style": "apa",
+    "issn": "1541-4337"
+  },
+  "Computers in biology and medicine": {
+    "style": "elsevier-with-titles",
+    "issn": "0010-4825"
+  },
+  "Critical care medicine": {
+    "style": "critical-care-medicine",
+    "issn": "0090-3493"
+  },
+  "Critical reviews in biochemistry and molecular biology": {
+    "style": "nlm-citation-sequence",
+    "issn": "1040-9238",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Critical reviews in biotechnology": {
+    "style": "nlm-citation-sequence",
+    "issn": "0738-8551",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Critical reviews in environmental science and technology": {
+    "style": "nlm-citation-sequence",
+    "issn": "1064-3389",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Current biology : CB": {
+    "style": "cell",
+    "issn": "0960-9822"
+  },
+  "Current diabetes reports": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1534-4827"
+  },
+  "Current environmental health reports": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2196-5412"
+  },
+  "Current obesity reports": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2162-4968"
+  },
+  "Current opinion in biotechnology": {
+    "style": "current-opinion",
+    "issn": "0958-1669"
+  },
+  "Current opinion in chemical biology": {
+    "style": "current-opinion",
+    "issn": "1367-5931"
+  },
+  "Current opinion in microbiology": {
+    "style": "current-opinion",
+    "issn": "1369-5274"
+  },
+  "Current opinion in structural biology": {
+    "style": "current-opinion",
+    "issn": "0959-440X"
+  },
+  "Current psychiatry reports": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1523-3812"
+  },
+  "Cyborg and bionic systems (Washington, D.C.)": {
+    "style": "nlm-citation-sequence",
+    "issn": "2097-1087",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Dental materials : official publication of the Academy of Dental Materials": {
+    "style": "elsevier-vancouver",
+    "issn": "0109-5641"
+  },
+  "Developmental cell": {
+    "style": "cell",
+    "issn": "1534-5807"
+  },
+  "Diabetes": {
+    "style": "nlm-citation-sequence",
+    "issn": "0012-1797"
+  },
+  "Diabetes & metabolism journal": {
+    "style": "nlm-citation-sequence",
+    "issn": "2233-6079",
+    "fallback": true,
+    "publisher": "Korean Diabetes Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Diabetes care": {
+    "style": "nlm-citation-sequence",
+    "issn": "0149-5992"
+  },
+  "Diabetes research and clinical practice": {
+    "style": "elsevier-vancouver",
+    "issn": "0168-8227"
+  },
+  "Diabetes technology & therapeutics": {
+    "style": "mary-ann-liebert-vancouver",
+    "issn": "1520-9156"
+  },
+  "Diabetes/metabolism research and reviews": {
+    "style": "american-medical-association",
+    "issn": "1520-7552",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Diabetologia": {
+    "style": "diabetologia",
+    "issn": "0012-186X"
+  },
+  "Diagnostic and interventional imaging": {
+    "style": "elsevier-vancouver",
+    "issn": "2211-5684"
+  },
+  "Dialogues in clinical neuroscience": {
+    "style": "nlm-citation-sequence",
+    "issn": "1294-8322",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Drug delivery": {
+    "style": "nlm-citation-sequence",
+    "issn": "1071-7544",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Drug discovery today": {
+    "style": "elsevier-vancouver",
+    "issn": "1359-6446"
+  },
+  "Drug resistance updates : reviews and commentaries in antimicrobial and anticancer chemotherapy": {
+    "style": "elsevier-harvard",
+    "issn": "1368-7646"
+  },
+  "Drugs": {
+    "style": "springer-vancouver-brackets",
+    "issn": "0012-6667"
+  },
+  "EBioMedicine": {
+    "style": "elsevier-vancouver",
+    "issn": "2352-3964"
+  },
+  "EClinicalMedicine": {
+    "style": "elsevier-vancouver",
+    "issn": "2589-5370"
+  },
+  "EMBO molecular medicine": {
+    "style": "springer-basic-brackets",
+    "issn": "1757-4676",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "EMBO reports": {
+    "style": "embo-press",
+    "issn": "1469-221X"
+  },
+  "Eco-Environment & Health": {
+    "style": "elsevier-vancouver",
+    "issn": "2772-9850",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Educational psychologist": {
+    "style": "nlm-citation-sequence",
+    "issn": "0046-1520",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Emergencias : revista de la Sociedad Espanola de Medicina de Emergencias": {
+    "style": "nlm-citation-sequence",
+    "issn": "1137-6821",
+    "fallback": true,
+    "publisher": "SEMES (Sociedad Espanola de Medicina de Urgencias y Emergencias)",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Emerging infectious diseases": {
+    "style": "nlm-citation-sequence",
+    "issn": "1080-6040"
+  },
+  "Emerging microbes & infections": {
+    "style": "european-journal-of-human-genetics",
+    "issn": "2222-1751"
+  },
+  "Endocrine pathology": {
+    "style": "springer-basic-brackets",
+    "issn": "1046-3976",
+    "fallback": true,
+    "publisher": "Springer-Verlag",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Endocrine reviews": {
+    "style": "endocrine-press",
+    "issn": "0163-769X"
+  },
+  "Endoscopy": {
+    "style": "thieme-german",
+    "issn": "0013-726X"
+  },
+  "Environmental chemistry letters": {
+    "style": "springer-basic-author-date",
+    "issn": "1610-3653"
+  },
+  "Environmental impact assessment review": {
+    "style": "elsevier-harvard",
+    "issn": "0195-9255"
+  },
+  "Environmental science & technology": {
+    "style": "american-chemical-society",
+    "issn": "0013-936X"
+  },
+  "Epidemiology and psychiatric sciences": {
+    "style": "epidemiology-psychiatric-sciences",
+    "issn": "2045-7960"
+  },
+  "Epilepsia": {
+    "style": "epilepsia",
+    "issn": "0013-9580"
+  },
+  "Epilepsy currents": {
+    "style": "sage-vancouver",
+    "issn": "1535-7597",
+    "fallback": true,
+    "publisher": "SAGE Publications",
+    "fallback_label": "SAGE 通用 Vancouver"
+  },
+  "Euro surveillance : bulletin Europeen sur les maladies transmissibles = European communicable disease bulletin": {
+    "style": "nlm-citation-sequence-brackets",
+    "issn": "1025-496X"
+  },
+  "EuroIntervention : journal of EuroPCR in collaboration with the Working Group on Interventional Cardiology of the European Society of Cardiology": {
+    "style": "eurointervention",
+    "issn": "1774-024X"
+  },
+  "Europace : European pacing, arrhythmias, and cardiac electrophysiology : journal of the working groups on cardiac pacing, arrhythmias, and cardiac cellular electrophysiology of the European Society of Cardiology": {
+    "style": "europace",
+    "issn": "1099-5129"
+  },
+  "European heart journal": {
+    "style": "european-society-of-cardiology",
+    "issn": "0195-668X"
+  },
+  "European heart journal. Cardiovascular Imaging": {
+    "style": "european-society-of-cardiology",
+    "issn": "2047-2404"
+  },
+  "European heart journal. Cardiovascular pharmacotherapy": {
+    "style": "nlm-citation-sequence",
+    "issn": "2055-6837",
+    "fallback": true,
+    "publisher": "Oxford University Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "European journal of anaesthesiology": {
+    "style": "european-journal-of-anaesthesiology",
+    "issn": "0265-0215"
+  },
+  "European journal of cancer (Oxford, England : 1990)": {
+    "style": "elsevier-vancouver",
+    "issn": "0959-8049"
+  },
+  "European journal of heart failure": {
+    "style": "european-society-of-cardiology",
+    "issn": "1388-9842"
+  },
+  "European journal of internal medicine": {
+    "style": "elsevier-vancouver",
+    "issn": "0953-6205"
+  },
+  "European journal of nuclear medicine and molecular imaging": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1619-7070"
+  },
+  "European journal of preventive cardiology": {
+    "style": "sage-vancouver",
+    "issn": "2047-4873"
+  },
+  "European journal of vascular and endovascular surgery : the official journal of the European Society for Vascular Surgery": {
+    "style": "european-journal-of-vascular-and-endovascular-surgery",
+    "issn": "1078-5884"
+  },
+  "European neuropsychopharmacology : the journal of the European College of Neuropsychopharmacology": {
+    "style": "elsevier-harvard",
+    "issn": "0924-977X"
+  },
+  "European psychiatry : the journal of the Association of European Psychiatrists": {
+    "style": "elsevier-vancouver",
+    "issn": "0924-9338"
+  },
+  "European respiratory review : an official journal of the European Respiratory Society": {
+    "style": "nlm-citation-sequence",
+    "issn": "0905-9180",
+    "fallback": true,
+    "publisher": "European Respiratory Society",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "European urology": {
+    "style": "elsevier-vancouver",
+    "issn": "0302-2838"
+  },
+  "European urology oncology": {
+    "style": "elsevier-vancouver",
+    "issn": "2588-9311"
+  },
+  "Evidence-based mental health": {
+    "style": "bmj",
+    "issn": "1362-0347"
+  },
+  "Experimental & molecular medicine": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "1226-3613"
+  },
+  "Experimental hematology & oncology": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2162-3619"
+  },
+  "FEMS microbiology reviews": {
+    "style": "oxford-journals-scimed-author-date",
+    "issn": "0168-6445"
+  },
+  "Fertility and sterility": {
+    "style": "fertility-and-sterility",
+    "issn": "0015-0282"
+  },
+  "Food hydrocolloids": {
+    "style": "apa",
+    "issn": "0268-005X"
+  },
+  "Food packaging and shelf life": {
+    "style": "apa",
+    "issn": "2214-2894"
+  },
+  "Free radical biology & medicine": {
+    "style": "elsevier-with-titles",
+    "issn": "0891-5849"
+  },
+  "Frontiers in neuroendocrinology": {
+    "style": "elsevier-harvard",
+    "issn": "0091-3022"
+  },
+  "Gastroenterology": {
+    "style": "gastroenterology",
+    "issn": "0016-5085"
+  },
+  "Gastrointestinal endoscopy": {
+    "style": "nlm-citation-sequence-superscript",
+    "issn": "0016-5107"
+  },
+  "General psychiatry": {
+    "style": "american-medical-association",
+    "issn": "2517-729X",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Genes & development": {
+    "style": "cold-spring-harbor-laboratory-press",
+    "issn": "0890-9369"
+  },
+  "Genes & diseases": {
+    "style": "american-medical-association",
+    "issn": "2352-4820"
+  },
+  "Genetics in medicine : official journal of the American College of Medical Genetics": {
+    "style": "american-medical-association",
+    "issn": "1098-3600"
+  },
+  "Genome biology": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1474-7596"
+  },
+  "Genome medicine": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1756-994X"
+  },
+  "Genome research": {
+    "style": "cold-spring-harbor-laboratory-press",
+    "issn": "1088-9051"
+  },
+  "Genomics, proteomics & bioinformatics": {
+    "style": "elsevier-vancouver",
+    "issn": "1672-0229"
+  },
+  "Global change biology": {
+    "style": "apa",
+    "issn": "1354-1013"
+  },
+  "Gut": {
+    "style": "bmj",
+    "issn": "0017-5749"
+  },
+  "Gut microbes": {
+    "style": "landes-bioscience-journals",
+    "issn": "1949-0976"
+  },
+  "Haematologica": {
+    "style": "haematologica",
+    "issn": "0390-6078"
+  },
+  "Health affairs (Project Hope)": {
+    "style": "nlm-citation-sequence",
+    "issn": "0278-2715",
+    "fallback": true,
+    "publisher": "Health Affairs Publishing, LLC",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Hepatobiliary surgery and nutrition": {
+    "style": "nlm-citation-sequence",
+    "issn": "2304-3881",
+    "fallback": true,
+    "publisher": "AME Publishing Company",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Hepatology (Baltimore, Md.)": {
+    "style": "hepatology",
+    "issn": "0270-9139"
+  },
+  "Hepatology international": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1936-0533"
+  },
+  "Human reproduction (Oxford, England)": {
+    "style": "human-reproduction",
+    "issn": "0268-1161"
+  },
+  "Human reproduction open": {
+    "style": "nlm-citation-sequence",
+    "issn": "2399-3529",
+    "fallback": true,
+    "publisher": "Oxford University Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Human reproduction update": {
+    "style": "human-reproduction-update",
+    "issn": "1355-4786"
+  },
+  "Hypertension (Dallas, Tex. : 1979)": {
+    "style": "nlm-citation-sequence",
+    "issn": "0194-911X",
+    "fallback": true,
+    "publisher": "Ovid Technologies (Wolters Kluwer) - American Heart Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "IEEE journal of biomedical and health informatics": {
+    "style": "ieee",
+    "issn": "2168-2194"
+  },
+  "IEEE reviews in biomedical engineering": {
+    "style": "ieee",
+    "issn": "1937-3333"
+  },
+  "IEEE transactions on evolutionary computation : a publication of the IEEE Neural Networks Council": {
+    "style": "ieee",
+    "issn": "1089-778X"
+  },
+  "IEEE transactions on medical imaging": {
+    "style": "ieee-transactions-on-medical-imaging",
+    "issn": "0278-0062"
+  },
+  "Immunity": {
+    "style": "cell",
+    "issn": "1074-7613"
+  },
+  "Immunological reviews": {
+    "style": "american-medical-association",
+    "issn": "0105-2896"
+  },
+  "Intelligent medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2096-9376",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Intensive care medicine": {
+    "style": "springer-basic-brackets",
+    "issn": "0342-4642"
+  },
+  "Interdisciplinary medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2832-6237",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "International endodontic journal": {
+    "style": "american-medical-association",
+    "issn": "0143-2885",
+    "fallback": true,
+    "publisher": "Wiley (Blackwell Publishing)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "International forum of allergy & rhinology": {
+    "style": "american-medical-association",
+    "issn": "2042-6976",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "International journal of biological macromolecules": {
+    "style": "elsevier-with-titles",
+    "issn": "0141-8130"
+  },
+  "International journal of biological sciences": {
+    "style": "nlm-citation-sequence",
+    "issn": "1449-2288"
+  },
+  "International journal of bioprinting": {
+    "style": "nlm-citation-sequence",
+    "issn": "2424-7723",
+    "fallback": true,
+    "publisher": "AccScience Publishing",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "International journal of nanomedicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "1176-9114",
+    "fallback": true,
+    "publisher": "Dove Medical Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "International journal of nursing studies": {
+    "style": "elsevier-harvard",
+    "issn": "0020-7489"
+  },
+  "International journal of pharmaceutics: X": {
+    "style": "elsevier-harvard",
+    "issn": "2590-1567"
+  },
+  "International journal of radiation oncology, biology, physics": {
+    "style": "international-journal-of-radiation-oncology-biology-physics",
+    "issn": "0360-3016"
+  },
+  "International journal of stroke : official journal of the International Stroke Society": {
+    "style": "sage-vancouver",
+    "issn": "1747-4930",
+    "fallback": true,
+    "publisher": "SAGE Publications",
+    "fallback_label": "SAGE 通用 Vancouver"
+  },
+  "International journal of surgery (London, England)": {
+    "style": "elsevier-with-titles",
+    "issn": "1743-9191"
+  },
+  "International journal of transgender health": {
+    "style": "nlm-citation-sequence",
+    "issn": "2689-5269",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Investigative radiology": {
+    "style": "investigative-radiology",
+    "issn": "0020-9996"
+  },
+  "JACC. CardioOncology": {
+    "style": "elsevier-vancouver",
+    "issn": "2666-0873",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "JACC. Cardiovascular imaging": {
+    "style": "jacc-cardiovascular-imaging",
+    "issn": "1936-878X"
+  },
+  "JACC. Cardiovascular interventions": {
+    "style": "jacc-cardiovascular-interventions",
+    "issn": "1936-8798"
+  },
+  "JACC. Clinical electrophysiology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2405-500X",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JACC. Heart failure": {
+    "style": "nlm-citation-sequence",
+    "issn": "2213-1779",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA": {
+    "style": "american-medical-association",
+    "issn": "0098-7484"
+  },
+  "JAMA cardiology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2380-6583",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA dermatology": {
+    "style": "american-medical-association",
+    "issn": "2168-6068"
+  },
+  "JAMA health forum": {
+    "style": "nlm-citation-sequence",
+    "issn": "2689-0186",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA internal medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2168-6106",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA network open": {
+    "style": "nlm-citation-sequence",
+    "issn": "2574-3805",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA neurology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2168-6149",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA oncology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2374-2437",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA ophthalmology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2168-6165",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA pediatrics": {
+    "style": "nlm-citation-sequence",
+    "issn": "2168-6203",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA psychiatry": {
+    "style": "nlm-citation-sequence",
+    "issn": "2168-622X",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JAMA surgery": {
+    "style": "nlm-citation-sequence",
+    "issn": "2168-6254",
+    "fallback": true,
+    "publisher": "American Medical Association",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "JHEP reports : innovation in hepatology": {
+    "style": "elsevier-vancouver",
+    "issn": "2589-5559"
+  },
+  "Journal for immunotherapy of cancer": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2051-1426"
+  },
+  "Journal of autoimmunity": {
+    "style": "elsevier-with-titles",
+    "issn": "0896-8411"
+  },
+  "Journal of behavioral addictions": {
+    "style": "nlm-citation-sequence",
+    "issn": "2062-5871",
+    "fallback": true,
+    "publisher": "Akademiai Kiado Zrt.",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Journal of biological engineering": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1754-1611"
+  },
+  "Journal of biomedical science": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1021-7770"
+  },
+  "Journal of cachexia, sarcopenia and muscle": {
+    "style": "journal-of-cachexia-sarcopenia-and-muscle",
+    "issn": "2190-5991"
+  },
+  "Journal of cardiovascular magnetic resonance : official journal of the Society for Cardiovascular Magnetic Resonance": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1097-6647"
+  },
+  "Journal of child psychology and psychiatry, and allied disciplines": {
+    "style": "american-medical-association",
+    "issn": "0021-9630",
+    "fallback": true,
+    "publisher": "Wiley (Blackwell Publishing)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Journal of clinical oncology : official journal of the American Society of Clinical Oncology": {
+    "style": "journal-of-clinical-oncology",
+    "issn": "0732-183X"
+  },
+  "Journal of clinical periodontology": {
+    "style": "american-medical-association",
+    "issn": "0303-6979",
+    "fallback": true,
+    "publisher": "Wiley (Blackwell Publishing)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Journal of experimental & clinical cancer research : CR": {
+    "style": "springer-vancouver-brackets",
+    "issn": "0392-9078"
+  },
+  "Journal of extracellular vesicles": {
+    "style": "american-medical-association",
+    "issn": "2001-3078",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Journal of genetics and genomics = Yi chuan xue bao": {
+    "style": "elsevier-harvard",
+    "issn": "1673-8527"
+  },
+  "Journal of hematology & oncology": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1756-8722"
+  },
+  "Journal of hepatology": {
+    "style": "elsevier-vancouver",
+    "issn": "0168-8278"
+  },
+  "Journal of internal medicine": {
+    "style": "journal-of-internal-medicine",
+    "issn": "0954-6820"
+  },
+  "Journal of medical Internet research": {
+    "style": "journal-of-medical-internet-research",
+    "issn": "1439-4456"
+  },
+  "Journal of medicinal chemistry": {
+    "style": "american-chemical-society",
+    "issn": "0022-2623"
+  },
+  "Journal of neuroinflammation": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1742-2094"
+  },
+  "Journal of neurology, neurosurgery, and psychiatry": {
+    "style": "bmj",
+    "issn": "0022-3050"
+  },
+  "Journal of nuclear medicine : official publication, Society of Nuclear Medicine": {
+    "style": "the-journal-of-nuclear-medicine",
+    "issn": "0161-5505"
+  },
+  "Journal of nursing regulation": {
+    "style": "apa",
+    "issn": "2155-8256"
+  },
+  "Journal of obesity & metabolic syndrome": {
+    "style": "nlm-citation-sequence",
+    "issn": "2508-6235",
+    "fallback": true,
+    "publisher": "Korean Society for the Study of Obesity",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Journal of orthopaedic translation": {
+    "style": "elsevier-vancouver",
+    "issn": "2214-031X"
+  },
+  "Journal of pharmaceutical analysis": {
+    "style": "elsevier-with-titles",
+    "issn": "2095-1779"
+  },
+  "Journal of physiotherapy": {
+    "style": "american-medical-association",
+    "issn": "1836-9553"
+  },
+  "Journal of sport and health science": {
+    "style": "journal-of-sport-and-health-science",
+    "issn": "2095-2546"
+  },
+  "Journal of stroke": {
+    "style": "journal-of-stroke",
+    "issn": "2287-6391"
+  },
+  "Journal of the American Academy of Child and Adolescent Psychiatry": {
+    "style": "elsevier-vancouver",
+    "issn": "0890-8567",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Journal of the American Academy of Dermatology": {
+    "style": "american-medical-association",
+    "issn": "0190-9622"
+  },
+  "Journal of the American College of Cardiology": {
+    "style": "journal-of-the-american-college-of-cardiology",
+    "issn": "0735-1097"
+  },
+  "Journal of the American Society of Echocardiography : official publication of the American Society of Echocardiography": {
+    "style": "nlm-citation-sequence-superscript",
+    "issn": "0894-7317"
+  },
+  "Journal of the European Academy of Dermatology and Venereology : JEADV": {
+    "style": "journal-of-the-european-academy-of-dermatology-and-venereology",
+    "issn": "0926-9959"
+  },
+  "Journal of the National Cancer Center": {
+    "style": "nlm-citation-sequence",
+    "issn": "2096-8663",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Journal of the National Cancer Institute": {
+    "style": "american-medical-association-parentheses",
+    "issn": "0027-8874"
+  },
+  "Journal of the National Comprehensive Cancer Network : JNCCN": {
+    "style": "nlm-citation-sequence",
+    "issn": "1540-1405",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Journal of the Royal Society of Medicine": {
+    "style": "nlm-citation-sequence-superscript",
+    "issn": "0141-0768"
+  },
+  "Journal of thoracic oncology : official publication of the International Association for the Study of Lung Cancer": {
+    "style": "american-medical-association",
+    "issn": "1556-0864"
+  },
+  "Journal of tissue engineering": {
+    "style": "sage-vancouver",
+    "issn": "2041-7314",
+    "fallback": true,
+    "publisher": "SAGE Publications",
+    "fallback_label": "SAGE 通用 Vancouver"
+  },
+  "Journal of toxicology and environmental health. Part B, Critical reviews": {
+    "style": "nlm-citation-sequence",
+    "issn": "1093-7404",
+    "fallback": true,
+    "publisher": "Informa UK (Taylor & Francis)",
+    "fallback_label": "Taylor & Francis 通用 Vancouver"
+  },
+  "Journal of translational internal medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2450-131X",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Journal of translational medicine": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1479-5876"
+  },
+  "Journal of travel medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "1195-1982",
+    "fallback": true,
+    "publisher": "Oxford University Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Kidney international": {
+    "style": "american-medical-association",
+    "issn": "0085-2538"
+  },
+  "Kidney international supplements": {
+    "style": "american-medical-association",
+    "issn": "2157-1724"
+  },
+  "Korean journal of anesthesiology": {
+    "style": "korean-journal-of-anesthesiology",
+    "issn": "2005-6419"
+  },
+  "Lancet (London, England)": {
+    "style": "elsevier-vancouver",
+    "issn": "0140-6736",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Lancet regional health. Americas": {
+    "style": "elsevier-vancouver",
+    "issn": "2667-193X",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Leukemia": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "0887-6924"
+  },
+  "Life medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2755-1733",
+    "fallback": true,
+    "publisher": "Oxford University Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Liver cancer": {
+    "style": "karger-journals",
+    "issn": "2235-1795"
+  },
+  "Materials today. Bio": {
+    "style": "elsevier-with-titles",
+    "issn": "2590-0064"
+  },
+  "Mayo Clinic proceedings": {
+    "style": "american-medical-association",
+    "issn": "0025-6196"
+  },
+  "Medical image analysis": {
+    "style": "elsevier-harvard",
+    "issn": "1361-8415"
+  },
+  "Medicinal research reviews": {
+    "style": "medicinal-research-reviews",
+    "issn": "0198-6325"
+  },
+  "Metabolic engineering": {
+    "style": "elsevier-harvard",
+    "issn": "1096-7176"
+  },
+  "Metabolism: clinical and experimental": {
+    "style": "elsevier-vancouver",
+    "issn": "0026-0495"
+  },
+  "Microbiological research": {
+    "style": "elsevier-harvard",
+    "issn": "0944-5013"
+  },
+  "Microbiology and molecular biology reviews : MMBR": {
+    "style": "american-society-for-microbiology",
+    "issn": "1092-2172"
+  },
+  "Microbiome": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2049-2618"
+  },
+  "Military Medical Research": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2095-7467"
+  },
+  "Molecular aspects of medicine": {
+    "style": "elsevier-harvard",
+    "issn": "0098-2997"
+  },
+  "Molecular biomedicine": {
+    "style": "springer-basic-brackets",
+    "issn": "2662-8651",
+    "fallback": true,
+    "publisher": "Springer (Biomed Central Ltd.)",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Molecular cancer": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1476-4598"
+  },
+  "Molecular cell": {
+    "style": "cell",
+    "issn": "1097-2765"
+  },
+  "Molecular medicine (Cambridge, Mass.)": {
+    "style": "nlm-citation-sequence",
+    "issn": "1076-1551",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Molecular metabolism": {
+    "style": "molecular-metabolism",
+    "issn": "2212-8778"
+  },
+  "Molecular neurodegeneration": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1750-1326"
+  },
+  "Molecular psychiatry": {
+    "style": "molecular-psychiatry-letters",
+    "issn": "1359-4184"
+  },
+  "Molecular systems biology": {
+    "style": "embo-press",
+    "issn": "1744-4292"
+  },
+  "Molecular therapy : the journal of the American Society of Gene Therapy": {
+    "style": "cell",
+    "issn": "1525-0016"
+  },
+  "Molecular therapy. Nucleic acids": {
+    "style": "cell",
+    "issn": "2162-2531"
+  },
+  "Molecules and cells": {
+    "style": "elsevier-vancouver",
+    "issn": "1016-8478",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Mucosal immunology": {
+    "style": "clinical-pharmacology-and-therapeutics",
+    "issn": "1933-0219"
+  },
+  "NPJ Parkinson's disease": {
+    "style": "nlm-citation-sequence",
+    "issn": "2373-8057",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "NPJ Regenerative medicine": {
+    "style": "springer-basic-brackets",
+    "issn": "2057-3995",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "NPJ biofilms and microbiomes": {
+    "style": "springer-basic-brackets",
+    "issn": "2055-5008",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "NPJ breast cancer": {
+    "style": "nlm-citation-sequence",
+    "issn": "2374-4677",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "NPJ digital medicine": {
+    "style": "springer-basic-brackets",
+    "issn": "2398-6352",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "NPJ precision oncology": {
+    "style": "springer-basic-brackets",
+    "issn": "2397-768X",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "NPJ vaccines": {
+    "style": "springer-basic-brackets",
+    "issn": "2059-0105",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature": {
+    "style": "nature",
+    "issn": "0028-0836"
+  },
+  "Nature aging": {
+    "style": "springer-basic-brackets",
+    "issn": "2662-8465",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature biomedical engineering": {
+    "style": "springer-basic-brackets",
+    "issn": "2157-846X",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature biotechnology": {
+    "style": "nature",
+    "issn": "1087-0156"
+  },
+  "Nature cancer": {
+    "style": "springer-basic-brackets",
+    "issn": "2662-1347",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature cardiovascular research": {
+    "style": "nlm-citation-sequence",
+    "issn": "2731-0590",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Nature cell biology": {
+    "style": "nature",
+    "issn": "1465-7392"
+  },
+  "Nature chemical biology": {
+    "style": "nature",
+    "issn": "1552-4450"
+  },
+  "Nature communications": {
+    "style": "nature",
+    "issn": "2041-1723"
+  },
+  "Nature ecology & evolution": {
+    "style": "springer-basic-brackets",
+    "issn": "2397-334X",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature food": {
+    "style": "springer-basic-brackets",
+    "issn": "2662-1355",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature genetics": {
+    "style": "nature",
+    "issn": "1061-4036"
+  },
+  "Nature human behaviour": {
+    "style": "springer-basic-brackets",
+    "issn": "2397-3374",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature immunology": {
+    "style": "nature",
+    "issn": "1529-2908"
+  },
+  "Nature medicine": {
+    "style": "nature",
+    "issn": "1078-8956"
+  },
+  "Nature metabolism": {
+    "style": "springer-basic-brackets",
+    "issn": "2522-5812",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature methods": {
+    "style": "nature",
+    "issn": "1548-7091"
+  },
+  "Nature microbiology": {
+    "style": "springer-basic-brackets",
+    "issn": "2058-5276",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature nanotechnology": {
+    "style": "nature",
+    "issn": "1748-3387"
+  },
+  "Nature neuroscience": {
+    "style": "nature",
+    "issn": "1097-6256"
+  },
+  "Nature protocols": {
+    "style": "nature",
+    "issn": "1754-2189"
+  },
+  "Nature reviews bioengineering": {
+    "style": "springer-basic-brackets",
+    "issn": "2731-6092",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature reviews. Cancer": {
+    "style": "nature",
+    "issn": "1474-175X"
+  },
+  "Nature reviews. Cardiology": {
+    "style": "nature",
+    "issn": "1759-5002"
+  },
+  "Nature reviews. Clinical oncology": {
+    "style": "nature",
+    "issn": "1759-4774"
+  },
+  "Nature reviews. Disease primers": {
+    "style": "springer-basic-brackets",
+    "issn": "2056-676X",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature reviews. Drug discovery": {
+    "style": "nature",
+    "issn": "1474-1776"
+  },
+  "Nature reviews. Endocrinology": {
+    "style": "nature",
+    "issn": "1759-5029"
+  },
+  "Nature reviews. Gastroenterology & hepatology": {
+    "style": "nature",
+    "issn": "1759-5045"
+  },
+  "Nature reviews. Genetics": {
+    "style": "nature",
+    "issn": "1471-0056"
+  },
+  "Nature reviews. Immunology": {
+    "style": "nature",
+    "issn": "1474-1733"
+  },
+  "Nature reviews. Microbiology": {
+    "style": "nature",
+    "issn": "1740-1526"
+  },
+  "Nature reviews. Molecular cell biology": {
+    "style": "nature",
+    "issn": "1471-0072"
+  },
+  "Nature reviews. Neurology": {
+    "style": "nature",
+    "issn": "1759-4758"
+  },
+  "Nature reviews. Neuroscience": {
+    "style": "nature",
+    "issn": "1471-003X"
+  },
+  "Nature reviews. Psychology": {
+    "style": "springer-basic-brackets",
+    "issn": "2731-0574",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  },
+  "Nature reviews. Rheumatology": {
+    "style": "nature",
+    "issn": "1759-4790"
+  },
+  "Nature reviews. Urology": {
+    "style": "nature",
+    "issn": "1759-4812"
+  },
+  "Nature structural & molecular biology": {
+    "style": "nature",
+    "issn": "1545-9993"
+  },
+  "Nature. Mental health": {
+    "style": "nlm-citation-sequence",
+    "issn": "2731-6076",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Neuro-oncology": {
+    "style": "american-medical-association",
+    "issn": "1522-8517"
+  },
+  "Neurology": {
+    "style": "neurology",
+    "issn": "0028-3878"
+  },
+  "Neurology(R) neuroimmunology & neuroinflammation": {
+    "style": "nlm-citation-sequence",
+    "issn": "2332-7812",
+    "fallback": true,
+    "publisher": "Ovid Technologies (Wolters Kluwer) - American Academy of Neurology",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Neuron": {
+    "style": "cell",
+    "issn": "0896-6273"
+  },
+  "Neuropsychopharmacology : official publication of the American College of Neuropsychopharmacology": {
+    "style": "neuropsychopharmacology",
+    "issn": "0893-133X"
+  },
+  "Neuroscience and biobehavioral reviews": {
+    "style": "elsevier-harvard",
+    "issn": "0149-7634"
+  },
+  "Neurotherapeutics : the journal of the American Society for Experimental NeuroTherapeutics": {
+    "style": "elsevier-vancouver",
+    "issn": "1933-7213",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Nucleic acids research": {
+    "style": "nucleic-acids-research",
+    "issn": "0305-1048"
+  },
+  "Obesity reviews : an official journal of the International Association for the Study of Obesity": {
+    "style": "american-medical-association",
+    "issn": "1467-7881",
+    "fallback": true,
+    "publisher": "Wiley (Blackwell Publishing)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Oncogene": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "0950-9232"
+  },
+  "Oncoimmunology": {
+    "style": "oncoimmunology",
+    "issn": "2162-4011"
+  },
+  "Ophthalmology": {
+    "style": "ophthalmology",
+    "issn": "0161-6420"
+  },
+  "Osteoarthritis and cartilage": {
+    "style": "american-medical-association",
+    "issn": "1063-4584"
+  },
+  "PLOS digital health": {
+    "style": "nlm-citation-sequence",
+    "issn": "2767-3170",
+    "fallback": true,
+    "publisher": "Public Library of Science",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "PLoS biology": {
+    "style": "plos",
+    "issn": "1544-9173"
+  },
+  "PLoS medicine": {
+    "style": "plos",
+    "issn": "1549-1277"
+  },
+  "Particle and fibre toxicology": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1743-8977"
+  },
+  "Pediatrics": {
+    "style": "american-medical-association",
+    "issn": "0031-4005"
+  },
+  "Periodontology 2000": {
+    "style": "periodontology-2000",
+    "issn": "0906-6713"
+  },
+  "Personality and social psychology review : an official journal of the Society for Personality and Social Psychology, Inc": {
+    "style": "nlm-citation-sequence",
+    "issn": "1088-8683",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Pharmacological research": {
+    "style": "elsevier-with-titles",
+    "issn": "1043-6618"
+  },
+  "Pharmacological reviews": {
+    "style": "american-society-for-pharmacology-and-experimental-therapeutics",
+    "issn": "0031-6997"
+  },
+  "Pharmacology & therapeutics": {
+    "style": "apa",
+    "issn": "0163-7258"
+  },
+  "Physiological reviews": {
+    "style": "american-physiological-society",
+    "issn": "0031-9333"
+  },
+  "Physiology (Bethesda, Md.)": {
+    "style": "american-physiological-society",
+    "issn": "1548-9213"
+  },
+  "Phytomedicine : international journal of phytotherapy and phytopharmacology": {
+    "style": "elsevier-harvard",
+    "issn": "0944-7113"
+  },
+  "Phytotherapy research : PTR": {
+    "style": "american-medical-association",
+    "issn": "0951-418X",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Proceedings of the National Academy of Sciences of the United States of America": {
+    "style": "pnas",
+    "issn": "0027-8424"
+  },
+  "Progress in biomedical engineering (Bristol, England)": {
+    "style": "institute-of-physics-numeric",
+    "issn": "2516-1091"
+  },
+  "Progress in cardiovascular diseases": {
+    "style": "american-medical-association",
+    "issn": "0033-0620"
+  },
+  "Progress in neurobiology": {
+    "style": "elsevier-harvard",
+    "issn": "0301-0082"
+  },
+  "Progress in retinal and eye research": {
+    "style": "elsevier-harvard",
+    "issn": "1350-9462"
+  },
+  "Protein & cell": {
+    "style": "springer-basic-author-date",
+    "issn": "1674-800X"
+  },
+  "Psychiatry and clinical neurosciences": {
+    "style": "psychiatry-and-clinical-neurosciences",
+    "issn": "1323-1316"
+  },
+  "Psychological bulletin": {
+    "style": "apa",
+    "issn": "0033-2909"
+  },
+  "Psychological science in the public interest : a journal of the American Psychological Society": {
+    "style": "sage-vancouver",
+    "issn": "1529-1006",
+    "fallback": true,
+    "publisher": "SAGE Publications",
+    "fallback_label": "SAGE 通用 Vancouver"
+  },
+  "Psychotherapy and psychosomatics": {
+    "style": "karger-journals",
+    "issn": "0033-3190"
+  },
+  "Qualitative psychology (Washington, D.C.)": {
+    "style": "apa",
+    "issn": "2326-3601"
+  },
+  "Radiology": {
+    "style": "radiology",
+    "issn": "0033-8419"
+  },
+  "Radiology. Artificial intelligence": {
+    "style": "nlm-citation-sequence",
+    "issn": "2638-6100",
+    "fallback": true,
+    "publisher": "Radiological Society of North America",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Radiology. Imaging cancer": {
+    "style": "nlm-citation-sequence",
+    "issn": "2638-616X",
+    "fallback": true,
+    "publisher": "Radiological Society of North America",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Re/views in environmental science and bio/technology": {
+    "style": "springer-basic-author-date",
+    "issn": "1572-9826"
+  },
+  "Redox biology": {
+    "style": "elsevier-with-titles",
+    "issn": "2213-2317"
+  },
+  "Redox report : communications in free radical research": {
+    "style": "nlm-citation-sequence",
+    "issn": "1351-0002",
+    "fallback": true,
+    "publisher": "Maney Publishing",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Regenerative biomaterials": {
+    "style": "nlm-citation-sequence",
+    "issn": "2056-3418",
+    "fallback": true,
+    "publisher": "Oxford University Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Resources, conservation, and recycling": {
+    "style": "elsevier-harvard",
+    "issn": "0921-3449"
+  },
+  "Reviews in endocrine & metabolic disorders": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1389-9155"
+  },
+  "Reviews in medical virology": {
+    "style": "nlm-citation-sequence",
+    "issn": "1052-9276",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Science (New York, N.Y.)": {
+    "style": "science",
+    "issn": "0036-8075"
+  },
+  "Science advances": {
+    "style": "science",
+    "issn": "2375-2548"
+  },
+  "Science immunology": {
+    "style": "nlm-citation-sequence",
+    "issn": "2470-9468",
+    "fallback": true,
+    "publisher": "American Association for the Advancement of Science (AAAS)",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Science signaling": {
+    "style": "nlm-citation-sequence",
+    "issn": "1945-0877",
+    "fallback": true,
+    "publisher": "American Association for the Advancement of Science (AAAS)",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Science translational medicine": {
+    "style": "science-translational-medicine",
+    "issn": "1946-6234"
+  },
+  "Seminars in cancer biology": {
+    "style": "elsevier-with-titles",
+    "issn": "1044-579X"
+  },
+  "Seminars in cell & developmental biology": {
+    "style": "elsevier-with-titles",
+    "issn": "1084-9521"
+  },
+  "Seminars in immunology": {
+    "style": "elsevier-with-titles",
+    "issn": "1044-5323"
+  },
+  "Seminars in immunopathology": {
+    "style": "springer-basic-brackets",
+    "issn": "1863-2297"
+  },
+  "Signal transduction and targeted therapy": {
+    "style": "nlm-citation-sequence",
+    "issn": "2095-9907",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Sleep medicine reviews": {
+    "style": "elsevier-vancouver",
+    "issn": "1087-0792"
+  },
+  "Smart medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2751-1863",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Sports medicine (Auckland, N.Z.)": {
+    "style": "springer-vancouver-brackets",
+    "issn": "0112-1642"
+  },
+  "Stem cell research & therapy": {
+    "style": "springer-vancouver-brackets",
+    "issn": "1757-6512"
+  },
+  "Stroke": {
+    "style": "stroke",
+    "issn": "0039-2499"
+  },
+  "The American journal of bioethics : AJOB": {
+    "style": "the-american-journal-of-bioethics",
+    "issn": "1526-5161"
+  },
+  "The American journal of clinical nutrition": {
+    "style": "journal-of-nutrition",
+    "issn": "0002-9165"
+  },
+  "The American journal of gastroenterology": {
+    "style": "the-american-journal-of-gastroenterology",
+    "issn": "0002-9270"
+  },
+  "The American journal of psychiatry": {
+    "style": "the-american-journal-of-psychiatry",
+    "issn": "0002-953X"
+  },
+  "The Behavioral and brain sciences": {
+    "style": "nlm-citation-sequence",
+    "issn": "0140-525X",
+    "fallback": true,
+    "publisher": "Cambridge University Press",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "The British journal of dermatology": {
+    "style": "british-journal-of-dermatology",
+    "issn": "0007-0963"
+  },
+  "The British journal of psychiatry : the journal of mental science": {
+    "style": "the-british-journal-of-psychiatry",
+    "issn": "0007-1250"
+  },
+  "The British journal of surgery": {
+    "style": "british-journal-of-surgery",
+    "issn": "0007-1323"
+  },
+  "The EMBO journal": {
+    "style": "embo-press",
+    "issn": "0261-4189"
+  },
+  "The European respiratory journal": {
+    "style": "european-respiratory-journal",
+    "issn": "0903-1936"
+  },
+  "The Japanese dental science review": {
+    "style": "elsevier-vancouver",
+    "issn": "1882-7616"
+  },
+  "The Journal of allergy and clinical immunology": {
+    "style": "nlm-citation-sequence-superscript-year-only-no-issue",
+    "issn": "0091-6749"
+  },
+  "The Journal of cell biology": {
+    "style": "the-rockefeller-university-press",
+    "issn": "0021-9525"
+  },
+  "The Journal of clinical investigation": {
+    "style": "the-journal-of-clinical-investigation",
+    "issn": "0021-9738"
+  },
+  "The Journal of experimental medicine": {
+    "style": "the-rockefeller-university-press",
+    "issn": "0022-1007"
+  },
+  "The Journal of heart and lung transplantation : the official publication of the International Society for Heart Transplantation": {
+    "style": "american-medical-association",
+    "issn": "1053-2498"
+  },
+  "The Journal of infection": {
+    "style": "journal-of-infection",
+    "issn": "0163-4453"
+  },
+  "The Journal of urology": {
+    "style": "the-journal-of-urology",
+    "issn": "0022-5347"
+  },
+  "The Lancet regional health. Europe": {
+    "style": "nlm-citation-sequence",
+    "issn": "2666-7762",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "The Lancet regional health. Southeast Asia": {
+    "style": "elsevier-vancouver",
+    "issn": "2772-3682",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The Lancet regional health. Western Pacific": {
+    "style": "elsevier-vancouver",
+    "issn": "2666-6065",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The Lancet. Child & adolescent health": {
+    "style": "nlm-citation-sequence",
+    "issn": "2352-4642",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "The Lancet. Digital health": {
+    "style": "elsevier-vancouver",
+    "issn": "2589-7500",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The Lancet. Global health": {
+    "style": "elsevier-vancouver",
+    "issn": "2214-109X",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The Lancet. Haematology": {
+    "style": "elsevier-vancouver",
+    "issn": "2352-3026",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The Lancet. Infectious diseases": {
+    "style": "the-lancet",
+    "issn": "1473-3099"
+  },
+  "The Lancet. Neurology": {
+    "style": "the-lancet",
+    "issn": "1474-4422"
+  },
+  "The Lancet. Oncology": {
+    "style": "the-lancet",
+    "issn": "1470-2045"
+  },
+  "The Lancet. Planetary health": {
+    "style": "nlm-citation-sequence",
+    "issn": "2542-5196",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "The Lancet. Public health": {
+    "style": "elsevier-vancouver",
+    "issn": "2468-2667",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The Lancet. Respiratory medicine": {
+    "style": "nlm-citation-sequence",
+    "issn": "2213-2600",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "The Lancet. Rheumatology": {
+    "style": "elsevier-vancouver",
+    "issn": "2665-9913",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The Medical journal of Australia": {
+    "style": "nlm-citation-sequence-superscript",
+    "issn": "0025-729X"
+  },
+  "The New England journal of medicine": {
+    "style": "the-new-england-journal-of-medicine",
+    "issn": "0028-4793"
+  },
+  "The journal of allergy and clinical immunology. In practice": {
+    "style": "elsevier-vancouver",
+    "issn": "2213-2198",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The journal of headache and pain": {
+    "style": "springer-basic-brackets",
+    "issn": "1129-2369"
+  },
+  "The journal of prevention of Alzheimer's disease": {
+    "style": "nlm-citation-sequence",
+    "issn": "2274-5807",
+    "fallback": true,
+    "publisher": "SERDI",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "The lancet. Diabetes & endocrinology": {
+    "style": "elsevier-vancouver",
+    "issn": "2213-8587",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The lancet. Gastroenterology & hepatology": {
+    "style": "elsevier-vancouver",
+    "issn": "2468-1253",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The lancet. Healthy longevity": {
+    "style": "elsevier-vancouver",
+    "issn": "2666-7568",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "The lancet. Psychiatry": {
+    "style": "elsevier-vancouver",
+    "issn": "2215-0366",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Thorax": {
+    "style": "bmj",
+    "issn": "0040-6376"
+  },
+  "Translational neurodegeneration": {
+    "style": "springer-vancouver-brackets",
+    "issn": "2047-9158"
+  },
+  "Translational psychiatry": {
+    "style": "nature-publishing-group-vancouver",
+    "issn": "2158-3188"
+  },
+  "Trends in biochemical sciences": {
+    "style": "trends-journals",
+    "issn": "0968-0004"
+  },
+  "Trends in biotechnology": {
+    "style": "trends-journals",
+    "issn": "0167-7799"
+  },
+  "Trends in cancer": {
+    "style": "elsevier-vancouver",
+    "issn": "2405-8033",
+    "fallback": true,
+    "publisher": "Elsevier",
+    "fallback_label": "Elsevier 通用 Vancouver"
+  },
+  "Trends in cardiovascular medicine": {
+    "style": "elsevier-vancouver",
+    "issn": "1050-1738"
+  },
+  "Trends in cell biology": {
+    "style": "trends-journals",
+    "issn": "0962-8924"
+  },
+  "Trends in cognitive sciences": {
+    "style": "trends-journals",
+    "issn": "1364-6613"
+  },
+  "Trends in ecology & evolution": {
+    "style": "trends-journals",
+    "issn": "0169-5347"
+  },
+  "Trends in endocrinology and metabolism: TEM": {
+    "style": "trends-journals",
+    "issn": "1043-2760"
+  },
+  "Trends in food science & technology": {
+    "style": "apa",
+    "issn": "0924-2244"
+  },
+  "Trends in genetics : TIG": {
+    "style": "trends-journals",
+    "issn": "0168-9525"
+  },
+  "Trends in immunology": {
+    "style": "trends-journals",
+    "issn": "1471-4906"
+  },
+  "Trends in microbiology": {
+    "style": "trends-journals",
+    "issn": "0966-842X"
+  },
+  "Trends in molecular medicine": {
+    "style": "trends-journals",
+    "issn": "1471-4914"
+  },
+  "Trends in neurosciences": {
+    "style": "trends-journals",
+    "issn": "0166-2236"
+  },
+  "Trends in pharmacological sciences": {
+    "style": "trends-journals",
+    "issn": "0165-6147"
+  },
+  "Ultrasound in obstetrics & gynecology : the official journal of the International Society of Ultrasound in Obstetrics and Gynecology": {
+    "style": "american-medical-association-no-et-al",
+    "issn": "0960-7692"
+  },
+  "United European gastroenterology journal": {
+    "style": "american-medical-association",
+    "issn": "2050-6406",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Visual computing for industry, biomedicine, and art": {
+    "style": "nlm-citation-sequence",
+    "issn": "2096-496X",
+    "fallback": true,
+    "publisher": "",
+    "fallback_label": "通用 NLM 数字制（出版社未匹配到专用通用样式）"
+  },
+  "Wiley interdisciplinary reviews. Computational molecular science": {
+    "style": "american-medical-association",
+    "issn": "1759-0876",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "Wiley interdisciplinary reviews. Nanomedicine and nanobiotechnology": {
+    "style": "american-medical-association",
+    "issn": "1939-5116",
+    "fallback": true,
+    "publisher": "Wiley (John Wiley & Sons)",
+    "fallback_label": "Wiley 期刊常用 AMA（通用后备样式）"
+  },
+  "World psychiatry : official journal of the World Psychiatric Association (WPA)": {
+    "style": "american-medical-association",
+    "issn": "1723-8617"
+  },
+  "npj aging": {
+    "style": "springer-basic-brackets",
+    "issn": "2731-6068",
+    "fallback": true,
+    "publisher": "Springer Science and Business Media LLC",
+    "fallback_label": "Springer 通用数字制"
+  }
+}

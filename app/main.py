@@ -49,6 +49,15 @@ def install_exception_handler(log_path: Path) -> None:
 
 
 def main() -> int:
+    if '--pdf-self-test' in sys.argv:
+        from pdf_import import pdf_runtime_self_test
+        index=sys.argv.index('--pdf-self-test')
+        return pdf_runtime_self_test(sys.argv[index+2:],sys.argv[index+1])
+    if '--network-self-test' in sys.argv:
+        # Release diagnostics use a separate process and never open the user's DB.
+        from network_transport import run_network_self_test
+        index = sys.argv.index('--network-self-test')
+        return run_network_self_test(Path(sys.argv[index + 1]))
     # High-DPI behavior is enabled by Qt 6. Organization/application names also determine where
     # Windows stores QSettings values such as the last window size.
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
@@ -80,6 +89,11 @@ def main() -> int:
         try:
             database = Database(directory / "test.sqlite3", paper_directory=directory / "paper")
             window = MainWindow(database, icon_path)
+            from citations import render
+            rendered = render([{'article_key':'self-test-citation','title':'Citation runtime check','authors':'Example A',
+                'journal_title':'Cell','publication_date':'2025-01-01','doi':'10.1000/selftest'}], 'Cell')
+            assert 'Citation runtime check' in rendered['references'][0]
+            assert rendered['markers'] == ['1']
             window.show_journal_scopes()
             window.journal_scopes.open_scope("builtin_if_6_10")
             assert len(window.journal_scopes.selected_issns()) == 274

@@ -10,11 +10,10 @@ import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Any, Callable
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from network_transport import VerifiedHTTPSAdapter, refresh_error_message, write_network_diagnostic
 from article_types import type_clause
 from biorxiv import plain_text
 from biorxiv_website import search_website
@@ -55,9 +54,7 @@ class LiteratureClient:
         self.contact_email = contact_email.strip() or "anonymous@example.com"
         self.ncbi_api_key = ncbi_api_key.strip()
         self.session = requests.Session()
-        self.session.mount("https://", HTTPAdapter(max_retries=Retry(total=2,backoff_factor=0.5,
-            status_forcelist=(429,500,502,503,504),allowed_methods=frozenset(["GET"]),
-            respect_retry_after_header=True)))
+        self.session.mount("https://", VerifiedHTTPSAdapter())
         self.session.headers.update(
             {"User-Agent": f"BiomedReader/{APP_VERSION} ({self.contact_email})"}
         )
@@ -174,8 +171,11 @@ class LiteratureClient:
             "pmcid": pmcid,
             "title": title,
             "abstract": abstract,
-            "authors": ", ".join(authors),
+            "authors": "; ".join(authors),
             "journal_title": journal,
+            "volume": article_element.findtext("./Journal/JournalIssue/Volume") or "",
+            "issue": article_element.findtext("./Journal/JournalIssue/Issue") or "",
+            "pages": article_element.findtext("./Pagination/MedlinePgn") or "",
             "issn": issn,
             "publication_date": publication_date,
             "publication_year": publication_year,
@@ -189,6 +189,15 @@ class LiteratureClient:
             "source_name": "PubMed",
             "publication_types": [str(item.text or "") for item in article_element.findall("./PublicationTypeList/PublicationType")],
         }
+        if not article['pages']:
+            first = article_element.findtext('./Pagination/StartPage') or ''
+            last = article_element.findtext('./Pagination/EndPage') or ''
+            article['pages'] = first + ('-' + last if last and last != first else '')
+        if not article['pages']:
+            # Numeric/e-prefixed e-locators are article numbers; a DOI or the
+            # publisher's Sxxxx PII identifier must never become a page number.
+            article['pages'] = next((str(item.text or '').strip() for item in article_element.findall('./ELocationID')
+                if item.get('EIdType') != 'doi' and re.fullmatch(r'e?\d+', str(item.text or '').strip())), '')
         return article, self.local_relevance(title, abstract, query_expression)
 
     def search(
@@ -262,6 +271,7 @@ class LiteratureClient:
             for field_name in (
                 "doi", "pmid", "pmcid", "authors", "journal_title", "issn",
                 "publication_date", "publication_year", "landing_page_url", "graphical_abstract_url",
+                "volume", "issue", "pages",
             ):
                 if not existing.get(field_name) and article.get(field_name):
                     existing[field_name] = article[field_name]
@@ -314,7 +324,7 @@ class LiteratureClient:
                             for article, relevance in partial.candidates:
                                 merge_candidate(article, relevance)
                         except (requests.RequestException, ValueError) as error:
-                            report.source_errors.append(f"{source}：{error}")
+                            report.source_errors.append(f"{source}：{refresh_error_message(error)}")
             finally:
                 bio_client.session.close()
             report.candidates = list(collected.values())
@@ -367,7 +377,7 @@ class LiteratureClient:
                 report.source_counts["bioRxiv"] = len(records)
             except (requests.RequestException, ValueError) as error:
                 label={'biorxiv':'bioRxiv','medrxiv':'medRxiv','both':'bioRxiv / medRxiv'}.get(preprint_servers,'预印本')
-                report.source_errors.append(f"{label}：{error}")
+                report.source_errors.append(f"{label}：{refresh_error_message(error)}")
 
         if "PubMed" in selected_sources:
             notify("正在查询 PubMed……")
@@ -375,7 +385,10 @@ class LiteratureClient:
                 report.source_errors.append("PubMed：所选期刊目录或最低 JIF 条件下没有可检索期刊；bioRxiv 不受此限制。")
         ncbi_delay = 0.12 if self.ncbi_api_key else 0.36
         fetched_pmids = set()
+        transport_failed = False
         for journal_batch in (batches if "PubMed" in selected_sources else []):
+            if transport_failed:
+                break
             journal_clause = " OR ".join(f'"{issn}"[Journal]' for issn in journal_batch)
             if pubmed_search_scope not in ('default','title_abstract'):
                 raise ValueError('PubMed 仅支持默认或标题与摘要搜索范围。')
@@ -418,7 +431,7 @@ class LiteratureClient:
                         }
                         if self.ncbi_api_key:
                             fetch_params["api_key"] = self.ncbi_api_key
-                        response = self.session.get(NCBI_EFETCH_URL, params=fetch_params, timeout=(10, 60))
+                        response = self.pubmed_request(NCBI_EFETCH_URL, fetch_params)
                         report.request_counts["PubMed"] += 1
                         response.raise_for_status()
                         root = ET.fromstring(response.content)
@@ -432,7 +445,14 @@ class LiteratureClient:
                         if candidate_callback and received:candidate_callback(received)
                         time.sleep(ncbi_delay)
                 except (requests.RequestException, ValueError, json.JSONDecodeError, ET.ParseError) as error:
-                    report.source_errors.append(f"PubMed（{ordering}）：{error}")
+                    message = f"PubMed（{ordering}）：{refresh_error_message(error)}"
+                    if message not in report.source_errors:
+                        report.source_errors.append(message)
+                    # A transport failure affects every remaining journal chunk.
+                    # Let the user retry later instead of repeating the same outage.
+                    if isinstance(error, requests.exceptions.ConnectionError):
+                        transport_failed = True
+                        break
 
         report.candidates = list(collected.values())
         # Resolve exact DOI metadata only for genuinely missing journal names.
@@ -454,6 +474,21 @@ class LiteratureClient:
             report.completed_sources={source:datetime.now(timezone.utc).isoformat() for source in selected_sources}
         return report
 
+    def pubmed_request(self, url, parameters):
+        """Long journal filters belong in a POST body, not a many-kilobyte URL.
+
+        Preserve the complete query and exact day boundaries. Small requests use
+        GET as before; ESearch and EFetch accept the same parameters through POST.
+        """
+        try:
+            if len(urlencode(parameters)) > 1000:
+                return self.session.post(url, data=parameters, timeout=(10, 60))
+            return self.session.get(url, params=parameters, timeout=(10, 60))
+        except requests.RequestException as error:
+            if self.biorxiv_cache_path:
+                write_network_diagnostic(error, self.biorxiv_cache_path.parent / 'logs')
+            raise
+
     def pubmed_ids(self, query, ordering, limit, report, notify, delay,date_from=None,date_to=None):
         """Split dense result sets by publication date to respect PubMed's 9,999 ID boundary.
 
@@ -469,7 +504,7 @@ class LiteratureClient:
                               maxdate=(date_to or date.today()).strftime('%Y/%m/%d'))
             if self.ncbi_api_key:
                 params["api_key"] = self.ncbi_api_key
-            response = self.session.get(NCBI_ESEARCH_URL, params=params, timeout=(10,60))
+            response = self.pubmed_request(NCBI_ESEARCH_URL, params)
             response.raise_for_status()
             report.request_counts["PubMed"] += 1
             time.sleep(delay)

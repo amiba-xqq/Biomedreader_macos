@@ -64,6 +64,7 @@ from source_modes import cache_mode,profile_settings
 from website_browser import WebsiteBrowser
 from paged_table import PagedArticleTable,PAGE_SIZE
 from article_types import ARTICLE_TYPES, matches_type, normalize_types
+from network_transport import refresh_error_message, write_network_diagnostic
 
 
 class CandidateInput(QLineEdit):
@@ -200,7 +201,11 @@ def sort_articles(articles: list[dict[str, Any]], mode: str) -> list[dict[str, A
     if mode == "最相关":
         return sorted(enriched, key=lambda item: (item.get("relevance_score", 0), item["_date"]), reverse=True)
     if mode == "收藏时间":
-        return sorted(enriched, key=lambda item: str(item.get("favorite_saved_at") or ""), reverse=True)
+        # The age of a saved article is measured against the computer's clock.
+        # Sort the actual instants (including offsets), not their ISO strings.
+        # Unknown legacy timestamps follow all dated favorites.
+        return sorted(enriched, key=lambda item: (not bool(item.get('favorite_saved_at')),
+            (now - parse_iso_date(item.get('favorite_saved_at'))).total_seconds()))
     return sorted(enriched, key=lambda item: (item["_combined"], item["_date"]), reverse=True)
 
 
@@ -370,6 +375,9 @@ class ArticleDialog(QDialog):
         close_button.setProperty("secondary", True)
         button_row.addWidget(self.favorite_button)
         button_row.addWidget(save_button)
+        cite_button = QPushButton('导出 / 复制引用')
+        cite_button.clicked.connect(self.show_citation)
+        button_row.addWidget(cite_button)
         if profile_id is not None:
             self.hidden_button=QPushButton('取消隐藏' if database.matches_hidden_article(article,database.hidden_article_tokens(profile_id)) else '隐藏文章')
             self.hidden_button.clicked.connect(self.toggle_hidden)
@@ -387,6 +395,10 @@ class ArticleDialog(QDialog):
         layout.addWidget(self.abstract_status)
         if any(source in str(article.get('source_name') or '') for source in ('bioRxiv','medRxiv')) and not article.get('abstract') and article.get('doi'):
             QTimer.singleShot(0,self.load_website_abstract)
+
+    def show_citation(self):
+        from citations import show_citation
+        show_citation(self.database, self.article, self)
 
     def render_article(self):
         article=self.article
@@ -815,7 +827,8 @@ class SearchTask(QRunnable):
                 except (OSError,sqlite3.Error):pass
             self.signals.finished.emit(report)
         except Exception as error:  # Background boundary: report any source/DB failure to the GUI.
-            self.signals.failed.emit(str(error))
+            write_network_diagnostic(error, self.database.path.parent / 'logs')
+            self.signals.failed.emit(refresh_error_message(error))
 
 
 class HomePage(QWidget):
@@ -843,6 +856,9 @@ class HomePage(QWidget):
         reset_widths = QPushButton("恢复默认宽度")
         reset_widths.setProperty('secondary',True)
         reset_widths.clicked.connect(self.reset_widths)
+        self.refresh_all_button = QPushButton("全部联网刷新")
+        self.refresh_all_button.setToolTip("按当前卡片顺序依次刷新；首次完整检索，之后按各来源的成功日期增量检索。")
+        header.addWidget(self.refresh_all_button)
         header.addWidget(reset_widths)
         header.addWidget(add_button)
         outer.addLayout(header)
@@ -1499,6 +1515,9 @@ class ResultsPage(QWidget):
         QTimer.singleShot(0, self.reflow_cards)
 
     def refresh_online(self) -> None:
+        if getattr(getattr(self.window(), 'batch_refresh', None), 'active', False):
+            QMessageBox.information(self, '正在全部联网刷新', '请等待队列完成，或回到关键词方案取消全部刷新。')
+            return
         if self.profile_id is None or self.current_task is not None:
             return
         profile = self.database.get_profile(self.profile_id)
@@ -1567,7 +1586,7 @@ class ResultsPage(QWidget):
             self.status.setText("刷新未完成；已展示当前已保存的结果，包含本次检索取得的文章。上次成功刷新时间保持不变。")
         self.cache_changed.emit()
         if not message.startswith("检索已取消"):
-            QMessageBox.warning(self, "刷新失败", message)
+            QMessageBox.warning(self, "刷新失败", refresh_error_message(message))
 
     def cancel_refresh(self):
         if self.current_task:
@@ -1866,6 +1885,10 @@ class FavoritesPage(QWidget):
         self.all_articles: list[dict[str, Any]] = []
         self.visible_articles=[];self.favorite_page_number=0;self.selected_favorite_keys=set()
         self.bundle_task = None
+        self.pdf_task = None
+        self.pdf_import_dialog = None
+        self.pdf_progress_state = None
+        self._pdf_completed = -1
         layout = QVBoxLayout(self)
         header = QHBoxLayout()
         title = QLabel("收藏文章")
@@ -1875,6 +1898,7 @@ class FavoritesPage(QWidget):
         self.sort_mode = QComboBox()
         self.sort_mode.addItems(["文章发表时间", "收藏时间"])
         group_settings = QPushButton("编辑分组 / 删除分组")
+        self.group_settings_button=group_settings
         group_settings.setProperty("secondary", True)
         group_settings.clicked.connect(self.manage_groups)
         header.addWidget(title)
@@ -1898,6 +1922,9 @@ class FavoritesPage(QWidget):
         self.bundle_status.setWordWrap(True)
         share_row.addWidget(self.export_bundle_button)
         share_row.addWidget(self.import_bundle_button)
+        self.pdf_import_button=QPushButton('批量收藏 PDF…');self.pdf_import_button.clicked.connect(self.start_pdf_import)
+        self.pdf_cancel_button=QPushButton('取消 PDF 导入');self.pdf_cancel_button.hide();self.pdf_cancel_button.clicked.connect(self.cancel_pdf_import)
+        share_row.addWidget(self.pdf_import_button);share_row.addWidget(self.pdf_cancel_button)
         self.add_group_button=QPushButton('＋ 自定义分组')
         self.add_group_button.clicked.connect(self.add_custom_group)
         self.transfer_button=QPushButton('复制 / 移动所选文章…')
@@ -1978,9 +2005,64 @@ class FavoritesPage(QWidget):
         entries=self.database._ordered_cards(entries,'favorite_card_order')
         self.group_names={row['id']:row['name'] for row in entries}
         for row in entries:
-            self.group_container.add_card(row['id'],row['name'],f"{len(row['articles'])} 篇收藏文章\n"+by_name.get(row['name'],{}).get('keywords','未指定分组'),lambda identifier:self._show_group(self.group_names[identifier]))
+            card=self.group_container.add_card(row['id'],row['name'],f"{len(row['articles'])} 篇收藏文章\n"+by_name.get(row['name'],{}).get('keywords','未指定分组'),lambda identifier:self._show_group(self.group_names[identifier]))
+            if self.pdf_task and row['id']==str(self.pdf_task.selection['group_id']) and self.pdf_progress_state:
+                state=self.pdf_progress_state
+                card.set_import_progress(state['completed'],state['total'],f"正在联网搜索\n共 {state['total']} 个 PDF，已完成 {state['completed']} 个")
         self.group_container.reflow()
         self.stack.setCurrentWidget(self.group_scroll)
+
+    def start_pdf_import(self):
+        from pdf_import_ui import PDFImportDialog
+        if self.pdf_task:return
+        if self.pdf_import_dialog is not None:
+            self.pdf_import_dialog.showNormal();self.pdf_import_dialog.raise_();self.pdf_import_dialog.activateWindow();return
+        dialog=PDFImportDialog(self.database,self)
+        self.pdf_import_dialog=dialog
+        def finished(result):
+            self.pdf_import_dialog=None
+            if result==QDialog.DialogCode.Accepted:self.begin_pdf_import(dialog.selection)
+            dialog.deleteLater()
+        dialog.finished.connect(finished)
+        dialog.show()
+
+    def begin_pdf_import(self,selection):
+        from pdf_import_ui import PDFImportTask
+        if self.pdf_task:return
+        self.pdf_task=PDFImportTask(self.database,selection)
+        self.pdf_progress_state=dict(total=len(selection['files']),completed=0,successes=[],failures=[])
+        self._pdf_completed=-1
+        self.pdf_import_button.setEnabled(False);self.pdf_cancel_button.show()
+        for button in (self.add_group_button,self.transfer_button,self.import_bundle_button,self.group_settings_button):button.setEnabled(False)
+        self.window().settings_page.setEnabled(False)
+        self.pdf_task.signals.progress.connect(self.pdf_import_progress)
+        self.pdf_task.signals.finished.connect(self.pdf_import_finished)
+        self.pdf_import_progress(self.pdf_progress_state)
+        self.window().thread_pool.start(self.pdf_task)
+
+    def cancel_pdf_import(self):
+        if self.pdf_task:
+            self.pdf_task.stop.set();self.pdf_cancel_button.setEnabled(False)
+            self.bundle_status.setText('正在取消，等待当前请求结束；已成功收藏的文章与 PDF 会保留。')
+
+    def pdf_import_progress(self,state):
+        self.pdf_progress_state=state
+        self.bundle_status.setText(f"共 {state['total']} 个 PDF，已经搜索完成 {state['completed']} 个；成功 {len(state['successes'])} 个。")
+        if self._pdf_completed!=state['completed']:
+            self._pdf_completed=state['completed'];self.reload()
+        for card in self.group_container.cards:
+            if self.pdf_task and card.identifier==str(self.pdf_task.selection['group_id']):
+                card.set_import_progress(state['completed'],state['total'],f"正在联网搜索\n共 {state['total']} 个 PDF，已完成 {state['completed']} 个")
+
+    def pdf_import_finished(self,report):
+        from pdf_import_ui import PDFFailureDialog
+        self.pdf_task=None;self.pdf_progress_state=None
+        self.pdf_import_button.setEnabled(True);self.pdf_cancel_button.hide();self.pdf_cancel_button.setEnabled(True)
+        for button in (self.add_group_button,self.transfer_button,self.import_bundle_button,self.group_settings_button):button.setEnabled(True)
+        if not self.window().batch_refresh.active:self.window().settings_page.setEnabled(True)
+        self.reload();self.bundle_status.setText(f"PDF 导入结束：成功 {len(report['successes'])}/{report['total']} 个。")
+        if report['failures']:PDFFailureDialog(report,self).exec()
+        else:QMessageBox.information(self,'PDF 全部收藏完成',f"{report['total']} 个 PDF 全部收藏完成，已自动链接原文，可离线查看。")
 
     def _show_group(self, group_name: str) -> None:
         if self.current_group!=group_name:self.favorite_page_number=0;self.selected_favorite_keys.clear()
@@ -2041,6 +2123,7 @@ class FavoritesPage(QWidget):
             card.open_requested.connect(self.open_article)
             check=QCheckBox('选择');key=article['article_key'];check.setChecked(key in self.selected_favorite_keys)
             check.toggled.connect(lambda selected,key=key:self.selected_favorite_keys.add(key) if selected else self.selected_favorite_keys.discard(key))
+            check.toggled.connect(lambda selected,article=article: self.window().word_bridge.select(article) if selected and hasattr(self.window(), 'word_bridge') else None)
             card.controls.insertWidget(0,check)
             self.favorite_grid.addWidget(card,index//2,index%2)
         self.reflow_favorite_cards();QTimer.singleShot(0,self.reflow_favorite_cards)
@@ -2130,6 +2213,8 @@ class FavoritesPage(QWidget):
         if dialog.exec()==QDialog.DialogCode.Accepted:self.reload()
 
     def open_article(self, article: dict[str, Any]) -> None:
+        bridge = getattr(self.window(), 'word_bridge', None)
+        if bridge:bridge.select(article)
         dialog = ArticleDialog(self.database, article, self, allow_pdf=True)
         dialog.favorite_changed.connect(self.reload)
         dialog.exec()
@@ -2184,6 +2269,12 @@ class SettingsPage(QWidget):
         general = QGroupBox("网络与默认值")
         general_form = QFormLayout(general)
         settings = database.get_settings()
+        from citations import choose_style
+        citation_group = QGroupBox('参考文献格式')
+        citation_form = QFormLayout(citation_group)
+        self.citation_style = choose_style(database, citation_group)
+        citation_form.addRow('期刊（默认 Cell）', self.citation_style)
+        layout.addWidget(citation_group)
         appearance=QGroupBox('字体与布局大小');appearance_form=QFormLayout(appearance)
         self.auto_scale=QCheckBox('根据当前屏幕可用宽度自动调整')
         self.auto_scale.setChecked(settings.get('interface_auto_scale','1')=='1')
@@ -2999,11 +3090,41 @@ class MainWindow(QMainWindow):
         self.settings_page.journals_changed.connect(self.home.reload)
         self.show_home()
         self.interface_scale=InterfaceScale(self,database,APP_STYLE)
+        from batch_refresh import BatchRefresh
+        self.batch_refresh = BatchRefresh(self)
+        self.home.refresh_all_button.clicked.connect(self.toggle_batch_refresh)
+        self.batch_refresh.changed.connect(self.update_batch_refresh)
+        from word_bridge import WordBridge
+        self.word_bridge = WordBridge(self)
+        self.favorites.table.itemSelectionChanged.connect(lambda: self.word_bridge.select(self.favorites.table.current_article()))
 
         qt_settings = QSettings("OrangeReader", "BiomedLiterature")
         geometry = qt_settings.value("window_geometry")
         if geometry:
             self.restoreGeometry(geometry)
+
+    def toggle_batch_refresh(self):
+        if self.batch_refresh.active:
+            self.batch_refresh.cancel()
+        elif self.results.current_task is not None:
+            QMessageBox.information(self, '正在联网刷新', '请先等待当前单个方案刷新完成。')
+        else:
+            self.batch_refresh.start([int(card.identifier) for card in self.home.container.cards])
+
+    def update_batch_refresh(self):
+        batch = self.batch_refresh
+        button = self.home.refresh_all_button
+        button.setText(('正在取消…' if batch.cancelled else f'取消全部刷新 ({batch.completed}/{batch.total})') if batch.active else '全部联网刷新')
+        button.setEnabled(not (batch.active and batch.cancelled))
+        self.settings_page.setEnabled(not batch.active and not self.favorites.pdf_task)
+        if not batch.active and batch.completed:
+            summary = f'已处理 {batch.completed}/{batch.total} 个方案' + ('，已取消后续刷新。' if batch.cancelled else '。')
+            if batch.failures:
+                summary += '\n' + '\n'.join(name + '：' + refresh_error_message(error) for name,error in batch.failures[:10])
+                if len(batch.failures) > 10:
+                    summary += f'\n另有 {len(batch.failures)-10} 个方案未完成，请查看各方案状态。'
+            button.setToolTip(summary)
+            QMessageBox.information(self, '全部联网刷新', summary)
 
     def _select_navigation(self, index: int | None) -> None:
         for button_index, button in enumerate(self.nav_buttons):
@@ -3039,8 +3160,13 @@ class MainWindow(QMainWindow):
         self.favorites.reload()
 
     def closeEvent(self, event):  # noqa: N802 - Qt naming convention
+        if self.favorites.pdf_task:
+            self.favorites.cancel_pdf_import();event.ignore();return
         if getattr(self.settings_page,'move_task',None):
             event.ignore();return
+        if self.favorites.pdf_import_dialog is not None:self.favorites.pdf_import_dialog.close()
+        self.word_bridge.timer.stop()
+        if self.batch_refresh.active:self.batch_refresh.cancel()
         self.interface_scale.stop()
         self.results.cancel_local_reads()
         self.results.website.shutdown()
