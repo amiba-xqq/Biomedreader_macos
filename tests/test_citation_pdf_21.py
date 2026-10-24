@@ -9,6 +9,9 @@ from bibliography import enrich_articles
 from citations import show_citation,render
 from pdf_import import recognize_pdf
 from ui import FavoritesPage
+from word_document import document_bytes,W
+from io import BytesIO
+import zipfile,xml.etree.ElementTree as ET
 
 def make_pdf(path):
     stream=b'BT /F1 22 Tf 60 720 Td (A complete scientific article title) Tj 0 -26 Td (continuing on its second line) Tj /F1 10 Tf 0 -60 Td (Abstract: examples) Tj ET'
@@ -58,3 +61,19 @@ class CitationPDFTests(unittest.TestCase):
         self.assertTrue(dialog.isVisible());self.assertFalse(dialog.isMinimized())
         dialog.reject();self.app.processEvents();self.assertIsNone(page.pdf_import_dialog)
         parent.close();parent.deleteLater()
+    def test_portable_word_contains_endnote_records_and_nonempty_references(self):
+        other={**self.row,'article_key':'pmid:43','title':'Second portable paper'}
+        with zipfile.ZipFile(BytesIO(document_bytes([self.row,other,self.row],'Cell'))) as archive:
+            document=ET.fromstring(archive.read('word/document.xml'))
+            instructions=[node.text for node in document.findall('.//{'+W+'}instrText')]
+            citations=[value for value in instructions if 'EN.CITE' in value]
+            self.assertEqual(len(citations),2)
+            for code in citations:
+                record=ET.fromstring(code[code.index('<EndNote>'):code.rindex('</EndNote>')+10])
+                self.assertEqual(record.findtext('.//record/volume'),'86')
+                self.assertEqual(record.findtext('.//record/pages'),'10-20')
+            text=''.join(document.itertext())
+            self.assertIn('Second portable paper',text);self.assertIn('EN.REFLIST',text)
+            self.assertIn('superscript',archive.read('word/document.xml').decode())
+            self.assertIn('Arial',archive.read('word/styles.xml').decode())
+        with self.assertRaises(ValueError):document_bytes([self.row],'Unverified journal')

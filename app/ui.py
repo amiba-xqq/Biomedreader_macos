@@ -1925,6 +1925,9 @@ class FavoritesPage(QWidget):
         self.pdf_import_button=QPushButton('批量收藏 PDF…');self.pdf_import_button.clicked.connect(self.start_pdf_import)
         self.pdf_cancel_button=QPushButton('取消 PDF 导入');self.pdf_cancel_button.hide();self.pdf_cancel_button.clicked.connect(self.cancel_pdf_import)
         share_row.addWidget(self.pdf_import_button);share_row.addWidget(self.pdf_cancel_button)
+        if sys.platform=='darwin':
+            self.word_export_button=QPushButton('导出 Word / EndNote…')
+            self.word_export_button.clicked.connect(self.export_mac_word)
         self.add_group_button=QPushButton('＋ 自定义分组')
         self.add_group_button.clicked.connect(self.add_custom_group)
         self.transfer_button=QPushButton('复制 / 移动所选文章…')
@@ -1932,6 +1935,7 @@ class FavoritesPage(QWidget):
         share_row.addWidget(self.add_group_button);share_row.addWidget(self.transfer_button)
         share_row.addWidget(self.bundle_status, 1)
         layout.addLayout(share_row)
+        if sys.platform=='darwin':layout.addWidget(self.word_export_button,alignment=Qt.AlignmentFlag.AlignLeft)
         self.stack = QStackedWidget()
         self.group_scroll = QScrollArea()
         self.group_scroll.setWidgetResizable(True)
@@ -2011,6 +2015,11 @@ class FavoritesPage(QWidget):
                 card.set_import_progress(state['completed'],state['total'],f"正在联网搜索\n共 {state['total']} 个 PDF，已完成 {state['completed']} 个")
         self.group_container.reflow()
         self.stack.setCurrentWidget(self.group_scroll)
+
+    def export_mac_word(self):
+        from mac_word_export import show_word_export
+        rows=self.database.grouped_favorites().get(self.current_group,[]) if self.current_group is not None else self.database.favorite_articles()
+        show_word_export(self.database,rows,self.selected_favorite_keys,self)
 
     def start_pdf_import(self):
         from pdf_import_ui import PDFImportDialog

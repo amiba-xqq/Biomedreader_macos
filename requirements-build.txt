@@ -8,3 +8,4 @@ pdfplumber==0.11.9
 pdfminer.six==20251230
 # PDFium 5.x macOS arm64 binaries require macOS 13; retain Monterey support.
 pypdfium2==4.30.0
+cryptography==50.0.2

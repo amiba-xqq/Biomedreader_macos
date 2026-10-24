@@ -1,6 +1,6 @@
 # 刊禾 · Biomed Reader
 
-面向生物医学文献的桌面阅读工具。当前版本 **2.0**，支持 PubMed、bioRxiv、medRxiv 检索，以及离线缓存、收藏、PDF 关联和期刊目录管理。
+面向生物医学文献的桌面阅读工具。当前版本 **2.1**，支持 PubMed、bioRxiv、medRxiv 检索，以及离线缓存、收藏、PDF 关联和期刊目录管理。
 
 ## 下载与安装
 
@@ -8,8 +8,8 @@
 
 | 电脑 | 文件 |
 |---|---|
-| Apple Silicon：M1、M2、M3、M4 等 | `BiomedReader_2.0_macOS12_AppleSilicon.dmg` |
-| Intel Mac | `BiomedReader_2.0_macOS12_Intel.dmg` |
+| Apple Silicon：M1、M2、M3、M4 等 | `BiomedReader_2.1_macOS12_AppleSilicon.dmg` |
+| Intel Mac | `BiomedReader_2.1_macOS12_Intel.dmg` |
 
 最低系统为 **macOS 12 Monterey**。在“苹果菜单 → 关于本机”中查看芯片和系统版本。两个 DMG 分别包含对应架构的完整应用、Python 3.12、PySide6/Qt 6.8.3、内置浏览器和期刊数据，不需要自己安装 Python。
 
@@ -53,6 +53,31 @@ bioRxiv、medRxiv 使用各自官网的关键词搜索。可能弹出官网窗�
 - 收藏文章支持表格/卡片、排序、压缩包分享及读取他人分享包。
 - 在收藏文章详情中点击“链接文章”，选择已下载 PDF。软件将其复制到数据目录下的 `paper`，按标题命名，并保存关联。
 - 链接成功后，“查看原文”调用默认 PDF 阅读器。备份或分享时可包含已关联 PDF。
+
+### 2.1：引用卷页和批量收藏 PDF
+
+文章详情的“导出/复制引用”使用 PubMed 元数据，并按 DOI 回退补齐卷号、期号及页码。Volume 或 Pages 仍缺失时，每次点击都重新联网尝试；两项齐全后直接使用缓存。尚未分配卷页的在线优先文章、预印本或未提供该字段的数据源不会被填入猜测值。
+
+“收藏文章 → 批量收藏 PDF”支持单选、多选及拖放本地 PDF。选择窗口独立于主窗口，主窗口最小化后仍保留拖放窗口。
+
+1. 添加 PDF，必须勾选一个或多个期刊目录，并选择已有分组或输入新分组名称。
+2. 软件读取首页较大字体的完整标题（包括换行），通过 PubMed 按相关性检索并核验完整标题、DOI。检索范围跟随 PubMed 设置，不使用年份或 JIF 限制。
+3. 匹配成功的文章加入目标分组，PDF 副本写入当前数据目录的 `paper` 并自动关联；源 PDF 不移动、不删除。
+4. 分组卡片显示总数与完成数。全部成功时提示完成；部分失败时保留报告，可复制或导出失败文件名，复制不会关闭报告。
+5. 取消时保留已完成收藏。扫描件或缺少可提取标题的 PDF 会报告失败，本版未内置 OCR。
+
+### Mac Word 与 EndNote：文档互通
+
+Mac 2.1 在“收藏文章”提供 **导出 Word / EndNote…**。可导出当前分组或所有收藏，勾选所需文章，从 NC 扩选与已核实 EndNote 样式的交集中选择期刊（支持输入关键词筛选），生成 `.docx` 引文集合。文件包含 `ADDIN EN.CITE` 引文域、各篇嵌入的 EndNote 文献记录、卷页信息，以及非空 `EN.REFLIST` 文末参考文献；并非把 RIS 改名为 Word 文件。
+
+1. 用桌面版 Mac Word 打开导出的 `.docx`，确认已安装匹配的 EndNote 桌面版及 CWYW 插件。
+2. 使用 EndNote 选项卡的 **Update Citations and Bibliography** 更新引用；没有相同期刊样式时，在 EndNote 中安装或选择可用样式。
+3. 若要写入自己的稿件，将所需的上标/引文域从该集合复制到稿件中，保留 Word 域格式，再由 EndNote 更新编号和参考文献。不要选择“仅保留文本”，也不要转换为纯文本。
+4. 如需建立 EndNote 文献库，使用 EndNote 的 **Tools → Export Traveling Library**，导出文档中嵌入的记录。
+
+默认字体 Arial、常规、10.5 磅（五号），上标跟随样式。此导出方式不在 Mac Word 安装 Biomed Reader 原生工具栏，不会跟踪收藏分组删除而自动改写稿件。Windows COM 插件不包含在 Mac 安装包中。跨平台 OOXML 已在本机 Windows Word/EndNote CWYW 中验证：清除预览参考文献后，CWYW 能依据嵌入记录重新生成完整文末参考文献。GitHub runner 没有授权的 Mac Word/EndNote，**尚未完成 Mac Word/CWYW 实机端到端验证**，不能把构建检查等同于该项验证。
+
+Word 与 CWYW 的安装及版本匹配请参阅 [Clarivate 的 Mac CWYW 安装说明](https://docs.endnote.com/docs/endnote/2025/v1/macos/en/content/09word/installing_cwywsprtinword.htm)和[官方兼容列表](https://endnote.com/product-details/compatibility/)。应用支持 macOS 12，并不意味着任意 EndNote/Word 新版本都支持 macOS 12，应另行核对各软件要求。
 
 ### 期刊目录与 JIF
 
@@ -133,3 +158,4 @@ PubMed 与预印本分别记录成功检查点。大量结果中的个别请求�
 每次重新启动软件，每个关键词方案使用设置中的默认形式。
 方案内修改展现形式与密度仅在本次运行有效，不改变全局默认值。
 点击 DOI 后保持原有字体淡化效果，卡片背景始终为白色。
+
