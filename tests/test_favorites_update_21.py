@@ -84,14 +84,14 @@ class FavoritesTests(unittest.TestCase):
         with patch('ui.confirm_unfavorite',return_value=False):ResultsPage.toggle_article_favorite(page,self.rows[0])
         self.assertIn('pmid:1',self.db.favorite_keys_for_profile(profile))
         with patch('ui.confirm_unfavorite',return_value=True):ResultsPage.toggle_article_favorite(page,self.rows[0])
-        self.assertNotIn('pmid:1',{a['article_key'] for a in self.db.favorite_articles()});page.reload_cache.assert_called_once()
+        self.assertNotIn('pmid:1',self.db.favorite_keys_for_profile(profile));self.assertIn('pmid:1',{a['article_key'] for a in self.db.favorite_articles()});page.reload_cache.assert_called_once()
     def test_confirmation_has_cancel_default_and_explicit_pdf_all_groups_warning(self):
         captured=[]
         def execute(dialog):
             captured.append(dialog.text());self.assertEqual(dialog.standardButton(dialog.defaultButton()),QMessageBox.StandardButton.Cancel)
             return QMessageBox.StandardButton.Cancel
         with patch.object(QMessageBox,'exec',execute):self.assertFalse(confirm_unfavorite(None,self.rows[:1]))
-        self.assertIn('所有收藏分组',captured[0]);self.assertIn('paper',captured[0])
+        self.assertIn('不再属于任何收藏分组',captured[0]);self.assertIn('paper',captured[0])
     def test_bulk_group_selection_and_rejected_confirmation(self):
         dialog=BulkUnfavoriteDialog(self.db)
         self.assertTrue(dialog.include_pdf.isHidden())
@@ -103,14 +103,14 @@ class FavoritesTests(unittest.TestCase):
         self.assertIsNone(page.cancel_task);self.assertEqual(len(self.db.favorite_articles()),3)
         with patch('ui.BulkUnfavoriteDialog',return_value=dialog),patch.object(dialog,'exec',return_value=QDialog.DialogCode.Accepted),patch('ui.confirm_unfavorite',return_value=True),patch.object(QMessageBox,'information'):
             page.bulk_unfavorite();QThreadPool.globalInstance().waitForDone(5000);app.processEvents()
-        self.assertIsNone(page.cancel_task);self.assertEqual(len(self.db.favorite_articles()),2)
+        self.assertIsNone(page.cancel_task);self.assertEqual(len(self.db.favorite_articles()),3);self.assertTrue(self.db.linked_pdf('pmid:1'))
         page.deleteLater();dialog.deleteLater();app.processEvents()
     def test_locked_pdf_rolls_back_only_failed_article(self):
-        locked=self.db.linked_pdf('pmid:1');original=Path.unlink
+        locked=self.db.linked_pdf('pmid:1');original=__import__('local_maintenance').recycle_path
         def unlink(path,*args,**kwargs):
             if path==locked:raise PermissionError('locked')
             return original(path,*args,**kwargs)
-        with patch.object(Path,'unlink',unlink):report=self.db.cancel_favorites(['pmid:1','pmid:2'])
+        with patch('local_maintenance.recycle_path',unlink):report=self.db.cancel_favorites(['pmid:1','pmid:2'])
         self.assertEqual(report['removed'],['pmid:2']);self.assertEqual(report['failed'][0]['article_key'],'pmid:1')
         self.assertTrue(locked.exists());self.assertTrue(self.db.linked_pdf('pmid:1'))
         self.assertEqual(len(self.db.grouped_favorites()['Beta']),1)
@@ -171,7 +171,8 @@ class UpdateTests(unittest.TestCase):
     def test_update_widget_reports_latest_without_download(self):
         widget=SoftwareUpdateWidget()
         with patch('software_update.check_release',return_value=dict(current='2.1',latest='2.1',newer=False,artifact=None)),patch.object(QMessageBox,'information') as notice,patch('software_update.download_artifact') as download:
-            widget.check();QThreadPool.globalInstance().waitForDone(5000);app.processEvents()
+            widget.check();deadline=time.monotonic()+10
+            while widget.task is not None and time.monotonic()<deadline:app.processEvents();time.sleep(.01)
             self.assertIsNone(widget.task);notice.assert_called_once();download.assert_not_called()
             self.assertIn('最新版本',widget.status.text())
         widget.deleteLater();app.processEvents()

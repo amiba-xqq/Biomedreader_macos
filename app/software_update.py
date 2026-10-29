@@ -146,7 +146,9 @@ class SoftwareUpdateWidget(QWidget):
         super().__init__(parent);self.task=None;layout=QVBoxLayout(self);layout.setContentsMargins(0,0,0,0)
         row=QHBoxLayout();self.check_button=QPushButton('检查软件更新');self.cancel_button=QPushButton('取消下载');self.cancel_button.hide()
         self.check_button.clicked.connect(self.check);self.cancel_button.clicked.connect(self.cancel)
-        row.addWidget(self.check_button);row.addWidget(self.cancel_button);row.addStretch();layout.addLayout(row)
+        from release_notes import show_release_notes
+        self.notes_button=QPushButton('展示更新内容');self.notes_button.clicked.connect(lambda:show_release_notes(self))
+        row.addWidget(self.check_button);row.addWidget(self.notes_button);row.addWidget(self.cancel_button);row.addStretch();layout.addLayout(row)
         self.status=QLabel(f'当前版本 {APP_VERSION}。检查官网版本，发现新版本后下载适配本机的 GitHub 安装包。');self.status.setWordWrap(True);self.status.setTextFormat(Qt.TextFormat.PlainText)
         layout.addWidget(self.status);self.progress=QProgressBar();self.progress.hide();layout.addWidget(self.progress)
         link=QLabel(f'官网：<a href="{SITE_URL}">{SITE_URL}</a>');link.setOpenExternalLinks(True);link.setWordWrap(True);layout.addWidget(link)

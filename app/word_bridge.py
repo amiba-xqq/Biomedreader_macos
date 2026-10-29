@@ -40,7 +40,7 @@ class WordBridge(QObject):
         super().__init__(window)
         self.window = window
         testing = '--self-test' in sys.argv or '--browser-self-test' in sys.argv
-        local_root=(Path.home()/'Library'/'Application Support') if sys.platform=='darwin' else Path(os.environ.get('LOCALAPPDATA') or Path.home()/'AppData'/'Local')
+        local_root=Path.home()/'Library'/'Application Support' if sys.platform=='darwin' else Path(os.environ.get('LOCALAPPDATA') or Path.home()/'AppData'/'Local')
         default = window.database.path.parent / 'word_bridge_test' if testing else local_root / 'OrangeReader' / 'WordBridge'
         self.directory = Path(directory or default)
         self.directory.mkdir(parents=True, exist_ok=True)

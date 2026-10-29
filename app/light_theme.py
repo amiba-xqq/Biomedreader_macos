@@ -9,10 +9,10 @@ from PySide6.QtWidgets import QApplication,QWidget,QDialog,QMainWindow
 
 def light_palette():
     palette=QPalette()
-    values=dict(Window='#EFEFEF',WindowText='#30251D',Base='#FFFFFF',AlternateBase='#FFF3E6',
+    values=dict(Window='#F7F8FA',WindowText='#30251D',Base='#FFFFFF',AlternateBase='#FFF3E6',
         ToolTipBase='#FFFFDC',ToolTipText='#30251D',Text='#30251D',Button='#EFEFEF',
         ButtonText='#30251D',BrightText='#FFFFFF',Light='#FFFFFF',Midlight='#F7F7F7',
-        Dark='#9F9F9F',Mid='#B8B8B8',Shadow='#767676',Highlight='#308CC6',
+        Dark='#9F9F9F',Mid='#B8B8B8',Shadow='#767676',Highlight='#E88225',
         HighlightedText='#FFFFFF',Link='#C96812',LinkVisited='#9B6B4B',PlaceholderText='#8B7768',Accent='#F28C28')
     for group in (QPalette.ColorGroup.Active,QPalette.ColorGroup.Inactive,QPalette.ColorGroup.Disabled):
         for name,color in values.items():palette.setColor(group,getattr(QPalette.ColorRole,name),QColor(color))

@@ -1,7 +1,7 @@
 name: Build macOS DMG
 on:
   push:
-    branches: [main, prepare-2.1]
+    branches: [main, prepare-2.2.1]
   workflow_dispatch:
 permissions:
   contents: read
@@ -60,7 +60,7 @@ jobs:
           codesign --verify --deep --strict --verbose=2 'dist/Biomed Reader.app'
           mkdir -p build/smoke
           cd build/smoke
-          '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --self-test
+          '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --startup-test "$PWD/test-data" --self-test
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --browser-self-test
           cd ../..
           python packaging/pdf_smoke.py
@@ -75,8 +75,8 @@ jobs:
           cp -R 'dist/Biomed Reader.app' build/dmg/
           ln -s /Applications build/dmg/Applications
           cp README.md build/dmg/README.md
-          hdiutil create -volname 'Biomed Reader' -srcfolder build/dmg -format UDZO -ov 'outputs/BiomedReader_2.1_macOS12_${{ matrix.label }}.dmg'
-          hdiutil verify 'outputs/BiomedReader_2.1_macOS12_${{ matrix.label }}.dmg'
+          hdiutil create -volname 'Biomed Reader' -srcfolder build/dmg -format UDZO -ov 'outputs/BiomedReader_2.2.1_macOS12_${{ matrix.label }}.dmg'
+          hdiutil verify 'outputs/BiomedReader_2.2.1_macOS12_${{ matrix.label }}.dmg'
           cd outputs
           shasum -a 256 *.dmg > 'SHA256_${{ matrix.label }}.txt'
       - uses: actions/upload-artifact@v4
@@ -101,10 +101,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v2.1 --repo '${{ github.repository }}' >/dev/null 2>&1; then
-            gh release create v2.1 --repo '${{ github.repository }}' --target '${{ github.sha }}' --title '刊禾 · Biomed Reader 2.1' --notes-file RELEASE_NOTES.md
+          if ! gh release view v2.2.1 --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            gh release create v2.2.1 --repo '${{ github.repository }}' --target '${{ github.sha }}' --title '刊禾 · Biomed Reader 2.2.1' --notes-file RELEASE_NOTES.md
           fi
-          gh api --method PATCH 'repos/${{ github.repository }}/git/refs/tags/v2.1' -f sha='${{ github.sha }}' -F force=true
-          gh release edit v2.1 --repo '${{ github.repository }}' --title '刊禾 · Biomed Reader 2.1' --notes-file RELEASE_NOTES.md --latest
-          gh release upload v2.1 release-assets/* --repo '${{ github.repository }}' --clobber
+          gh api --method PATCH 'repos/${{ github.repository }}/git/refs/tags/v2.2.1' -f sha='${{ github.sha }}' -F force=true
+          gh release edit v2.2.1 --repo '${{ github.repository }}' --title '刊禾 · Biomed Reader 2.2.1' --notes-file RELEASE_NOTES.md --latest
+          gh release upload v2.2.1 release-assets/* --repo '${{ github.repository }}' --clobber
 

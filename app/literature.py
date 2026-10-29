@@ -224,12 +224,14 @@ class LiteratureClient:
         candidate_callback=None,
         source_updated_since=None,
         cached_pubmed=None,
+        source_queries=None,
     ) -> SearchReport:
         """Query only selected sources, merging candidates without touching SQLite or images."""
         report = SearchReport(source_completion_tracked=True)
         selected_sources = set(sources if sources is not None else ("bioRxiv", "PubMed"))
         if not selected_sources or not selected_sources.issubset({"bioRxiv", "PubMed"}):
             raise ValueError("请选择 bioRxiv、PubMed 或同时使用两者。")
+        if len(selected_sources)==1:query_expression=(source_queries or {}).get(next(iter(selected_sources)),query_expression)
         report.selected_sources = tuple(s for s in ("bioRxiv", "PubMed") if s in selected_sources)
         collected: dict[str, tuple[dict[str, Any], float]] = {}
         doi_index: dict[str, str] = {}
@@ -304,7 +306,7 @@ class LiteratureClient:
             bio_client.completed_website_jobs = self.completed_website_jobs
             try:
                 with ThreadPoolExecutor(max_workers=2, thread_name_prefix="literature") as executor:
-                    jobs = {executor.submit(client.search, query_expression, journal_issns, budgets[source],
+                    jobs = {executor.submit(client.search, (source_queries or {}).get(source,query_expression), journal_issns, budgets[source],
                                 progress, year_from, year_to, cancelled, (source,), article_type,
                                 biorxiv_years, (source_updated_since or {}).get(source,updated_since), biorxiv_search_method, website_fetch,
                                 biorxiv_website_scope=biorxiv_website_scope,

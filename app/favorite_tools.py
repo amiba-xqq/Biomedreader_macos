@@ -33,15 +33,19 @@ def filter_grouped_favorites(database,grouped,selection):
         if matched:result[name]=matched
     return result
 
-def confirm_unfavorite(parent,articles):
+def confirm_unfavorite(parent,articles,plan=None):
     rows=list({article['article_key']:article for article in articles}.values())
     if not rows:return False
+    if plan is not None:
+        final=set(plan['final_keys'])
+        if not final:return True
+        rows=[article for article in rows if article['article_key'] in final]
     names='\n'.join('• '+str(article.get('title') or article['article_key']) for article in rows[:5])
     if len(rows)>5:names+=f'\n……另 {len(rows)-5} 篇'
-    message=(f'确定取消收藏这 {len(rows)} 篇文章吗？\n\n{names}\n\n'
-        '确认后，这些文章会从所有收藏分组中移除，即使同时属于其它分组也会消失。\n'
-        '文章的本地 PDF 链接会解除，软件 paper 目录中不再被其它文章使用的 PDF 副本将删除。\n'
-        'paper 目录之外的源 PDF、检索缓存和笔记保留。')
+    message=(f'以下 {len(rows)} 篇文章取消后将不再属于任何收藏分组。确定继续吗？\n\n{names}\n\n'
+        '将删除其收藏记录、标签笔记、已保存AI总结及关联信息；解除本地PDF链接，并删除 paper 中不再被其它文章使用的PDF副本。\n'
+        '不再被使用的文章缓存也会清理。仍被关键词方案或已保存AI对话使用的检索数据，以及 paper 之外的原始PDF会保留。'
+        +('\n\n本批其它文章仅移出选定分组，在其它分组的收藏、PDF和AI总结保留。' if plan and plan.get('retained_keys') else ''))
     dialog=QMessageBox(QMessageBox.Icon.Warning,'确认取消收藏',message,
         QMessageBox.StandardButton.Ok|QMessageBox.StandardButton.Cancel,parent)
     dialog.setTextFormat(Qt.TextFormat.PlainText)

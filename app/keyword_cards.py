@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from PySide6.QtCore import Qt, QPoint, QRect, QMimeData, Signal, QTimer
 from PySide6.QtGui import QDrag
-from PySide6.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout, QProgressBar, QApplication, QMenu, QLayout
+from PySide6.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout, QProgressBar, QApplication, QMenu, QLayout,QPushButton,QHBoxLayout
 
 MIME = 'application/x-biomed-reader-keyword-card'
 
@@ -43,6 +43,7 @@ class WidthHandle(QFrame):
 
 class KeywordCard(QFrame):
     clicked = Signal(int)
+    report_requested=Signal(int)
 
     def __init__(self, board, profile, refreshed):
         super().__init__(board)
@@ -92,6 +93,8 @@ class KeywordCard(QFrame):
         self.elapsed_timer.timeout.connect(self.update_elapsed);self.elapsed_timer.start()
         for child in self.findChildren(QWidget):
             child.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        row=QHBoxLayout();row.addStretch();self.ai_report_button=QPushButton('AI报告');self.ai_report_button.setProperty('secondary',True)
+        self.ai_report_button.clicked.connect(lambda:self.report_requested.emit(self.identifier));row.addWidget(self.ai_report_button);layout.addLayout(row)
         self.handle = WidthHandle(self)
         self.set_busy('')
 
@@ -153,7 +156,7 @@ class KeywordBoard(QWidget):
     order_changed = Signal(object)
     width_changed = Signal(int,int)
 
-    def __init__(self,columns=5,card_height=210):
+    def __init__(self,columns=5,card_height=245):
         super().__init__()
         self.cards = []
         self.columns=columns;self.card_height=card_height

@@ -81,6 +81,10 @@ class Database:
             connection.execute("PRAGMA journal_mode = WAL")
             connection.executescript(
                 """
+                CREATE TABLE IF NOT EXISTS profile_new_articles (
+                    profile_id INTEGER NOT NULL REFERENCES search_profiles(id) ON DELETE CASCADE,
+                    source_mode TEXT NOT NULL, article_key TEXT NOT NULL,
+                    PRIMARY KEY(profile_id,source_mode,article_key));
                 CREATE TABLE IF NOT EXISTS settings (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
@@ -236,6 +240,8 @@ class Database:
                 ("search_profiles", "pubmed_maximum_results", "TEXT"),
                 ("search_profiles", "biorxiv_maximum_results", "TEXT"),
                 ("search_profiles", "search_sources", "TEXT"),
+                ("search_profiles", "pubmed_query_expression", "TEXT"),
+                ("search_profiles", "preprint_query_expression", "TEXT"),
                 ("search_profiles", "display_cache_mode", "TEXT"),
                 ("articles", "publication_types_json", "TEXT NOT NULL DEFAULT '[]'"),
                 ("articles", "volume", "TEXT NOT NULL DEFAULT ''"),
@@ -255,6 +261,13 @@ class Database:
                             connection.execute('UPDATE search_profiles SET display_order=? WHERE id=?', (index, row['id']))
             snapshot = Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / "assets/nlm_journals.json"
             connection.execute('CREATE INDEX IF NOT EXISTS idx_profile_results_article ON profile_results(article_key)')
+            connection.execute('CREATE INDEX IF NOT EXISTS idx_profile_articles_article ON profile_articles(article_key)')
+            connection.execute('CREATE INDEX IF NOT EXISTS idx_favorite_group_article ON favorite_group_articles(article_key)')
+            connection.execute('CREATE INDEX IF NOT EXISTS idx_doi_visits_article ON doi_visits(article_key)')
+            from reading_index import install_schema
+            install_schema(connection)
+            from ai_repository import install_schema as install_ai_repository
+            install_ai_repository(connection)
             seeded = connection.execute("SELECT value FROM settings WHERE key='nlm_snapshot_version'").fetchone()
             if snapshot.exists() and (not seeded or seeded[0] != "2026-10-12"):
                 for row in json.loads(snapshot.read_text(encoding="utf-8")):
@@ -609,9 +622,17 @@ class Database:
             return dict(row) if row else None
 
     def save_profile(self, profile: dict[str, Any]) -> int:
+        from search_queries import profile_queries,primary_query
+        profile=dict(profile);incoming_query=profile.get('query_expression');queries=profile_queries(profile);profile['query_expression']=primary_query(profile)
         now = utc_now()
         with self.connect() as connection:
             if profile.get("id"):
+                old=connection.execute('SELECT query_expression,pubmed_query_expression,preprint_query_expression,search_sources FROM search_profiles WHERE id=?',(profile['id'],)).fetchone()
+                if old and incoming_query is not None and profile.get('search_sources',old['search_sources'])==old['search_sources'] and incoming_query!=old['query_expression'] and all(field in profile and profile[field]==old[field] for field in ('pubmed_query_expression','preprint_query_expression')):
+                    # Compatibility for older callers editing only the common
+                    # field on a full profile dict. A new per-source edit always
+                    # changes one of the explicit fields and never enters here.
+                    profile['query_expression']=str(incoming_query).strip();queries={'PubMed':profile['query_expression'],'bioRxiv':profile['query_expression']}
                 connection.execute(
                     """
                     UPDATE search_profiles SET
@@ -632,6 +653,7 @@ class Database:
                 connection.execute("UPDATE search_profiles SET article_type=? WHERE id=?",
                                    (json.dumps(normalize_types(profile.get("article_type", "all"))), profile["id"]))
                 self._rename_profile_group(connection, int(profile["id"]), profile["name"])
+                connection.execute('UPDATE search_profiles SET pubmed_query_expression=?,preprint_query_expression=? WHERE id=?',(queries['PubMed'],queries['bioRxiv'],profile['id']))
                 for field in ('pubmed_maximum_results','biorxiv_maximum_results'):
                     if field in profile:
                         connection.execute(f'UPDATE search_profiles SET {field}=? WHERE id=?',(str(profile[field]),profile['id']))
@@ -667,6 +689,7 @@ class Database:
             source=profile.get('search_sources','both')
             if source not in ('pubmed','biorxiv','both'):raise ValueError('检索来源无效。')
             connection.execute('UPDATE search_profiles SET search_sources=? WHERE id=?',(source,cursor.lastrowid))
+            connection.execute('UPDATE search_profiles SET pubmed_query_expression=?,preprint_query_expression=? WHERE id=?',(queries['PubMed'],queries['bioRxiv'],cursor.lastrowid))
             return int(cursor.lastrowid)
 
     def profile_cache_mode(self,profile_id):
@@ -701,7 +724,10 @@ class Database:
 
     def delete_profile(self, profile_id: int) -> None:
         with self.connect() as connection:
+            keys={row[0] for row in connection.execute('SELECT article_key FROM profile_results WHERE profile_id=? UNION SELECT article_key FROM profile_articles WHERE profile_id=? UNION SELECT article_key FROM ai_summary_links WHERE profile_id=?',(profile_id,profile_id,profile_id))}
             connection.execute("DELETE FROM search_profiles WHERE id = ?", (profile_id,))
+            from cache_cleanup import collect_unused
+            collect_unused(connection,keys)
 
     def store_refresh_results(self, profile_id: int, candidates: list[tuple[dict[str, Any], float]], source_mode: str | None = None,
                               refresh_checkpoint: dict | None = None, partial: bool = False,source_checkpoints: dict | None = None) -> None:
@@ -717,7 +743,8 @@ class Database:
             if not partial:
                 connection.execute("DELETE FROM refresh_checkpoints WHERE profile_id=? AND source_mode=?", (profile_id, source_mode))
             if refresh_checkpoint:
-                connection.execute("INSERT INTO refresh_checkpoints(profile_id,source_mode,signature,started_at,completed_at) VALUES(?,?,?,?,?)",
+                connection.execute("INSERT INTO refresh_checkpoints(profile_id,source_mode,signature,started_at,completed_at) VALUES(?,?,?,?,?) "
+                    "ON CONFLICT(profile_id,source_mode) DO UPDATE SET signature=excluded.signature,started_at=excluded.started_at,completed_at=excluded.completed_at",
                     (profile_id, source_mode, refresh_checkpoint['signature'], refresh_checkpoint['started_at'],refresh_checkpoint.get('completed_at')))
             if not partial:
                 connection.execute("DELETE FROM doi_visits WHERE profile_id=?", (profile_id,))
@@ -795,6 +822,18 @@ class Database:
                                      (profile_id, source_mode)).fetchone()
             return dict(row) if row else None
 
+    def adopt_refresh_baseline(self,profile_id,source_mode,articles,states,refreshed_at):
+        self.store_refresh_results(profile_id,[(article,float(article.get('relevance_score') or 0)) for article in articles],source_mode,
+                                   partial=True,source_checkpoints=states)
+        with self.connect() as connection:
+            connection.execute("UPDATE profile_cache_states SET refreshed_at=? WHERE profile_id=? AND source_mode=? AND refreshed_at=''",
+                               (refreshed_at,profile_id,source_mode))
+
+    def source_cache_refreshed_at(self,profile_id,source_mode):
+        with self.connect() as connection:
+            row=connection.execute('SELECT refreshed_at FROM profile_cache_states WHERE profile_id=? AND source_mode=?',(profile_id,source_mode)).fetchone()
+            return row[0] if row else ''
+
     def source_refresh_checkpoints(self,profile_id,source_mode):
         with self.connect() as connection:
             return {row['source']:dict(row) for row in connection.execute(
@@ -824,6 +863,8 @@ class Database:
         with self.connect() as connection:
             state=connection.execute('SELECT 1 FROM profile_cache_states WHERE profile_id=? AND source_mode=?',(profile_id,source_mode)).fetchone()
             if state:
+                from reading_index import revision,metadata
+                if revision(connection,profile_id,source_mode) is not None:return metadata(connection,profile_id,source_mode)
                 return [dict(row) for row in connection.execute("""SELECT article_key,relevance_score,
                     json_extract(article_json,'$.doi') AS doi,json_extract(article_json,'$.pmid') AS pmid,
                     json_extract(article_json,'$.publication_date') AS publication_date,
@@ -847,6 +888,12 @@ class Database:
             if source_mode.endswith('_website'):return 0
             wanted={'pubmed':'PubMed','biorxiv':'bioRxiv'}.get(source_mode,'PubMed')
             return connection.execute('SELECT COUNT(*) FROM profile_articles pa JOIN articles a ON a.article_key=pa.article_key WHERE pa.profile_id=? AND a.source_name=?',(profile_id,wanted)).fetchone()[0]
+
+    def reading_revision(self,profile_id,source_mode):
+        with self.connect() as connection:
+            if not connection.execute('SELECT 1 FROM profile_cache_states WHERE profile_id=? AND source_mode=?',(profile_id,source_mode)).fetchone():return None
+            from reading_index import revision
+            return revision(connection,profile_id,source_mode)
 
     def cached_articles(self, profile_id: int, source_mode: str | None = None, article_keys=None) -> list[dict[str, Any]]:
         source_mode = source_mode or self.profile_cache_mode(profile_id)
@@ -904,12 +951,13 @@ class Database:
                 article.update({key:detail.get(key) for key in fields})
                 connection.execute('UPDATE profile_results SET article_json=? WHERE profile_id=? AND source_mode=? AND article_key=?',
                     (json.dumps(article,ensure_ascii=False),row['profile_id'],row['source_mode'],article_key))
-                profile=connection.execute('SELECT query_expression,sort_mode FROM search_profiles WHERE id=?',(row['profile_id'],)).fetchone()
+                profile=connection.execute('SELECT query_expression,pubmed_query_expression,preprint_query_expression,sort_mode FROM search_profiles WHERE id=?',(row['profile_id'],)).fetchone()
                 if profile and profile['sort_mode']!='最相关':
                     # Keep official Best Match ranks intact. Other offline scores can
                     # use the newly cached abstract on the next sorting pass.
                     from literature import LiteratureClient
-                    score=LiteratureClient.local_relevance(article.get('title',''),article.get('abstract',''),profile['query_expression'])
+                    from search_queries import article_query
+                    score=LiteratureClient.local_relevance(article.get('title',''),article.get('abstract',''),article_query(dict(profile),article))
                     connection.execute('UPDATE profile_results SET relevance_score=? WHERE profile_id=? AND source_mode=? AND article_key=?',
                         (score,row['profile_id'],row['source_mode'],article_key))
 
@@ -953,13 +1001,13 @@ class Database:
             if not favorite:
                 self._remove_unfavorited_pdf(connection,article_key)
 
-    def cancel_favorites(self,article_keys):
-        """Commit per article so a locked PDF retains that article and its groups."""
-        removed=[];failed=[]
-        for key in dict.fromkeys(article_keys):
-            try:self.set_favorite(key,False);removed.append(key)
-            except (OSError,sqlite3.Error) as error:failed.append({'article_key':key,'error':str(error)})
-        return dict(removed=removed,failed=failed)
+    def favorite_removal_plan(self,article_keys,group_ids=None):
+        from favorite_removal import plan
+        with self.connect() as connection:return plan(connection,article_keys,group_ids)
+
+    def cancel_favorites(self,article_keys,group_ids=None,confirmed_final_keys=None):
+        from favorite_removal import remove
+        return remove(self,article_keys,group_ids,confirmed_final_keys)
 
     def _remove_unfavorited_pdf(self,connection,article_key):
         """Remove only this application's unused PDF copy, never its source file.
@@ -978,7 +1026,8 @@ class Database:
         if valid and row['storage_location']=='data' and not shared:
             target=self.paper_directory/filename
             if not target.is_symlink() and target.resolve().parent==self.paper_directory.resolve():
-                target.unlink(missing_ok=True)
+                from local_maintenance import recycle_path
+                recycle_path(target)
         connection.execute('DELETE FROM article_pdfs WHERE article_key=?',(article_key,))
 
     def save_favorite_notes(self, article_key: str, tags: str, note: str) -> None:
@@ -1014,7 +1063,7 @@ class Database:
                     connection.execute(f'UPDATE articles SET {field}=? WHERE article_key=?',(str(metadata[field]),article_key))
             connection.execute('UPDATE articles SET bibliography_checked_at=? WHERE article_key=?',(utc_now(),article_key))
 
-    def save_pdf_favorite(self, article, source_pdf, group_id):
+    def save_pdf_favorite(self, article, source_pdf, group_id, link_pdf=True):
         """Commit metadata, group membership and the linked application-owned copy together."""
         copied=None
         try:
@@ -1044,6 +1093,7 @@ class Database:
                 connection.execute("INSERT INTO favorites(article_key,is_favorite,saved_at,updated_at) VALUES(?,1,?,?) "
                     "ON CONFLICT(article_key) DO UPDATE SET is_favorite=1,updated_at=excluded.updated_at",(key,now,now))
                 connection.execute('INSERT OR IGNORE INTO favorite_group_articles VALUES(?,?)',(group_id,key))
+                if not link_pdf:return key
                 # Keep any older linked copy intact; never alter the selected source file.
                 already=connection.execute('SELECT filename FROM article_pdfs WHERE article_key=?',(key,)).fetchone()
                 linked=self.paper_directory/already[0] if already else None
@@ -1207,8 +1257,10 @@ class Database:
             clause=' WHERE article_key IN ('+','.join('?' for _ in articles)+')' if 0<len(articles)<=500 else ''
             shared_metrics = {row['article_key']:dict(row) for row in connection.execute('SELECT * FROM shared_article_metrics'+clause,
                                 tuple(a['article_key'] for a in articles) if clause else ())}
+            summarized={row[0] for row in connection.execute('SELECT article_key FROM ai_summaries'+clause,tuple(a['article_key'] for a in articles) if clause else ())}
         selected_year=int(self.get_settings()['jif_year'])
         for article in articles:
+            article['has_ai_summary']=article['article_key'] in summarized
             journal = self._metrics.get(str(article.get("issn") or "").upper().replace("-", ""))
             if journal is None and not article.get("issn"):
                 journal = self._metrics_names.get(str(article.get("journal_title") or "").strip().casefold())
@@ -1299,3 +1351,17 @@ class Database:
     def visited_dois(self, profile_id, source_mode):
         with self.connect() as connection:
             return {row[0] for row in connection.execute("SELECT article_key FROM doi_visits WHERE profile_id=? AND source_mode=?", (profile_id, source_mode))}
+
+    def clear_new_articles(self,profile_id):
+        with self.connect() as connection:connection.execute('DELETE FROM profile_new_articles WHERE profile_id=?',(profile_id,))
+
+    def mark_new_articles(self,profile_id,source_mode,keys):
+        with self.connect() as connection:
+            connection.executemany('INSERT OR IGNORE INTO profile_new_articles VALUES(?,?,?)',[(profile_id,source_mode,key) for key in keys])
+
+    def new_article_keys(self,profile_id,source_mode):
+        with self.connect() as connection:
+            return {row[0] for row in connection.execute('SELECT article_key FROM profile_new_articles WHERE profile_id=? AND source_mode=?',(profile_id,source_mode))}
+
+    def acknowledge_new_article(self,profile_id,key):
+        with self.connect() as connection:connection.execute('DELETE FROM profile_new_articles WHERE profile_id=? AND article_key=?',(profile_id,key))

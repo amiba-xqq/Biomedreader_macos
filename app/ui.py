@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QSplitter,
     QSizePolicy,
     QSpinBox,
     QSlider,
@@ -164,6 +165,65 @@ QGroupBox {{
 QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 5px; }}
 QScrollArea {{ border: none; background: transparent; }}
 """
+
+# Shared visual system: state feedback uses paint-only QSS, without per-card
+# animation timers or graphics effects that would slow large cached libraries.
+APP_STYLE += """
+QMainWindow, QWidget#RootWidget, QDialog { background:#F7F8FA; }
+QFrame#Sidebar { background:#302923; }
+QLabel#PageTitle { color:#302B27; padding-bottom:4px; }
+QLabel#Muted { color:#827C76; }
+QPushButton { border:1px solid #E98220; border-bottom:2px solid #D77416; border-radius:8px; padding:8px 14px; background:#F28B25; }
+QPushButton:hover { background:#F59A40; border-color:#DE7A1B; }
+QPushButton:pressed { background:#CC6810; border-color:#B45D13; border-bottom:2px solid #B45D13; }
+QPushButton:focus { border:1px solid #82400D; border-bottom:2px solid #82400D; }
+QPushButton:disabled { background:#E8E4DF; color:#AAA39B; border-color:#E0DBD5; }
+QPushButton[secondary="true"] { background:#FFF7ED; color:#A94F0D; border:1px solid #EACBB0; border-bottom:2px solid #E4BFA0; }
+QPushButton[secondary="true"]:hover { background:#FFEBD3; border-color:#E69C5A; }
+QPushButton[secondary="true"]:pressed { background:#FAD9B5; border-color:#CF863F; }
+QPushButton#NavButton { border:1px solid transparent; padding:12px 16px; border-radius:9px; }
+QPushButton#NavButton:hover { background:#493A30; border-color:#614737; }
+QPushButton#NavButton:checked { background:#E88225; border-color:#F7A45A; color:white; }
+QPushButton#NavButton:pressed { background:#BC631A; }
+QFrame#Card { background:white; border:1px solid #E5DFD8; border-bottom:2px solid #DDD5CC; border-radius:14px; }
+QFrame#Card:hover { border:1px solid #EDAB70; border-bottom:2px solid #E49550; background:#FFFDFA; }
+QGroupBox { background:#FFFFFF; border:1px solid #E5DFD8; border-radius:12px; margin-top:16px; padding:16px 12px 12px 12px; }
+QGroupBox::title { color:#674C38; left:16px; padding:0 6px; }
+QLineEdit, QPlainTextEdit, QTextEdit, QTextBrowser, QComboBox, QSpinBox, QDoubleSpinBox { background:#FFFFFF; border:1px solid #DCDDDf; border-radius:7px; padding:6px; selection-background-color:#FFE0BE; selection-color:#402B1B; }
+QLineEdit:hover,QComboBox:hover,QSpinBox:hover,QDoubleSpinBox:hover { border-color:#D5AA83; }
+QLineEdit:focus,QPlainTextEdit:focus,QTextEdit:focus,QComboBox:focus,QSpinBox:focus,QDoubleSpinBox:focus { border-color:#E58B37; }
+QComboBox::drop-down { subcontrol-origin:padding; subcontrol-position:top right; border:0; border-left:1px solid #EFE5DA; width:27px; border-top-right-radius:7px; border-bottom-right-radius:7px; background:#FFF7EE; }
+QComboBox::drop-down:hover { background:#FFE9D2; }
+QComboBox::down-arrow { image:url(ARROW_ASSET); width:12px; height:8px; }
+QComboBox::down-arrow:disabled { image:url(ARROW_ASSET); }
+QDateEdit::down-arrow,QDateTimeEdit::down-arrow { image:url(ARROW_ASSET); width:12px; height:8px; }
+QComboBox QAbstractItemView { background:white; border:1px solid #E2C4A8; selection-background-color:#FFF0DE; selection-color:#8E450D; padding:4px; }
+QTableView,QListView { background:white; alternate-background-color:#FCFAF7; border:1px solid #E4DFD9; border-radius:8px; selection-background-color:#FFF0DE; selection-color:#55351E; }
+QTableView::item { padding:5px; border-bottom:1px solid #F0ECE7; }
+QTableView::item:hover,QListView::item:hover { background:#FFF7ED; }
+QHeaderView::section { background:#F5F1EC; color:#675445; border:0; border-bottom:1px solid #E1D7CC; padding:10px 8px; }
+QScrollBar:vertical { background:transparent; width:12px; margin:2px; }
+QScrollBar::handle:vertical { background:#D3C9BF; border-radius:4px; min-height:32px; }
+QScrollBar::handle:vertical:hover { background:#C69B73; }
+QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical { height:0; }
+QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical { background:transparent; }
+QTabWidget::pane { border:1px solid #E3DBD2; border-radius:8px; background:white; }
+QTabBar::tab { background:#EFEAE4; color:#756557; padding:9px 18px; border-bottom:3px solid transparent; }
+QTabBar::tab:selected { background:#FFF8EE; color:#A74F0E; border-bottom:3px solid #EB8729; }
+QTabBar::tab:hover { background:#FFF0DD; }
+QProgressBar { border:1px solid #E9DED1; border-radius:5px; background:#F4EFE9; text-align:center; color:#744A2A; }
+QProgressBar::chunk { background:#EF942F; border-radius:4px; }
+QToolTip { background:#40352D; color:#FFF8EE; border:1px solid #68513F; padding:7px; }
+QMenu { background:white; border:1px solid #DED7CE; padding:5px; }
+QMenu::item { padding:7px 24px; }
+QMenu::item:selected { background:#FFF0DD; color:#9E4E10; }
+QSplitter::handle { background:#ECE5DD; }
+QSplitter::handle:hover { background:#EDB780; }
+"""
+
+from pathlib import Path as _ThemePath
+import sys as _theme_sys
+APP_STYLE=APP_STYLE.replace('ARROW_ASSET',(_ThemePath(getattr(_theme_sys,'_MEIPASS',_ThemePath(__file__).parent))/'assets/dropdown-chevron.svg').as_posix())
 
 
 def parse_iso_date(value: str | None) -> datetime:
@@ -321,11 +381,12 @@ class ArticleDialog(QDialog):
     hidden_changed = Signal()
     doi_visited = Signal()
 
-    def __init__(self, database: Database, article: dict[str, Any], parent=None, *, profile_id=None, allow_pdf=False):
+    def __init__(self, database: Database, article: dict[str, Any], parent=None, *, profile_id=None, allow_pdf=False,favorite_group_id=None):
         super().__init__(parent)
         self.database = database
         self.article = article
         self.profile_id = profile_id
+        self.favorite_group_id=favorite_group_id
         self.allow_pdf = allow_pdf
         self.source_mode = database.profile_cache_mode(profile_id) if profile_id is not None else 'both'
         self.cache_generation = database.cache_refreshed_at(profile_id) if profile_id is not None else ""
@@ -340,20 +401,20 @@ class ArticleDialog(QDialog):
         browser.setOpenExternalLinks(False)
         browser.anchorClicked.connect(self.open_article_link)
         self.browser=browser
-        layout.addWidget(browser, 1)
+        self.reading_splitter=QSplitter(Qt.Orientation.Vertical);self.reading_splitter.setChildrenCollapsible(False);self.reading_splitter.setHandleWidth(6)
+        self.reading_splitter.addWidget(browser);layout.addWidget(self.reading_splitter,1)
+        self.ai_manager=getattr(parent.window(),'ai_manager',None) if parent is not None else None
+        self.ai_summary_button=QPushButton('AI总结文章');self.ai_summary_button.clicked.connect(self.open_ai_summary)
+        self.ai_summary_button.setEnabled(self.ai_manager is not None)
+        if self.ai_manager:self.ai_manager.changed.connect(self.refresh_ai_button)
+        self.refresh_ai_button()
 
         if allow_pdf:
-            pdf_row = QHBoxLayout()
-            self.link_pdf_button = QPushButton("链接文章 · 浏览文件夹")
+            self.link_pdf_button = QPushButton("链接文章")
             self.link_pdf_button.setToolTip("选择下载好的 PDF，复制到本地数据目录的 paper 文件夹，并以文章标题命名。")
             self.open_pdf_button = QPushButton("查看原文")
             self.pdf_status = QLabel()
             self.pdf_status.setWordWrap(True)
-            pdf_row.addWidget(self.link_pdf_button)
-            pdf_row.addWidget(self.open_pdf_button)
-            pdf_row.addStretch()
-            layout.addLayout(pdf_row)
-            layout.addWidget(self.pdf_status)
             self.link_pdf_button.clicked.connect(self.link_local_pdf)
             self.open_pdf_button.clicked.connect(self.open_local_pdf)
             self.update_pdf_state()
@@ -362,38 +423,33 @@ class ArticleDialog(QDialog):
         self.tags.setPlaceholderText("标签，多个标签使用逗号分隔")
         self.note = QPlainTextEdit(str(article.get("personal_note") or ""))
         self.note.setPlaceholderText("个人笔记")
-        self.note.setMaximumHeight(100)
-        layout.addWidget(self.tags)
-        layout.addWidget(self.note)
+        self.note.setMinimumHeight(60)
+        self.notes_panel=QWidget();notes_layout=QVBoxLayout(self.notes_panel);notes_layout.setContentsMargins(0,0,0,0);notes_layout.setSpacing(6);notes_layout.addWidget(self.tags);notes_layout.addWidget(self.note,1)
+        self.reading_splitter.addWidget(self.notes_panel);self.reading_splitter.setStretchFactor(0,1);self.reading_splitter.setStretchFactor(1,1);self.reading_splitter.setSizes([520,120])
+        if allow_pdf:layout.addWidget(self.pdf_status)
+        self.abstract_task=None
+        self.abstract_status=QLabel();self.abstract_status.setWordWrap(True);self.abstract_status.hide();layout.addWidget(self.abstract_status)
 
         button_row = QHBoxLayout()
         self.favorite_button = QPushButton(
             "取消收藏" if self.is_saved_here() and profile_id is not None else
             "取消收藏" if self.is_saved_here() else "加入本组收藏" if profile_id is not None else "加入收藏"
         )
-        save_button = QPushButton("保存标签和笔记")
-        close_button = QPushButton("关闭")
-        close_button.setProperty("secondary", True)
+        save_button = QPushButton("保存标签和笔记");self.save_notes_button=save_button
+        button_row.addWidget(self.ai_summary_button)
+        if allow_pdf:button_row.addWidget(self.link_pdf_button);button_row.addWidget(self.open_pdf_button)
         button_row.addWidget(self.favorite_button)
         button_row.addWidget(save_button)
-        cite_button = QPushButton('导出 / 复制引用')
+        cite_button = QPushButton('导出 / 复制引用');self.cite_button=cite_button
         cite_button.clicked.connect(self.show_citation)
         button_row.addWidget(cite_button)
-        if profile_id is not None:
-            self.hidden_button=QPushButton('取消隐藏' if database.matches_hidden_article(article,database.hidden_article_tokens(profile_id)) else '隐藏文章')
-            self.hidden_button.clicked.connect(self.toggle_hidden)
-            button_row.addWidget(self.hidden_button)
+        for i in range(button_row.count()):button_row.itemAt(i).widget().setStyleSheet('padding:8px 10px;')
         button_row.addStretch()
-        button_row.addWidget(close_button)
+        self.action_row=button_row
         layout.addLayout(button_row)
         self.favorite_button.clicked.connect(self._toggle_favorite)
         save_button.clicked.connect(self._save_notes)
-        close_button.clicked.connect(self.accept)
         self.render_article()
-        self.abstract_task=None
-        self.abstract_status=QLabel()
-        self.abstract_status.setWordWrap(True)
-        layout.addWidget(self.abstract_status)
         if any(source in str(article.get('source_name') or '') for source in ('bioRxiv','medRxiv')) and not article.get('abstract') and article.get('doi'):
             QTimer.singleShot(0,self.load_website_abstract)
 
@@ -401,36 +457,46 @@ class ArticleDialog(QDialog):
         from citations import show_citation
         show_citation(self.database, self.article, self)
 
+    def refresh_ai_button(self):
+        cached=self.ai_manager.repository.summary(self.article['article_key']) if self.ai_manager else None
+        self.ai_summary_button.setText('读取AI总结' if cached else 'AI总结文章')
+
+    def open_ai_summary(self):
+        if self.ai_manager:
+            from ai_workflow_ui import SummaryDialog,show_window
+            import shiboken6
+            context='profile:'+str(self.profile_id) if self.profile_id is not None else 'favorites'
+            dialog=SummaryDialog(self.ai_manager,self.article,context,self.ai_manager.parent())
+            # End the modal article window before showing an independent AI
+            # window. Otherwise Windows/Qt can transfer its closing state or
+            # activation to the new window and leave that window minimized.
+            self.accept()
+            QTimer.singleShot(0,lambda:show_window(dialog) if shiboken6.isValid(dialog) else None)
+
     def render_article(self):
         article=self.article
-        title = html.escape(str(article.get("title") or "无标题"))
-        abstract = html.escape(str(article.get("abstract") or "数据源未提供摘要。")).replace("\n", "<br>")
-        authors = html.escape(str(article.get("authors") or "作者信息缺失"))
-        journal = html.escape(str(article.get("journal_title") or "期刊信息缺失"))
-        date = html.escape(str(article.get("publication_date") or "日期未知"))
-        source = html.escape(str(article.get("source_name") or "来源未知"))
-        doi = html.escape(str(article.get("doi") or "无"))
-        url = html.escape(str(article.get("landing_page_url") or ""), quote=True)
-        jif = article.get("jif")
-        jif_text = f" · JIF {jif:g} ({article.get('jif_year') or '年份未知'})" if jif is not None else ""
-        link_block = f'<a href="{url}">打开 DOI / 文章页面</a>' if url else ""
-        self.browser.setHtml(
-            f"""
+        title=html.escape(str(article.get('title') or '无标题'))
+        abstract=html.escape(str(article.get('abstract') or '数据源未提供摘要。')).replace('\n','<br>')
+        authors=html.escape(str(article.get('authors') or '作者信息缺失'))
+        journal=html.escape(str(article.get('journal_title') or '期刊信息缺失'))
+        date=html.escape(str(article.get('publication_date') or '日期未知'))
+        source=html.escape(str(article.get('source_name') or '来源未知'))
+        doi=html.escape(str(article.get('doi') or '无'))
+        jif=article.get('jif');jif_text=f" · JIF {jif:g} ({article.get('jif_year') or '年份未知'})" if jif is not None else ''
+        target=str(article.get('landing_page_url') or ('https://doi.org/'+str(article['doi']) if article.get('doi') else ''))
+        url=QUrl(target)
+        link_block=f' · <a href="{html.escape(target,quote=True)}">打开DOI/文章界面</a>' if url.isValid() and url.scheme() in ('http','https') and url.host() else ''
+        abstract_points=max(11.5,self.browser.font().pointSizeF()*1.15)
+        # Restore the original single selectable text document, including the
+        # original body/heading font rules; only the article URL is an anchor.
+        self.browser.setHtml(f'''
             <style>body{{font-family:'Segoe UI','Microsoft YaHei UI','Helvetica Neue','PingFang SC',sans-serif;line-height:1.6;color:#30251D}}
             h1{{color:#C96812}} .meta{{color:#6F6259}} a{{color:#C96812}}</style>
             <h1>{title}</h1><p class="meta">{authors}</p>
             <p><b>{journal}</b> · {date}{jif_text}</p>
-            <p>DOI: {doi} · 数据源：{source} · {link_block}</p>
-            <h3>摘要</h3><p>{abstract}</p>
-            """
-        )
-
-    def toggle_hidden(self):
-        hidden=self.database.matches_hidden_article(self.article,self.database.hidden_article_tokens(self.profile_id))
-        self.database.set_article_hidden(self.profile_id,self.article,not hidden)
-        self.hidden_button.setText('隐藏文章' if hidden else '取消隐藏')
-        self.hidden_changed.emit()
-
+            <p>DOI：{doi} · 数据源：{source}{link_block}</p>
+            <h3>摘要</h3><p style="font-size:{abstract_points:g}pt;">{abstract}</p>
+        ''')
     def load_website_abstract(self):
         from biorxiv_website import fetch_detail
         article=dict(self.article)
@@ -444,6 +510,7 @@ class ArticleDialog(QDialog):
             finally:client.session.close()
         self.abstract_task=BackgroundOperation(retrieve)
         self.abstract_status.setText('正在获取摘要……')
+        self.abstract_status.show()
         self.abstract_task.signals.finished.connect(self.abstract_loaded)
         self.abstract_task.signals.failed.connect(self.abstract_failed)
         QThreadPool.globalInstance().start(self.abstract_task)
@@ -452,11 +519,13 @@ class ArticleDialog(QDialog):
         self.article.update({key:detail.get(key) for key in ('abstract','authors','publication_date','publication_year','preprint_version')})
         self.render_article()
         self.abstract_status.setText('摘要已保存，可离线查看。')
+        self.abstract_status.show()
         self.abstract_task=None
         self.favorite_changed.emit()
 
     def abstract_failed(self, message):
         self.abstract_status.setText('暂时无法获取摘要，可通过 DOI 查看原文。')
+        self.abstract_status.show()
         self.abstract_status.setToolTip(message)
         self.abstract_task=None
 
@@ -474,7 +543,16 @@ class ArticleDialog(QDialog):
     def is_saved_here(self):
         if self.profile_id is not None:
             return self.article["article_key"] in self.database.favorite_keys_for_profile(self.profile_id)
+        if self.favorite_group_id is not None:
+            preview=self.database.favorite_removal_plan([self.article['article_key']],[self.favorite_group_id])
+            return bool(preview['final_keys'] or preview['retained_keys'])
         return bool(self.article.get("is_favorite"))
+
+    def favorite_scope(self):
+        if self.favorite_group_id is not None:return [self.favorite_group_id]
+        if self.profile_id is not None:
+            with self.database.connect() as c:return [row[0] for row in c.execute('SELECT id FROM favorite_groups WHERE profile_id=?',(self.profile_id,))]
+        return None
 
     def update_pdf_state(self):
         path = self.database.linked_pdf(self.article["article_key"])
@@ -500,18 +578,26 @@ class ArticleDialog(QDialog):
 
     def _toggle_favorite(self) -> None:
         favorite = not self.is_saved_here()
-        if not favorite and not confirm_unfavorite(self,[self.article]):return
+        scope=self.favorite_scope();plan=None
+        if not favorite:
+            plan=self.database.favorite_removal_plan([self.article['article_key']],scope)
+            if not confirm_unfavorite(self,[self.article],plan):return
         try:
-            self.database.set_favorite(
-                self.article["article_key"], favorite, self.tags.text().strip(), self.note.toPlainText().strip(), profile_id=self.profile_id
-            )
-        except (OSError,sqlite3.Error) as error:
+            if favorite:
+                self.database.set_favorite(self.article['article_key'],True,self.tags.text().strip(),self.note.toPlainText().strip(),profile_id=self.profile_id)
+                if self.favorite_group_id not in (None,'__ungrouped__'):self.database.transfer_favorites([self.article['article_key']],[int(self.favorite_group_id)])
+            else:
+                report=self.database.cancel_favorites([self.article['article_key']],scope,plan['final_keys'])
+                if report['failed']:raise ValueError(report['failed'][0]['error'])
+        except (OSError,sqlite3.Error,ValueError) as error:
             QMessageBox.warning(self,'取消收藏失败','关联 PDF 可能正在被占用，请关闭阅读器后重试。\n'+str(error))
             return
-        self.article["is_favorite"] = 1 if favorite else 0
-        self.favorite_button.setText(("取消收藏" if favorite else "加入本组收藏") if self.profile_id is not None else ("取消收藏" if favorite else "加入收藏"))
+        with self.database.connect() as c:self.article['is_favorite']=int(bool(c.execute('SELECT 1 FROM favorites WHERE article_key=? AND is_favorite=1',(self.article['article_key'],)).fetchone()))
+        if not self.article['is_favorite']:self.tags.clear();self.note.clear();self.article.update(tags='',personal_note='')
+        self.favorite_button.setText('取消收藏' if self.is_saved_here() else '加入本组收藏' if scope is not None else '加入收藏')
         if self.allow_pdf:self.update_pdf_state()
         self.favorite_changed.emit()
+        if self.ai_manager:self.ai_manager.changed.emit()
 
     def _save_notes(self) -> None:
         self.database.save_favorite_notes(
@@ -615,10 +701,14 @@ class ProfileDialog(QDialog):
         layout = QVBoxLayout(self)
         form = QFormLayout()
         self.name = QLineEdit(str(self.profile.get("name") or ""))
-        self.query = QPlainTextEdit(str(self.profile.get("query_expression") or ""))
-        self.query.setPlaceholderText('例如：(R-loop OR "RNA-DNA hybrid") AND replication')
-        self.query.setToolTip("bioRxiv和medRxiv使用各自官网默认关键词搜索，可能命中正文和参考文献。不额外添加match-all。支持AND/OR/NOT、括号、引号及词尾*，不支持PubMed字段标签。")
-        self.query.setMaximumHeight(100)
+        from search_queries import profile_queries
+        queries=profile_queries(self.profile)
+        self.pubmed_query=QPlainTextEdit(queries['PubMed']);self.preprint_query=QPlainTextEdit(queries['bioRxiv']);self.query=self.pubmed_query
+        for field in (self.pubmed_query,self.preprint_query):field.setMaximumHeight(75)
+        self.pubmed_query.setPlaceholderText('例如：(R-loop OR "RNA-DNA hybrid") AND replication')
+        self.preprint_query.setPlaceholderText('例如：DNA replication')
+        self.pubmed_query.setToolTip('仅发送给PubMed；支持英文关键词、AND/OR/NOT及PubMed字段标签。检索范围仍按设置中的PubMed选项执行。')
+        self.preprint_query.setToolTip('按bioRxiv/medRxiv官网的普通关键词方式填写，例如DNA replication或R-loop；请勿套用PubMed字段标签或AND/OR/NOT布尔检索组合。')
         self.minimum_jif = QDoubleSpinBox()
         self.minimum_jif.setRange(0, 200)
         self.minimum_jif.setDecimals(2)
@@ -640,9 +730,11 @@ class ProfileDialog(QDialog):
         self.sort_mode.addItems(["综合最佳", "最新发表", "最相关"])
         self.sort_mode.setCurrentText(str(self.profile.get("sort_mode") or "最新发表"))
         form.addRow("方案名称", self.name)
-        form.addRow("关键词或布尔表达式", self.query)
-        form.addRow("最低 JIF", self.minimum_jif)
         form.addRow('联网检索数据源（仅此方案）',self.search_sources)
+        self.pubmed_query_label=QLabel('PubMed 的关键词');self.preprint_query_label=QLabel('预印本的关键词')
+        form.addRow(self.pubmed_query_label,self.pubmed_query);form.addRow(self.preprint_query_label,self.preprint_query)
+        self.search_sources.currentIndexChanged.connect(self.update_query_fields);self.update_query_fields()
+        form.addRow("最低 JIF", self.minimum_jif)
         form.addRow("PubMed 候选数（0＝不限）", self.maximum_results)
         form.addRow("bioRxiv / medRxiv 候选数（0＝不限）", self.biorxiv_maximum_results)
         form.addRow("默认排序", self.sort_mode)
@@ -690,6 +782,10 @@ class ProfileDialog(QDialog):
         buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("取消")
         layout.addWidget(buttons)
 
+    def update_query_fields(self):
+        mode=self.search_sources.currentData()
+        for label,field,visible in [(self.pubmed_query_label,self.pubmed_query,mode!='biorxiv'),(self.preprint_query_label,self.preprint_query,mode!='pubmed')]:label.setVisible(visible);field.setVisible(visible)
+
     def filter_profile_journals(self):
         query = self.journal_search.text().casefold()
         for index in range(self.journal_list.count()):
@@ -709,8 +805,9 @@ class ProfileDialog(QDialog):
         except ValueError as error:
             QMessageBox.warning(self,"候选数无效",str(error))
             return
-        if not self.name.text().strip() or not self.query.toPlainText().strip():
-            QMessageBox.warning(self, "信息不完整", "请填写方案名称和关键词表达式。")
+        mode=self.search_sources.currentData()
+        if not self.name.text().strip() or (mode!='biorxiv' and not self.pubmed_query.toPlainText().strip()) or (mode!='pubmed' and not self.preprint_query.toPlainText().strip()):
+            QMessageBox.warning(self, "信息不完整", "请填写方案名称，以及每个已选检索来源的关键词。")
             return
         try:
             start, end = self.year_start.currentData(), self.year_end.currentData()
@@ -739,7 +836,9 @@ class ProfileDialog(QDialog):
         return {
             "id": self.profile.get("id"),
             "name": self.name.text().strip(),
-            "query_expression": self.query.toPlainText().strip(),
+            "query_expression": (self.preprint_query if self.search_sources.currentData()=='biorxiv' else self.pubmed_query).toPlainText().strip(),
+            'pubmed_query_expression':self.pubmed_query.toPlainText().strip(),
+            'preprint_query_expression':self.preprint_query.toPlainText().strip(),
             "journal_issns": self.selected_issns(),
             "scope_ids": self.selected_scope_ids(),
             "minimum_jif": self.minimum_jif.value(),
@@ -835,9 +934,10 @@ class SearchTask(QRunnable):
 
 class HomePage(QWidget):
     open_profile = Signal(int)
+    open_ai_report=Signal(int)
     profiles_changed = Signal()
 
-    def __init__(self, database: Database):
+    def __init__(self, database: Database, ai_manager=None):
         super().__init__()
         self.database = database
         outer = QVBoxLayout(self)
@@ -863,6 +963,9 @@ class HomePage(QWidget):
         header.addWidget(self.refresh_all_button)
         header.addWidget(reset_widths)
         header.addWidget(add_button)
+        self.ai_recommend_button=QPushButton('AI推荐关键词组')
+        self.ai_recommend_button.clicked.connect(lambda:self.recommend_keywords(ai_manager))
+        header.addWidget(self.ai_recommend_button)
         outer.addLayout(header)
 
         self.scroll = QScrollArea()
@@ -886,7 +989,9 @@ class HomePage(QWidget):
             self.profile_cards[int(profile['id'])] = card
             self.set_refresh_state(int(profile['id']), self.refresh_states.get(int(profile['id']), ''))
             card.clicked.connect(self.open_profile.emit)
+            card.report_requested.connect(self.open_ai_report.emit)
         self.container.reflow()
+        if hasattr(self.window(),'update_ai_report_cards'):self.window().update_ai_report_cards()
 
     def persist_order(self, identifiers):
         try:
@@ -909,6 +1014,16 @@ class HomePage(QWidget):
         card = self.profile_cards.get(profile_id)
         if card:
             card.set_busy(message)
+
+    def recommend_keywords(self,manager):
+        if manager is None:return
+        from ai_ui import RecommendationDialog
+        import shiboken6
+        dialog=getattr(self,'ai_recommend_dialog',None)
+        if dialog is None or not shiboken6.isValid(dialog):
+            dialog=RecommendationDialog(manager,self);self.ai_recommend_dialog=dialog
+        dialog.reset_output_limit()
+        dialog.showNormal();dialog.raise_();dialog.activateWindow()
 
     def add_profile(self) -> None:
         dialog = ProfileDialog(self.database, parent=self)
@@ -961,9 +1076,6 @@ class ArticleCard(QFrame):
         self.abstract.setOpenExternalLinks(False)
         self.full_abstract = str(article.get("abstract") or ("正在自动读取摘要……" if article.get("biorxiv_search_method")=="website" else "数据源未提供摘要。"))
         self.expanded = False
-        self.expand = QPushButton("展开摘要")
-        self.expand.setProperty("secondary", True)
-        self.expand.clicked.connect(self.toggle_abstract)
         self.update_abstract()
         layout.addWidget(journal)
         title_row = QHBoxLayout()
@@ -982,6 +1094,7 @@ class ArticleCard(QFrame):
         metadata.setObjectName("Muted")
         layout.addWidget(metadata)
         controls = self.controls = QHBoxLayout()
+        self.ai_summary_badge=QLabel('已AI总结',self);self.ai_summary_badge.setStyleSheet('color:#44756A;font-weight:600;background:transparent;border:none;');self.ai_summary_badge.setVisible(bool(article.get('has_ai_summary')));controls.addWidget(self.ai_summary_badge)
         details = QPushButton("文章详情")
         details.clicked.connect(lambda: self.open_requested.emit(self.article))
         favorite = self.favorite_button = QPushButton("已收藏♥" if article.get("is_favorite_in_profile", article.get("is_favorite")) else "收藏♡")
@@ -989,14 +1102,19 @@ class ArticleCard(QFrame):
         favorite.setStyleSheet('font-family:"Segoe UI Symbol","Microsoft YaHei UI","Apple Symbols","PingFang SC";')
         favorite.setToolTip('取消收藏' if article.get('is_favorite_in_profile',article.get('is_favorite')) else '收藏到当前关键词组')
         favorite.clicked.connect(lambda: self.favorite_requested.emit(self.article))
-        controls.addWidget(self.expand)
         controls.addStretch()
         controls.addWidget(details)
         controls.addWidget(favorite)
         self.hidden_button=QPushButton('取消隐藏' if article.get('is_hidden') else '隐藏')
         self.hidden_button.setProperty('secondary',True)
         self.hidden_button.clicked.connect(lambda:self.hidden_requested.emit(self.article))
-        journal_row=QHBoxLayout();journal_row.addWidget(journal,1);journal_row.addWidget(self.hidden_button)
+        journal_row=QHBoxLayout();journal_row.addWidget(journal,1)
+        # Parent BEFORE setting visibility: an unparented visible QLabel creates
+        # a transient desktop window for every NEW card, then closes on reparent.
+        self.new_badge=QLabel('new⭐',self);self.new_badge.setFont(details.font())
+        self.new_badge.setStyleSheet('color:#E53935;background:transparent;border:none;padding:0 4px;font-weight:800;')
+        self.new_badge.setToolTip('本轮增量检索新增；打开文章详情后消失。');self.new_badge.setVisible(bool(article.get('is_incremental_new')))
+        journal_row.addWidget(self.new_badge);journal_row.addWidget(self.hidden_button)
         layout.removeWidget(journal);layout.insertLayout(0,journal_row)
         layout.addLayout(controls)
 
@@ -1005,10 +1123,8 @@ class ArticleCard(QFrame):
         self.update_abstract()
 
     def update_abstract(self):
-        shortened = self.full_abstract[:430] + ("…" if len(self.full_abstract) > 430 else "")
-        self.abstract.setPlainText(self.full_abstract if self.expanded else shortened)
-        self.abstract.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded if self.expanded else Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.expand.setText("收起摘要" if self.expanded else "展开摘要")
+        self.abstract.setPlainText(self.full_abstract)
+        self.abstract.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
 
 class ResultsPage(QWidget):
@@ -1029,6 +1145,8 @@ class ResultsPage(QWidget):
         self._result_token=0
         self._result_keys=[]
         self._read_tasks={}
+        from reading_index import ReadingOrderCache
+        self._reading_orders=ReadingOrderCache()
         self._card_pages=OrderedDict()
         self._pending_reads=set()
         self._small_cache=True
@@ -1214,8 +1332,14 @@ class ResultsPage(QWidget):
         self.previous_card.setEnabled(False);self.next_card.setEnabled(False)
         self._show_active_view()
         def build_index():
-            rows=self.database.result_metadata(identifier,mode)
+            revision=self.database.reading_revision(identifier,mode)
             hidden_tokens=self.database.hidden_article_tokens(identifier)
+            key=(identifier,mode,revision,ordering,tuple(sorted(visible_sources)),show_hidden,
+                 tuple(sorted(hidden_tokens)),profile.get('article_type','all'),profile.get('year_from'),profile.get('year_to'))
+            cacheable=revision is not None and ordering in ('最新发表','最相关')
+            previous=self._reading_orders.get(key) if cacheable else None
+            if previous is not None:return previous
+            rows=self.database.result_metadata(identifier,mode)
             allowed=[]
             for row in rows:
                 if not show_hidden and self.database.matches_hidden_article(row,hidden_tokens):continue
@@ -1228,7 +1352,9 @@ class ResultsPage(QWidget):
                 if (profile.get('year_from') or profile.get('year_to')) and not (year and (profile.get('year_from') or 1000)<=year<=(profile.get('year_to') or 3000)):
                     if not (row.get('website_date_filtered') and not year):continue
                 allowed.append(row)
-            return [row['article_key'] for row in sort_articles(allowed,ordering)]
+            result=[row['article_key'] for row in sort_articles(allowed,ordering)]
+            if cacheable:self._reading_orders.put(key,result)
+            return result
         self._read_result(build_index,self._index_loaded)
 
     def update_source_label(self):
@@ -1324,6 +1450,7 @@ class ResultsPage(QWidget):
             favorites=self.database.favorite_keys_for_profile(identifier)
             visited=self.database.visited_dois(identifier,mode)
             hidden_tokens=self.database.hidden_article_tokens(identifier)
+            new_keys=self.database.new_article_keys(identifier,mode)
             by_key={row['article_key']:row for row in rows}
             result=[]
             for key in keys:
@@ -1331,6 +1458,7 @@ class ResultsPage(QWidget):
                 row=by_key[key]
                 row['is_favorite_in_profile']=key in favorites;row['doi_visited']=key in visited
                 row['is_hidden']=self.database.matches_hidden_article(row,hidden_tokens)
+                row['is_incremental_new']=key in new_keys
                 result.append(row)
             return result
         self._read_result(read,ready)
@@ -1575,6 +1703,7 @@ class ResultsPage(QWidget):
         if identifier == self.profile_id:
             self.status.setText(message)
         self.cache_changed.emit()
+        if hasattr(self.window(),'ai_reports'):self.window().ai_reports.after_refresh(identifier,report)
 
     def _refresh_failed(self, message: str) -> None:
         self.website.end_search()
@@ -1615,7 +1744,7 @@ class ResultsPage(QWidget):
         if self.profile_id is None:
             return
         answer = QMessageBox.question(
-            self, "删除关键词方案", "确定删除这个关键词方案吗？文章和收藏仍会保留。"
+            self, "删除关键词方案", "删除此方案及不再被使用的文章和AI缓存？\n已收藏文章、关联PDF与AI总结，以及其它方案或已保存AI对话仍使用的数据会保留。"
         )
         if answer == QMessageBox.StandardButton.Yes:
             self.database.delete_profile(self.profile_id)
@@ -1626,6 +1755,10 @@ class ResultsPage(QWidget):
     def open_article(self, article: dict[str, Any] | None) -> None:
         if not article:
             return
+        self.database.acknowledge_new_article(self.profile_id,article['article_key'])
+        article['is_incremental_new']=False
+        for card in self.card_container.findChildren(ArticleCard):
+            if card.article['article_key']==article['article_key']:card.new_badge.hide()
         dialog = ArticleDialog(self.database, article, self, profile_id=self.profile_id)
         dialog.favorite_changed.connect(self.reload_cache)
         dialog.favorite_changed.connect(self.cache_changed.emit)
@@ -1641,10 +1774,17 @@ class ResultsPage(QWidget):
         if not article:
             return
         new_value = article["article_key"] not in self.database.favorite_keys_for_profile(self.profile_id)
-        if not new_value and not confirm_unfavorite(self,[article]):return
+        scope=None;plan=None
+        if not new_value:
+            with self.database.connect() as c:scope=[r[0] for r in c.execute('SELECT id FROM favorite_groups WHERE profile_id=?',(self.profile_id,))]
+            plan=self.database.favorite_removal_plan([article['article_key']],scope)
+            if not confirm_unfavorite(self,[article],plan):return
         try:
-            self.database.set_favorite(article["article_key"], new_value, profile_id=self.profile_id)
-        except (OSError,sqlite3.Error) as error:
+            if new_value:self.database.set_favorite(article['article_key'],True,profile_id=self.profile_id)
+            else:
+                report=self.database.cancel_favorites([article['article_key']],scope,plan['final_keys'])
+                if report['failed']:raise ValueError(report['failed'][0]['error'])
+        except (OSError,sqlite3.Error,ValueError) as error:
             QMessageBox.warning(self,'取消收藏失败','关联 PDF 可能正在被占用，请关闭阅读器后重试。\n'+str(error))
             return
         self.reload_cache()
@@ -1883,10 +2023,17 @@ class FavoriteExportDialog(QDialog):
 class BulkUnfavoriteDialog(FavoriteExportDialog):
     def __init__(self,database,selected=(),parent=None):
         super().__init__(database,selected,parent)
+        self.database=database
         self.setWindowTitle('批量取消收藏')
-        self.explanation.setText('左侧选择分组以限定右侧文章范围；选中分组会勾选其中的文章。最终按右侧全部已勾选项取消收藏（包括因搜索暂时隐藏的勾选项），并从所有分组移除。点击后还需确认 PDF 删除提示。')
+        self.explanation.setText('选择分组后，只将右侧勾选的文章移出选定分组，其它分组的收藏保留。未选择分组时，操作范围为全部收藏。文章不再属于任何组时，会合并为一次关联信息删除确认。')
         self.include_pdf.hide()
         self.action_buttons.button(QDialogButtonBox.StandardButton.Save).setText('批量取消收藏')
+
+    def removal_scope(self):
+        names=set(self.checked(self.groups))
+        if not names:return None
+        ids={row['name']:row['id'] for row in self.database.list_custom_groups()}
+        return [ids.get(name,'__ungrouped__') for name in names]
 
 
 class FavoritesPage(QWidget):
@@ -1939,9 +2086,6 @@ class FavoritesPage(QWidget):
         self.pdf_import_button=QPushButton('批量收藏 PDF…');self.pdf_import_button.clicked.connect(self.start_pdf_import)
         self.pdf_cancel_button=QPushButton('取消 PDF 导入');self.pdf_cancel_button.hide();self.pdf_cancel_button.clicked.connect(self.cancel_pdf_import)
         share_row.addWidget(self.pdf_import_button);share_row.addWidget(self.pdf_cancel_button)
-        if sys.platform=='darwin':
-            self.word_export_button=QPushButton('导出 Word / EndNote…')
-            self.word_export_button.clicked.connect(self.export_mac_word)
         self.add_group_button=QPushButton('＋ 自定义分组')
         self.add_group_button.clicked.connect(self.add_custom_group)
         self.transfer_button=QPushButton('复制 / 移动所选文章…')
@@ -1949,7 +2093,10 @@ class FavoritesPage(QWidget):
         share_row.addWidget(self.add_group_button);share_row.addWidget(self.transfer_button)
         share_row.addWidget(self.bundle_status, 1)
         layout.addLayout(share_row)
-        if sys.platform=='darwin':layout.addWidget(self.word_export_button,alignment=Qt.AlignmentFlag.AlignLeft)
+        if sys.platform=='darwin':
+            self.word_export_button=QPushButton('导出 Word / EndNote…')
+            self.word_export_button.clicked.connect(self.export_mac_word)
+            layout.addWidget(self.word_export_button,alignment=Qt.AlignmentFlag.AlignLeft)
         tools=QHBoxLayout()
         self.search_favorites_button=QPushButton('搜索已收藏文章…');self.search_favorites_button.clicked.connect(self.search_favorites)
         self.clear_search_button=QPushButton('清除搜索');self.clear_search_button.clicked.connect(self.clear_favorite_search)
@@ -2051,14 +2198,22 @@ class FavoritesPage(QWidget):
     def bulk_unfavorite(self):
         if self.cancel_task or self.pdf_task or self.bundle_task or self.pdf_import_dialog is not None:
             QMessageBox.information(self,'请稍后操作','请等待当前收藏导入、分享或批量操作完成；若打开了 PDF 选择窗口，请先关闭该窗口。');return
-        dialog=BulkUnfavoriteDialog(self.database,self.selected_article_keys(),self)
+        selected_keys=set(self.selected_article_keys());dialog=BulkUnfavoriteDialog(self.database,selected_keys,self)
+        if self.current_group:
+            for index in range(dialog.groups.count()):
+                item=dialog.groups.item(index)
+                if item.data(Qt.ItemDataRole.UserRole)==self.current_group:item.setCheckState(Qt.CheckState.Checked)
+            if selected_keys:
+                for index in range(dialog.articles.count()):
+                    item=dialog.articles.item(index);item.setCheckState(Qt.CheckState.Checked if item.data(Qt.ItemDataRole.UserRole) in selected_keys else Qt.CheckState.Unchecked)
         if dialog.exec()!=QDialog.DialogCode.Accepted:return
         keys=set(dialog.checked(dialog.articles));rows=[article for article in dialog.article_records if article['article_key'] in keys]
-        if not confirm_unfavorite(self,rows):return
+        scope=dialog.removal_scope();plan=self.database.favorite_removal_plan(keys,scope)
+        if not confirm_unfavorite(self,rows,plan):return
         self._cancel_titles={article['article_key']:article['title'] for article in rows}
         for button in (self.bulk_cancel_button,self.pdf_import_button,self.import_bundle_button,self.export_bundle_button,self.add_group_button,self.transfer_button,self.group_settings_button):button.setEnabled(False)
         self.bundle_status.setText(f'正在取消 {len(keys)} 篇收藏，请等待完成……')
-        self.cancel_task=BackgroundOperation(lambda progress:self.database.cancel_favorites(keys))
+        self.cancel_task=BackgroundOperation(lambda progress:self.database.cancel_favorites(keys,scope,plan['final_keys']))
         self.cancel_task.signals.finished.connect(self.bulk_cancel_finished);self.cancel_task.signals.failed.connect(self.bulk_cancel_failed)
         QThreadPool.globalInstance().start(self.cancel_task)
 
@@ -2068,13 +2223,14 @@ class FavoritesPage(QWidget):
         self.selected_favorite_keys.clear();self.reload()
 
     def bulk_cancel_finished(self,report):
-        self.finish_bulk_cancel();message=f"已从全部分组取消 {len(report['removed'])} 篇收藏。"
+        self.finish_bulk_cancel();message=f"已处理 {len(report['removed'])} 篇：{len(report.get('retained',[]))} 篇仍保留在其它分组，{len(report.get('final',[]))} 篇已取消最后一处收藏。"
+        if report.get('cleanup_pending'):message+=' 部分无用缓存待清理，可稍后使用设置中的“清理无用缓存”。'
         self.bundle_status.setText(message)
         if report['failed']:
             details='\n'.join(self._cancel_titles.get(row['article_key'],row['article_key'])+'：'+row['error'] for row in report['failed'])
             box=QMessageBox(QMessageBox.Icon.Warning,'部分文章未取消',message+f"\n{len(report['failed'])} 篇未成功，已保留收藏及链接。请关闭 PDF 阅读器后重试。",QMessageBox.StandardButton.Ok,self)
             box.setDetailedText(details);box.exec()
-        else:QMessageBox.information(self,'批量取消完成',message)
+        # Success is shown inline; a batch has only one destructive confirmation.
 
     def bulk_cancel_failed(self,message):
         self.finish_bulk_cancel();self.bundle_status.setText('批量操作未完整完成。')
@@ -2137,7 +2293,7 @@ class FavoritesPage(QWidget):
         if not self.window().batch_refresh.active:self.window().settings_page.setEnabled(True)
         self.reload();self.bundle_status.setText(f"PDF 导入结束：成功 {len(report['successes'])}/{report['total']} 个。")
         if report['failures']:PDFFailureDialog(report,self).exec()
-        else:QMessageBox.information(self,'PDF 全部收藏完成',f"{report['total']} 个 PDF 全部收藏完成，已自动链接原文，可离线查看。")
+        else:QMessageBox.information(self,'PDF 全部收藏完成',f"{report['total']} 个 PDF 全部收藏完成。"+('已自动链接本次 PDF，可离线查看原文。' if report.get('link_pdf',True) else '按您的选择，不复制或链接本次 PDF；已有的原文链接保留。'))
 
     def _show_group(self, group_name: str) -> None:
         if self.current_group!=group_name:self.favorite_page_number=0;self.selected_favorite_keys.clear()
@@ -2290,7 +2446,8 @@ class FavoritesPage(QWidget):
     def open_article(self, article: dict[str, Any]) -> None:
         bridge = getattr(self.window(), 'word_bridge', None)
         if bridge:bridge.select(article)
-        dialog = ArticleDialog(self.database, article, self, allow_pdf=True)
+        group_id=next((g['id'] for g in self.database.list_custom_groups() if g['name']==self.current_group),'__ungrouped__') if self.current_group else None
+        dialog = ArticleDialog(self.database, article, self, allow_pdf=True,favorite_group_id=group_id)
         dialog.favorite_changed.connect(self.reload)
         dialog.exec()
 
@@ -2334,7 +2491,7 @@ class SettingsPage(QWidget):
         self.database = database
         self.current_scope = None
         outer=QVBoxLayout(self);outer.setContentsMargins(0,0,0,0)
-        scroll=QScrollArea();scroll.setWidgetResizable(True)
+        scroll=self.scroll_area=QScrollArea();scroll.setWidgetResizable(True)
         body=QWidget();scroll.setWidget(body);outer.addWidget(scroll)
         layout = QVBoxLayout(body)
         title = QLabel("设置")
@@ -2348,6 +2505,8 @@ class SettingsPage(QWidget):
         citation_group = QGroupBox('参考文献格式')
         citation_form = QFormLayout(citation_group)
         self.citation_style = choose_style(database, citation_group)
+        self.citation_style.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.citation_style.setMinimumContentsLength(20)
         citation_form.addRow('期刊（默认 Cell）', self.citation_style)
         layout.addWidget(citation_group)
         appearance=QGroupBox('字体与布局大小');appearance_form=QFormLayout(appearance)
@@ -2374,6 +2533,20 @@ class SettingsPage(QWidget):
             {'keyword_default_view': self.keyword_default_view.currentData()}))
         appearance_form.addRow('关键词方案默认展现形式', self.keyword_default_view)
         layout.addWidget(appearance)
+        ai_box=QGroupBox('AI设置');ai_form=QFormLayout(ai_box)
+        self.ai_auto_reports=QCheckBox('每次增量刷新后，为 new⭐ 新文章自动总结并准备AI报告')
+        self.ai_auto_reports.setChecked(settings.get('ai_incremental_reports','0')=='1')
+        self.ai_auto_reports.toggled.connect(lambda checked:database.save_settings({'ai_incremental_reports':'1' if checked else '0'}));ai_form.addRow(self.ai_auto_reports)
+        self.ai_report_provider=QComboBox();self.ai_report_provider.addItem('DeepSeek','deepseek');self.ai_report_provider.addItem('ChatGPT / OpenAI API','openai');
+        for k,n in [('codex','ChatGPT Codex · 本机连接'),('kimi','Kimi'),('glm','GLM')]:self.ai_report_provider.addItem(n,k)
+        self.ai_report_provider.setCurrentIndex(max(0,self.ai_report_provider.findData(settings.get('ai_report_provider','deepseek'))))
+        self.ai_report_provider.currentIndexChanged.connect(lambda:database.save_settings({'ai_report_provider':self.ai_report_provider.currentData()}));ai_form.addRow('默认AI分析／报告服务',self.ai_report_provider)
+        self.ai_image_route=QComboBox()
+        for value,label in [('native','AI模型可调用作图模型'),('ark','火山引擎方舟'),('bailian','阿里云百炼'),('glm','GLM-Image'),('off','跳过AI模型图')]:self.ai_image_route.addItem(label,value)
+        self.ai_image_route.setCurrentIndex(max(0,self.ai_image_route.findData(settings.get('ai_image_route','native'))))
+        self.ai_image_route.currentIndexChanged.connect(lambda:database.save_settings({'ai_image_route':self.ai_image_route.currentData()}));ai_form.addRow('AI模型图生成',self.ai_image_route)
+
+        note=QLabel('自动报告默认关闭。开启后会逐篇读取本机有权限访问的 PDF／网页，并将提取文字发送到已开启的所选服务，按服务商规则计费。零新增不调用 AI；没有正文权限时只分析摘要并标注。选定服务未开启时使用其它已开启服务。');note.setWordWrap(True);ai_form.addRow(note);layout.addWidget(ai_box)
         self.biorxiv_years = QSpinBox()
         self.biorxiv_years.setRange(1, 1000)
         self.biorxiv_years.setValue(max(1, min(1000, int(settings.get('biorxiv_recent_years', '2')))))
@@ -2502,9 +2675,12 @@ class SettingsPage(QWidget):
         self.software_update=SoftwareUpdateWidget();update_layout.addWidget(self.software_update);layout.addWidget(update_box)
 
         data_box = QGroupBox("本地数据")
-        data_layout = QHBoxLayout(data_box)
+        data_layout = QVBoxLayout(data_box)
         path_label = QLabel(str(database.path.parent))
-        path_label.setWordWrap(True)
+        path_label.setWordWrap(False)
+        path_label.setToolTip(str(database.path.parent))
+        path_label.setMinimumWidth(0)
+        path_label.setSizePolicy(QSizePolicy.Policy.Maximum,QSizePolicy.Policy.Preferred)
         path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         open_folder = QPushButton("打开数据目录")
         backup = self.backup_button = QPushButton("备份本地数据（ZIP）")
@@ -2515,17 +2691,29 @@ class SettingsPage(QWidget):
         )
         backup.clicked.connect(self.backup_database)
         export.clicked.connect(self.export_favorites)
-        data_layout.addWidget(path_label, 1)
-        data_layout.addWidget(open_folder)
-        data_layout.addWidget(backup)
-        data_layout.addWidget(export)
+        path_row=QHBoxLayout();path_row.addWidget(path_label);path_row.addSpacing(14);self.data_size=QLabel('等待统计');self.data_size.setObjectName('Muted');path_row.addWidget(self.data_size);path_row.addStretch();data_layout.addLayout(path_row)
+        from local_metrics import start_size_scan
+        QTimer.singleShot(0,lambda:start_size_scan(self))
+        data_actions=QHBoxLayout()
+        data_actions.addWidget(open_folder);data_actions.addWidget(backup);data_actions.addWidget(export);data_actions.addStretch()
+        self.cleanup_task=None;self.cleanup_button=QPushButton('清理无用缓存…')
+        from cache_maintenance import request_cleanup
+        self.cleanup_button.clicked.connect(lambda:request_cleanup(self));data_actions.insertWidget(3,self.cleanup_button)
+        data_layout.addLayout(data_actions)
         self.move_data_button=QPushButton('移动本地数据目录')
         self.move_data_button.clicked.connect(self.move_data_directory)
-        data_layout.addWidget(self.move_data_button)
+        data_management=QHBoxLayout();data_management.addWidget(self.move_data_button)
         self.link_data_button=QPushButton('链接本地数据目录')
         self.link_data_button.clicked.connect(self.link_data_directory)
-        data_layout.addWidget(self.link_data_button)
+        data_management.addWidget(self.link_data_button)
+        self.clear_data_button=QPushButton('删除本地数据…')
+        from local_maintenance import request_clear,request_uninstall
+        self.clear_data_button.clicked.connect(lambda:request_clear(self));data_management.addWidget(self.clear_data_button);data_management.addStretch();data_layout.addLayout(data_management)
         layout.addWidget(data_box)
+        uninstall_box=QGroupBox('卸载软件');uninstall_layout=QVBoxLayout(uninstall_box)
+        uninstall_note=QLabel('打开安装包自带的卸载程序；卸载时可选择保留或删除本地数据。');uninstall_note.setWordWrap(True);uninstall_layout.addWidget(uninstall_note)
+        self.uninstall_button=QPushButton('卸载 Biomed Reader…');self.uninstall_button.clicked.connect(lambda:request_uninstall(self))
+        uninstall_actions=QHBoxLayout();uninstall_actions.addWidget(self.uninstall_button);uninstall_actions.addStretch();uninstall_layout.addLayout(uninstall_actions);layout.addWidget(uninstall_box)
         self.backup_status=QLabel('');self.backup_status.setWordWrap(True)
         layout.addWidget(self.backup_status)
 
@@ -2533,6 +2721,8 @@ class SettingsPage(QWidget):
         paper_layout = QHBoxLayout(paper_box)
         paper_path = QLabel(str(database.paper_directory))
         paper_path.setWordWrap(True)
+        paper_path.setMinimumWidth(0)
+        paper_path.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Preferred)
         paper_path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         open_paper = QPushButton("打开 PDF 文件夹")
         open_paper.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(database.paper_directory))))
@@ -2544,6 +2734,11 @@ class SettingsPage(QWidget):
         runtime = QLabel(f"刊禾 · Biomed Reader {APP_VERSION} · Python {sys.version.split()[0]} · 已内置 Python 和依赖库")
         runtime.setObjectName("Muted")
         layout.addWidget(runtime)
+
+        from settings_wheel import SettingsWheelGuard
+        self.wheel_guard=SettingsWheelGuard(self,self.scroll_area)
+        from compact_fields import compact_settings
+        compact_settings(self,body)
 
     def reload_journals(self) -> None:
         journals = self.database.list_journals()
@@ -3136,6 +3331,9 @@ class MainWindow(QMainWindow):
             ("关键词方案", self.show_home),
             ("收藏文章", self.show_favorites),
             ("期刊目录", self.show_journal_scopes),
+            ("AI助手", self.show_ai_assistant),
+            ("AI部署", self.show_ai),
+            ("反馈", self.show_feedback),
             ("设置", self.show_settings),
         ):
             button = QPushButton(label)
@@ -3149,7 +3347,9 @@ class MainWindow(QMainWindow):
 
         self.pages = QStackedWidget()
         self.pages.setContentsMargins(18, 18, 18, 18)
-        self.home = HomePage(database)
+        from ai_ui import AIManager,AIDeploymentPage
+        self.ai_manager=AIManager(database,self)
+        self.home = HomePage(database,self.ai_manager)
         self.favorites = FavoritesPage(database)
         self.settings_page = SettingsPage(database)
         self.journal_scopes = JournalScopesPage(database, self.settings_page)
@@ -3159,6 +3359,14 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.settings_page)
         self.pages.addWidget(self.journal_scopes)
         self.pages.addWidget(self.results)
+        from feedback import FeedbackPage
+        self.feedback_page=FeedbackPage();self.pages.addWidget(self.feedback_page)
+        self.ai_page=AIDeploymentPage(self.ai_manager);self.pages.addWidget(self.ai_page)
+        from ai_workflow_ui import AIAssistantPage,AIReportCoordinator
+        self.ai_assistant_page=AIAssistantPage(self.ai_manager);self.pages.addWidget(self.ai_assistant_page)
+        self.ai_reports=AIReportCoordinator(self.ai_manager,self);self.home.open_ai_report.connect(self.ai_reports.open)
+        self.ai_reports.changed.connect(self.update_ai_report_cards);self.ai_manager.progress.connect(self.update_ai_progress)
+        self.ai_manager.changed.connect(self.update_summary_badges)
         root_layout.addWidget(self.pages, 1)
 
         self.home.open_profile.connect(self.open_profile)
@@ -3190,6 +3398,24 @@ class MainWindow(QMainWindow):
         else:
             self.batch_refresh.start([int(card.identifier) for card in self.home.container.cards])
 
+    def update_ai_report_cards(self):
+        for identifier,card in self.home.profile_cards.items():
+            pending=identifier in self.ai_reports.running;draft=identifier in self.ai_reports.drafts
+            card.ai_report_button.setText('AI报告 · 处理中' if pending else 'AI报告 ●' if draft else 'AI报告')
+            card.ai_report_button.setToolTip('可查看本次新报告；关闭时选择是否保存。' if draft else '点击查看或生成本批新增文章的 AI 报告。')
+
+    def update_summary_badges(self):
+        cards=self.findChildren(ArticleCard)
+        if not cards:return
+        with self.database.connect() as c:keys={row[0] for row in c.execute('SELECT article_key FROM ai_summaries')}
+        for card in cards:
+            saved=card.article['article_key'] in keys;card.article['has_ai_summary']=saved;card.ai_summary_badge.setVisible(saved)
+
+    def update_ai_progress(self,channel,text):
+        if channel.startswith('report:'):
+            identifier=int(channel.split(':')[1]);card=self.home.profile_cards.get(identifier)
+            if card:card.ai_report_button.setText(text);card.ai_report_button.setToolTip(text)
+
     def update_batch_refresh(self):
         batch = self.batch_refresh
         button = self.home.refresh_all_button
@@ -3220,9 +3446,18 @@ class MainWindow(QMainWindow):
         self.pages.setCurrentWidget(self.favorites)
         self._select_navigation(1)
 
+    def show_ai_assistant(self):
+        self.pages.setCurrentWidget(self.ai_assistant_page);self._select_navigation(3)
+
+    def show_ai(self):
+        self.pages.setCurrentWidget(self.ai_page);self._select_navigation(4)
+
+    def show_feedback(self):
+        self.pages.setCurrentWidget(self.feedback_page);self._select_navigation(5)
+
     def show_settings(self) -> None:
         self.pages.setCurrentWidget(self.settings_page)
-        self._select_navigation(3)
+        self._select_navigation(6)
 
     def show_journal_scopes(self) -> None:
         self.journal_scopes.show_cards()
@@ -3239,6 +3474,16 @@ class MainWindow(QMainWindow):
         self.favorites.reload()
 
     def closeEvent(self, event):  # noqa: N802 - Qt naming convention
+        if self.ai_manager.jobs:
+            QMessageBox.information(self,'AI 请求尚未结束','请等待 AI 请求返回或超时后再关闭软件，避免丢失本次用量记录。');event.ignore();return
+        import shiboken6
+        for reference in getattr(self.ai_manager,'finder_windows',{}).values():
+            dialog=reference()
+            if dialog is not None and shiboken6.isValid(dialog):
+                if not dialog.confirm_close():event.ignore();return
+                dialog.close()
+        if self.feedback_page.task:
+            QMessageBox.information(self,'正在发送反馈','请等待反馈发送完成后关闭软件。');event.ignore();return
         if self.settings_page.software_update.task:
             self.settings_page.software_update.cancel();event.ignore();return
         if self.favorites.cancel_task:

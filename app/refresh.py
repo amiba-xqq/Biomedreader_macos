@@ -4,6 +4,8 @@ import json
 from datetime import date, datetime, timezone
 from biorxiv import rolling_start
 from source_modes import cache_mode,profile_settings
+from refresh_baseline import compatible_baseline,baseline_articles,filter_signature
+from search_queries import profile_queries
 
 
 def refresh_search(database, client, profile, settings, issns, progress, cancelled, force_full=False,website_fetch=None,candidate_callback=None):
@@ -21,6 +23,8 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
     years = max(1, int(settings.get('biorxiv_recent_years', '2')))
     filters = {name: profile.get(name) for name in
                ('query_expression', 'year_from', 'year_to', 'maximum_results', 'pubmed_maximum_results', 'biorxiv_maximum_results', 'article_type', 'minimum_jif')}
+    queries=profile_queries(profile);filters['query_expression']=queries['bioRxiv'] if mode=='biorxiv' else queries['PubMed']
+    if mode=='both' and queries['bioRxiv']!=queries['PubMed']:filters['preprint_query_expression']=queries['bioRxiv']
     filters.update(issns=sorted(set(issns)), sources=mode, biorxiv_years=years, schema=1)
     if mode!='biorxiv' and settings.get('pubmed_search_scope','default')!='default':
         filters['pubmed_search_scope']=settings['pubmed_search_scope']
@@ -39,9 +43,10 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
         # Preprint preferences do not alter a PubMed-only retrieval baseline.
         filters.pop('biorxiv_years',None)
         filters.pop('biorxiv_maximum_results',None)
-    signature = hashlib.sha256(json.dumps(filters, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    signature = filter_signature(filters)
     started_at = datetime.now(timezone.utc).isoformat()
-    previous = database.refresh_checkpoint(profile['id'], storage_mode)
+    previous,source_states,baseline_mode,adopted=compatible_baseline(database,profile['id'],settings,filters,signature,legacy_signature) if not force_full else (
+        database.refresh_checkpoint(profile['id'],storage_mode),database.source_refresh_checkpoints(profile['id'],storage_mode),storage_mode,False)
     since = None
     if not force_full and previous and previous['signature'] in (signature,legacy_signature):
         try:
@@ -51,7 +56,6 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
         except (ValueError, TypeError):
             pass
     selected_sources={'both':('bioRxiv','PubMed'),'biorxiv':('bioRxiv',),'pubmed':('PubMed',)}[mode]
-    source_states=database.source_refresh_checkpoints(profile['id'],storage_mode)
     source_dates={source:since for source in selected_sources}
     pending_sources=set()
     for source in selected_sources:
@@ -66,7 +70,14 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
     dated=[value for value in source_dates.values() if value is not None]
     since=min(dated) if dated else None
     # Load a large cache once; the old code read the same 24,000+ rows twice.
-    cached=database.cached_articles(profile['id'],storage_mode) if since or pending_sources or (not previous and not force_full) or (method=='website' and mode!='pubmed') else []
+    cached=baseline_articles(database,profile['id'],baseline_mode,settings,adopted) if since or pending_sources or (not previous and not force_full) or (method=='website' and mode!='pubmed') else []
+    if adopted:
+        progress('复用已验证的较大来源范围基线：当前来源是原范围的子集，其它检索条件一致，沿用各来源的成功日期。')
+        if candidate_callback:
+            # Seed the active snapshot before streamed updates, so cancellation
+            # keeps both the old verified cache and already received new rows.
+            database.adopt_refresh_baseline(profile['id'],storage_mode,cached,source_states,
+                database.source_cache_refreshed_at(profile['id'],baseline_mode))
     old=cached if since or pending_sources else []
     if cached and not previous and not source_states and not force_full and 'PubMed' in selected_sources:
         # Old versions could save a partial cache without any completion marker.
@@ -84,7 +95,27 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
     for source in selected_sources:
         progress(f'{source} 增量范围：{source_dates[source]} 至 {date.today()}。' if source_dates[source] else
                  f'{source}：续查未完成的首次检索，复用已缓存记录。' if source in pending_sources else f'{source}：完整检索。')
-    report = client.search(profile['query_expression'], issns,
+    # Reset previous NEW badges once the refresh mode is known, including full searches.
+    database.clear_new_articles(profile['id'])
+    known=set()
+    for record in cached:
+        known.add(('key',record['article_key']))
+        known.update((field,str(record[field]).strip().casefold()) for field in ('doi','pmid') if record.get(field))
+    delivered=[False]
+    incremental_new_keys=set()
+    def save_new_batch(candidates):
+        if candidate_callback:candidate_callback(candidates)
+        keys=[]
+        for record,_ in candidates:
+            tokens={('key',record['article_key'])}|{(field,str(record[field]).strip().casefold()) for field in ('doi','pmid') if record.get(field)}
+            source='PubMed' if 'PubMed' in str(record.get('source_name','')) else 'bioRxiv'
+            if source_dates.get(source) and not (tokens & known):keys.append(record['article_key'])
+            known.update(tokens)
+        if keys:
+            incremental_new_keys.update(keys)
+            database.mark_new_articles(profile['id'],storage_mode,keys)
+        if candidates:delivered[0]=True
+    report = client.search(filters['query_expression'], issns,
         0 if since else int(profile.get('pubmed_maximum_results') if profile.get('pubmed_maximum_results') is not None else profile['maximum_results']), progress,
         profile.get('year_from'), profile.get('year_to'), cancelled,
         sources=selected_sources,
@@ -96,9 +127,11 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
         pubmed_maximum_results=0 if source_dates.get('PubMed') else int(profile.get('pubmed_maximum_results') if profile.get('pubmed_maximum_results') is not None else profile['maximum_results']),
         biorxiv_maximum_results=0 if source_dates.get('bioRxiv') else int(profile.get('biorxiv_maximum_results') if profile.get('biorxiv_maximum_results') is not None else profile['maximum_results']),
         pubmed_search_scope=settings.get('pubmed_search_scope','default'),
-        **({'candidate_callback':candidate_callback} if candidate_callback else {}),
+        candidate_callback=save_new_batch,
+        **({'source_queries':queries} if mode=='both' and queries['bioRxiv']!=queries['PubMed'] else {}),
         **({'source_updated_since':source_dates} if any(value!=since for value in source_dates.values()) else {}),
         **({'cached_pubmed':cached_pubmed} if cached_pubmed else {}))
+    if not delivered[0] and report.candidates:save_new_batch(report.candidates)
     if cancelled():
         raise InterruptedError('检索已取消，保留上次缓存。')
     # Commit each completed endpoint with its returned records atomically. A
@@ -154,7 +187,7 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
             continue
         # Do not persist transient UI/favorite state in the metadata snapshot.
         article = {key: value for key, value in article.items() if key not in
-                   ('is_favorite', 'favorite_saved_at', 'tags', 'personal_note', 'doi_visited', 'fetched_at')}
+                   ('is_favorite', 'favorite_saved_at', 'tags', 'personal_note', 'doi_visited', 'fetched_at','is_incremental_new')}
         merged[article['article_key']] = (article, float(article.get('relevance_score') or 0))
         for token in identity(article):
             identifiers[token] = article['article_key']
@@ -176,6 +209,8 @@ def refresh_search(database, client, profile, settings, issns, progress, cancell
             identifiers[token] = article['article_key']
     report.candidates = list(merged.values())
     report.incremental = since is not None
+    report.incremental_new_keys=sorted(incremental_new_keys)
+    report.ai_search_window={source:{'from':str(day) if day else None,'to':str(date.today())} for source,day in source_dates.items()}
     report.refresh_modes={source:('增量检索' if source_dates[source] else '续查未完成检索' if source in pending_sources else '完整检索') for source in selected_sources}
     report.new_count, report.reused_count = new_count, reused
     checkpoint = previous if since and report.source_errors else None

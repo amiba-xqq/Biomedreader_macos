@@ -116,9 +116,9 @@ def match_pdf(client, recognized, issns, scope='default'):
     raise ValueError('PubMed 返回结果与首页标题/DOI 不一致，未自动收藏，避免误匹配。')
 
 
-def import_pdfs(database, files, group_id, issns, scope='default', progress=lambda value:None, cancelled=lambda:False, client=None):
+def import_pdfs(database, files, group_id, issns, scope='default', progress=lambda value:None, cancelled=lambda:False, client=None, link_pdf=True):
     own=client is None;client=client or LiteratureClient('')
-    report={'total':len(files),'completed':0,'successes':[],'failures':[],'cancelled':False}
+    report={'total':len(files),'completed':0,'successes':[],'failures':[],'cancelled':False,'link_pdf':bool(link_pdf)}
     try:
         for path in files:
             if cancelled():report['cancelled']=True;break
@@ -129,7 +129,7 @@ def import_pdfs(database, files, group_id, issns, scope='default', progress=lamb
                 if cancelled():report['cancelled']=True;break
                 article=match_pdf(client,recognized,issns,scope)
                 if cancelled():report['cancelled']=True;break
-                key=database.save_pdf_favorite(article,path,group_id)
+                key=database.save_pdf_favorite(article,path,group_id,link_pdf=link_pdf)
                 report['successes'].append({'file':str(path),'title':article['title'],'article_key':key})
             except Exception as error:
                 report['failures'].append({'file':str(path),'reason':refresh_error_message(error)})
@@ -143,7 +143,8 @@ def import_pdfs(database, files, group_id, issns, scope='default', progress=lamb
 def pdf_runtime_self_test(paths,destination):
     """Verify bundled PDF parser resources without opening the user's library."""
     import json
-    report={'version':'2.1','files':[]}
+    from version import APP_VERSION
+    report={'version':APP_VERSION,'files':[]}
     try:
         for path in paths:
             row=recognize_pdf(path);row['dois']=sorted(row['dois']);row['file']=str(path);report['files'].append(row)

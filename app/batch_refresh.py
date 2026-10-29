@@ -76,6 +76,7 @@ class BatchRefresh(QObject):
             self.window.results._batch_cached(identifier)
 
     def succeeded(self, report):
+        if getattr(self.window,'ai_reports',None):self.window.ai_reports.after_refresh(self.task.profile['id'],report)
         if report.source_errors:
             self.failures.append((self.task.profile['name'], '；'.join(report.source_errors)))
         self.complete_current()

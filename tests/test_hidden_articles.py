@@ -54,11 +54,10 @@ class HiddenArticleTests(unittest.TestCase):
         card.hidden_button.click();page.set_show_hidden(False)
         self.assertEqual(page.table.rowCount(),1)
         window.close();window.deleteLater();self.app.processEvents()
-    def test_detail_window_can_hide_and_unhide_without_losing_text(self):
+    def test_detail_window_preserves_text_without_duplicate_hide_button(self):
         dialog=ArticleDialog(self.db,self.article,profile_id=self.profile)
-        before=dialog.browser.toPlainText();dialog.toggle_hidden()
-        self.assertEqual(dialog.hidden_button.text(),'取消隐藏');self.assertEqual(before,dialog.browser.toPlainText())
-        dialog.toggle_hidden();self.assertEqual(dialog.hidden_button.text(),'隐藏文章')
+        self.assertIn('Complete cached abstract',dialog.browser.toPlainText())
+        self.assertFalse(hasattr(dialog,'hidden_button'))
         dialog.close();dialog.deleteLater();self.app.processEvents()
     def test_macos_default_data_location(self):
         with patch('data_backup.sys.platform','darwin'):

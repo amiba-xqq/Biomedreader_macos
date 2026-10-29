@@ -13,6 +13,11 @@ from pathlib import Path
 
 API_ROOT = "https://api.biorxiv.org/details/biorxiv"
 
+def complete_cached_payload(raw):
+    try:payload=json.loads(raw)
+    except (TypeError,ValueError):return None
+    return payload if isinstance(payload,dict) and not payload.get('_biomed_partial') else None
+
 
 def plain_text(value):
     """Flatten occasional inline markup before both matching and displaying metadata."""
@@ -91,7 +96,8 @@ def seed_daily_snapshots(connection, day):
         try:
             start,end,cursor,_=url[len(API_ROOT)+1:].split('/')
             if start==end:continue
-            intervals.setdefault((start,end),{})[int(cursor)]=(json.loads(payload),fetched)
+            complete=complete_cached_payload(payload)
+            if complete is not None:intervals.setdefault((start,end),{})[int(cursor)]=(complete,fetched)
         except (ValueError,TypeError):continue
     for (start,end),pages in sorted(intervals.items(),reverse=True):
         cursor=0;records=[];timestamps=[];expected=None
@@ -183,9 +189,8 @@ def search_metadata(session, expression, year_from, year_to, limit, cache_path, 
                 lifetime = 0 if age == 0 else 3600 if age <= 2 else 30 * 86400
                 # The last refresh day may have gained posts after that search completed.
                 # Incremental windows revalidate all their days, including older closed days.
-                if cached and start_date is None and time.time() - cached[1] < lifetime:
-                    payload = json.loads(cached[0])
-                else:
+                payload=complete_cached_payload(cached[0]) if cached and start_date is None and time.time()-cached[1]<lifetime else None
+                if payload is None:
                     if requested:
                         requested()
                     response = session.get(url, timeout=(10, 60))

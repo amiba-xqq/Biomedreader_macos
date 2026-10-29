@@ -49,6 +49,11 @@ def active_data_directory():
     configured=QSettings('OrangeReader','BiomedLiterature').value('data_directory','')
     if not configured:return default_data_directory()
     root=Path(configured)
+    if not root.exists():
+        # After explicit full-library deletion, retain the user's chosen location
+        # and allow a clean library on the next launch.
+        cleared=QSettings('OrangeReader','BiomedLiterature').value('cleared_data_directory','')
+        if cleared and Path(cleared)==root:return root
     if not (root/'biomed_literature.sqlite3').is_file():
         raise ValueError(f'已配置的数据目录不可用，请检查磁盘或文件夹：{root}')
     return root

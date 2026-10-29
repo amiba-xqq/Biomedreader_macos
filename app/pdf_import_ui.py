@@ -44,7 +44,7 @@ class PDFImportDialog(QDialog):
         self.database=database;self.selection=None
         self.setWindowTitle('批量收藏 PDF');self.resize(850,690)
         layout=QVBoxLayout(self)
-        instructions=QLabel('添加或拖入一个或多个 PDF。读取首页完整标题，通过 PubMed 搜索并收藏，自动复制并链接 PDF。\n'
+        instructions=QLabel('添加或拖入一个或多个 PDF。读取首页完整标题，通过 PubMed 搜索并收藏，可选择是否复制并链接 PDF。\n'
             '不限制年份与 JIF；PubMed 检索范围跟随设置。必须选择期刊目录和目标分组。')
         instructions.setWordWrap(True);layout.addWidget(instructions)
         row=QHBoxLayout();add=QPushButton('选择 PDF 文件…');remove=QPushButton('移除选中项')
@@ -66,6 +66,9 @@ class PDFImportDialog(QDialog):
         self.new_group=QCheckBox('新建自定义分组');self.name=QLineEdit();self.name.setPlaceholderText('请输入新分组名称（不可重复）');self.name.setEnabled(False)
         self.new_group.toggled.connect(lambda value:(self.name.setEnabled(value),self.group.setEnabled(not value)))
         layout.addWidget(self.new_group);layout.addWidget(self.name)
+        self.link_pdf=QComboBox();self.link_pdf.addItem('链接 PDF（默认）',True);self.link_pdf.addItem('不链接 PDF，仅收藏文章信息',False)
+        layout.addWidget(QLabel('是否链接 PDF（必选）：'));layout.addWidget(self.link_pdf)
+        note=QLabel('不链接时不复制本次选择的 PDF。文章若已经有关联原文，原链接保留。');note.setWordWrap(True);layout.addWidget(note)
         buttons=QDialogButtonBox(QDialogButtonBox.StandardButton.Ok|QDialogButtonBox.StandardButton.Cancel)
         buttons.button(QDialogButtonBox.StandardButton.Ok).setText('开始识别与收藏')
         buttons.button(QDialogButtonBox.StandardButton.Cancel).setText('取消')
@@ -93,7 +96,7 @@ class PDFImportDialog(QDialog):
             aliases={alias for journal in self.database.list_journals() if journal['issn'] in selected
                 for alias in {journal['issn'],*(journal.get('aliases') or '').split(';')} if alias}
             self.selection=dict(files=paths,group_id=group_id,group_name=name,issns=sorted(selected|aliases),
-                scope=self.database.get_settings().get('pubmed_search_scope','default'))
+                scope=self.database.get_settings().get('pubmed_search_scope','default'),link_pdf=bool(self.link_pdf.currentData()))
         except Exception as error:
             QMessageBox.warning(self,'无法开始',str(error));return
         self.accept()
@@ -110,7 +113,7 @@ class PDFImportTask(QRunnable):
         self.signals=PDFImportSignals();self.stop=threading.Event()
     def run(self):
         try:
-            options={key:self.selection[key] for key in ('files','group_id','issns','scope')}
+            options={key:self.selection[key] for key in ('files','group_id','issns','scope','link_pdf')}
             result=import_pdfs(self.database,**options,progress=self.signals.progress.emit,cancelled=self.stop.is_set)
             if result['cancelled']:
                 completed={row['file'] for kind in ('successes','failures') for row in result[kind]}
