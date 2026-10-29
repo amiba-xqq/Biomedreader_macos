@@ -47,7 +47,7 @@ class Update1918Tests(unittest.TestCase):
 
     def test_locked_file_rolls_back_cancellation_and_preserves_link(self):
         target=self.link();key=self.article['article_key']
-        with patch.object(Path,'unlink',side_effect=PermissionError('file in use')):
+        with patch('local_maintenance.recycle_path',side_effect=PermissionError('file in use')):
             with self.assertRaises(PermissionError):self.db.set_favorite(key,False)
         self.assertTrue(target.exists());self.assertEqual(self.db.linked_pdf(key),target)
         self.assertEqual(len(self.db.favorite_articles()),1)

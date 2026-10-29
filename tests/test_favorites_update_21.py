@@ -170,7 +170,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(session.get.call_count,1)
     def test_update_widget_reports_latest_without_download(self):
         widget=SoftwareUpdateWidget()
-        with patch('software_update.check_release',return_value=dict(current='2.1',latest='2.1',newer=False,artifact=None)),patch.object(QMessageBox,'information') as notice,patch('software_update.download_artifact') as download:
+        with patch('software_update.check_release',return_value=dict(current='2.2.1',latest='2.2.1',newer=False,artifact=None)),patch.object(QMessageBox,'information') as notice,patch('software_update.download_artifact') as download:
             widget.check();deadline=time.monotonic()+10
             while widget.task is not None and time.monotonic()<deadline:app.processEvents();time.sleep(.01)
             self.assertIsNone(widget.task);notice.assert_called_once();download.assert_not_called()
