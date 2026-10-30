@@ -96,3 +96,18 @@ Biomed Reader 应用维持 macOS 12+ 的部署目标；[微软当前最新版 Of
 - AI reviewer支持把本地稿件拖入文件列表，自动添加路径并去重；仅在执行审阅后读取和提交资料。
 - 优化关键词方案及收藏文章卡片的标题换行和摘要间距，避免末行被裁切或遮挡。超长标题显示省略号，完整内容可悬停或进入详情查看。
 
+
+
+## 本次 2.2.1 修订：审稿与 Mac Word 模板修复
+
+- AI reviewer模拟Molecular Cell特邀审稿人，只输出Summary and significance assessment、Major comments、Minor comments。总结后直接点评逻辑性、实验可靠性和创新性，不给positive/negative总评。Major comments必须包含可执行解决方案，Minor comments限写作和图片呈现细节。
+- Peer Review支持导出逐页带Biomed Reader及模型名称水印的PDF，使用Times New Roman、小四、1.5倍行距。稿件历史仅保存结果及名称／路径，不复制源文件或保存其提取内容；点击文件名打开文件夹，续审时重新读取源文件。
+- AI寻找文章引用编号优先将右侧卡片定位到顶部，末尾按可滚动范围定位。
+- Mac Word模板使用Word原生生成的干净容器重新封装，保留VBA和Ribbon；修复兼容性及类型前缀声明问题，并在构建和安装时校验。已在Windows Word关闭自动修复条件下验证模板打开及新建文档；实际Mac Word与EndNote联调仍需验证。
+
+### Mac升级后修复插件
+
+1. 退出Word，将新版应用拖入Applications替换旧应用，再从Applications启动。
+2. 进入设置 → Word插件 → 安装／修复Word插件，覆盖旧模板和脚本（旧文件保留为.previous备份）。本次升级会再次提示安装修复。
+3. 重新打开Word，确认加载BiomedReader.dotm。截图bug1对应安装完成说明，并非程序崩溃；“Word无法打开此文档模板”才是需要修复的加载错误。
+4. 若Word使用自定义启动目录，在实际启动目录替换旧模板，避免从其它目录再次加载旧副本。无需启用所有宏，也无需开启VBA工程访问权限。先使用文稿副本测试EndNote接管。

@@ -29,6 +29,9 @@ class ManuscriptDropList(QListWidget):
 
     def add_paths(self, paths):
         if self.reviewer.task:return
+        # A restored history keeps paths, not source copies. Re-selecting a
+        # moved file must not leave an unremovable stale path blocking review.
+        self.reviewer.files=[p for p in self.reviewer.files if Path(p).is_file()]
         rejected=[]
         known={str(Path(p).resolve()).casefold() for p in self.reviewer.files}
         for value in paths:

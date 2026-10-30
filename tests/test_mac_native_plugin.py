@@ -20,3 +20,18 @@ class NativePluginTests(unittest.TestCase):
         self.assertIn('#Const BR_TEST = False',source);self.assertIn('AppleScriptTask(',source)
         for command in ('OpenReader','InsertReference','UpdateReferences','ChooseFont','ExportEndNote','SelectJournal'):self.assertIn('Public Sub '+command,source)
         self.assertIn('without altering line endings',(root/'BiomedReader.applescript').read_text(encoding='utf8'))
+
+class TemplateIntegrityTests(unittest.TestCase):
+    def test_final_template_and_dangling_namespace_are_distinguished(self):
+        import tempfile
+        from mac_word_plugin import validate_template
+        template=Path(__file__).resolve().parents[1]/'app/assets/mac_word/BiomedReader.dotm'
+        self.assertTrue(validate_template(template))
+        with tempfile.TemporaryDirectory() as folder:
+            broken=Path(folder)/'broken.dotm'
+            with zipfile.ZipFile(template) as source,zipfile.ZipFile(broken,'w') as target:
+                for name in source.namelist():
+                    data=source.read(name)
+                    if name=='word/settings.xml':data=b'<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="missing"/>'
+                    target.writestr(name,data)
+            with self.assertRaises(ValueError):validate_template(broken)

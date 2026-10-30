@@ -63,6 +63,31 @@ def main(args):
     except Exception as error:print(pack(['ERROR',str(error)]),end='')
     return 0
 
+def validate_template(path):
+    """Validate compatibility-prefix values as well as ordinary XML syntax."""
+    import zipfile
+    from xml.dom import minidom
+    mc='http://schemas.openxmlformats.org/markup-compatibility/2006'
+    def declared(node,prefix):
+        if prefix=='xml':return True
+        while node is not None:
+            if node.nodeType==node.ELEMENT_NODE and node.hasAttribute('xmlns:'+prefix):return True
+            node=node.parentNode
+        return False
+    with zipfile.ZipFile(path) as archive:
+        if archive.testzip() is not None:raise ValueError('Word 模板文件损坏。')
+        if not archive.read('word/vbaProject.bin').startswith(bytes.fromhex('D0CF11E0A1B11AE1')):raise ValueError('Word 模板缺少 VBA 工程。')
+        for name in archive.namelist():
+            if not name.endswith(('.xml','.rels')):continue
+            doc=minidom.parseString(archive.read(name))
+            for element in doc.getElementsByTagName('*'):
+                for attribute in element.attributes.values():
+                    if (attribute.namespaceURI==mc and attribute.localName in ('Ignorable','MustUnderstand','ProcessContent','PreserveElements','PreserveAttributes')) or (element.namespaceURI==mc and element.localName=='Choice' and attribute.name=='Requires') or (attribute.namespaceURI=='http://www.w3.org/2001/XMLSchema-instance' and attribute.localName=='type'):
+                        for token in attribute.value.split():
+                            if not declared(element,token.split(':')[0]):raise ValueError('Word 模板存在未定义的兼容性前缀：'+name+' / '+token)
+            doc.unlink()
+    return True
+
 def install_plugin(parent=None):
     from PySide6.QtWidgets import QMessageBox
     import shutil
@@ -74,13 +99,15 @@ def install_plugin(parent=None):
     scripts=Path.home()/'Library/Application Scripts/com.microsoft.Word'
     if QMessageBox.question(parent,'安装 Mac Word 插件','将为当前用户安装 Biomed Reader Word 模板和通信脚本。请先退出 Word。首次加载请只信任本插件，不需要启用所有宏。\n是否继续？')!=QMessageBox.StandardButton.Yes:return
     try:
+        validate_template(root/'BiomedReader.dotm')
         if subprocess.run(['/usr/bin/pgrep','-x','Microsoft Word'],capture_output=True).returncode==0:
             QMessageBox.information(parent,'请先退出 Word','请使用 Word → 退出 Word 后，再安装或修复插件。');return
         startup.mkdir(parents=True,exist_ok=True);scripts.mkdir(parents=True,exist_ok=True);directory().mkdir(parents=True,exist_ok=True)
         for source,target in [(root/'BiomedReader.dotm',startup/'BiomedReader.dotm'),(root/'BiomedReader.applescript',scripts/'BiomedReader.applescript')]:
             if target.exists():shutil.copy2(target,target.with_suffix(target.suffix+'.previous'))
             shutil.copy2(source,target)
+        validate_template(startup/'BiomedReader.dotm')
         (directory()/'app-path.txt').write_text(str(Path(sys.executable).resolve()),encoding='utf8')
-        QMessageBox.information(parent,'插件已安装','重新打开 Word，确认信任本地 BiomedReader.dotm 后，可在“Biomed Reader”选项卡使用。\n若配置了自定义启动目录，请将模板复制到 Word 当前的启动目录。\n当前发行尚无实际 Mac Word/EndNote 联调记录，请先使用文档副本。')
+        QMessageBox.information(parent,'Word 插件安装完成','模板已复制并通过结构校验。这是安装完成提示，不是错误。\n请重新打开 Word，按提示信任本插件后使用“Biomed Reader”选项卡。若使用自定义启动目录，请在该目录加载模板。\nMac Word/EndNote 实机联调仍待验证，请先使用文档副本。')
         return True
-    except OSError as error:QMessageBox.warning(parent,'安装未完成',str(error))
+    except (OSError,ValueError) as error:QMessageBox.warning(parent,'安装未完成',str(error))

@@ -347,7 +347,13 @@ QToolButton:pressed {background:#F4D6B1;}
         if url.scheme()!='biomed-ref':return
         card=frame.reference_cards.get(url.path())
         if card is not None:
-            frame.evidence_scroll.ensureWidgetVisible(card,0,14);highlight_card(card)
+            pane=frame.evidence_scroll
+            # Use content coordinates, not ensureWidgetVisible (which merely
+            # brings the nearest edge into view and can leave a card low down).
+            pane.widget().layout().activate()
+            top=card.mapTo(pane.widget(),QPoint()).y()-8
+            pane.verticalScrollBar().setValue(max(0,min(top,pane.verticalScrollBar().maximum())))
+            highlight_card(card)
 
     def capture_view(self):
         state=dict(getattr(self,'view_state',{}))

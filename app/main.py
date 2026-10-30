@@ -83,6 +83,9 @@ def main() -> int:
         index=sys.argv.index('--clear-local-data')
         try:clear_directory(sys.argv[index+1]);return 0
         except Exception:return 3
+    if '--reviewer-self-test' in sys.argv:
+        from peer_review import runtime_self_test
+        return runtime_self_test(sys.argv[sys.argv.index('--reviewer-self-test')+1])
     if '--update-self-test' in sys.argv:
         from software_update import check_release
         index=sys.argv.index('--update-self-test')
@@ -310,8 +313,8 @@ def main() -> int:
     if sys.platform=='darwin' and not startup_test_directory:
         def offer_word_plugin():
             settings=database.get_settings()
-            if settings.get('mac_word_plugin_offer')=='2.2.1-v1':return
-            database.save_settings({'mac_word_plugin_offer':'2.2.1-v1'})
+            if settings.get('mac_word_plugin_offer')=='2.2.1-v2':return
+            database.save_settings({'mac_word_plugin_offer':'2.2.1-v2'})
             from mac_word_plugin import install_plugin
             install_plugin(window)
         QTimer.singleShot(2000,offer_word_plugin)
