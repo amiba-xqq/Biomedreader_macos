@@ -60,6 +60,25 @@ class AIRepository:
             c.executemany('INSERT INTO ai_finder_cards VALUES(?,?,?)',[(identifier,row['article_key'],json.dumps(row,ensure_ascii=False)) for row in articles])
     def finder_cards(self,identifier):
         with self.database.connect() as c:return [json.loads(row[0]) for row in c.execute('SELECT article_json FROM ai_finder_cards WHERE history_id=?',(identifier,))]
+    def replace_finder_conversation(self,identifier,inputs,result,articles):
+        """Atomically delete a turn and its unshared cache, protecting favorites.
+
+        Updating the reverse-reference index before collection is essential:
+        otherwise deleted evidence would still keep its own cache alive.
+        """
+        from cache_cleanup import index_history,collect_unused
+        with self.database.connect() as c:
+            c.execute('BEGIN IMMEDIATE')
+            if not c.execute("SELECT 1 FROM ai_histories WHERE id=? AND kind='finder'",(identifier,)).fetchone():
+                raise ValueError('此对话已删除。')
+            old={r[0] for r in c.execute('SELECT article_key FROM ai_history_article_refs WHERE history_id=?',(identifier,))}
+            old.update(r[0] for r in c.execute('SELECT article_key FROM ai_finder_cards WHERE history_id=?',(identifier,)))
+            c.execute('UPDATE ai_histories SET input_json=?,result_json=?,created_at=? WHERE id=?',
+                      (json.dumps(inputs,ensure_ascii=False),json.dumps(result,ensure_ascii=False),now(),identifier))
+            index_history(c,identifier,inputs,result)
+            c.execute('DELETE FROM ai_finder_cards WHERE history_id=?',(identifier,))
+            c.executemany('INSERT INTO ai_finder_cards VALUES(?,?,?)',[(identifier,a['article_key'],json.dumps(a,ensure_ascii=False)) for a in articles])
+            collect_unused(c,old)
     def clear_finder_cards(self,identifier):
         with self.database.connect() as c:c.execute('DELETE FROM ai_finder_cards WHERE history_id=?',(identifier,))
     def epoch(self,key):

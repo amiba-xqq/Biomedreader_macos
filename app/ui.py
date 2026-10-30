@@ -59,6 +59,7 @@ from keyword_cards import KeywordBoard, KeywordCard
 from data_backup import backup_data_directory
 from path_dialog import QFileDialog
 from interface_scale import scaled,InterfaceScale
+from article_card_layout import CardTitle
 from card_board import CardBoard
 from journal_bundle import export_journal_bundle, import_journal_bundle
 from source_modes import cache_mode,profile_settings
@@ -1056,22 +1057,22 @@ class ArticleCard(QFrame):
         self.setFixedHeight(scaled(self._base_card_height))
         self.setMinimumWidth(scaled(240 if compact else 300))
         layout = QVBoxLayout(self)
-        if compact:layout.setContentsMargins(8,8,8,8);layout.setSpacing(4)
+        if compact:layout.setContentsMargins(8,8,8,8);layout.setSpacing(6)
+        else:layout.setSpacing(8)
         journal = QLabel(str(article.get("journal_title") or "期刊名称缺失"))
         journal.setStyleSheet("color:#C96812;font-weight:700;border:none;")
         journal.setWordWrap(True)
         journal._base_card_height=28 if compact else 36
         journal.setFixedHeight(scaled(journal._base_card_height))
-        title = QLabel(str(article.get("title") or "无标题"))
-        title.setWordWrap(True)
-        title._base_card_height=54 if compact else 75
-        title.setFixedHeight(scaled(title._base_card_height))
+        title = CardTitle(str(article.get("title") or "无标题"),self,compact)
         title_foreground = "#D97983" if preprint else foreground
         title_weight = 700 if preprint else (400 if visited else 600)
         title.setStyleSheet(f"font-size:{11 if compact else 12}pt;font-weight:{title_weight};color:{title_foreground};border:none;")
         self.title_label = title
         title.setToolTip(title.text())
         self.abstract = QTextBrowser()
+        self.abstract.setMinimumHeight(scaled(35))
+        self.abstract.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Ignored)
         self.abstract.setStyleSheet(f"border:none;background:transparent;color:{foreground};")
         self.abstract.setOpenExternalLinks(False)
         self.full_abstract = str(article.get("abstract") or ("正在自动读取摘要……" if article.get("biorxiv_search_method")=="website" else "数据源未提供摘要。"))
@@ -1086,6 +1087,7 @@ class ArticleCard(QFrame):
             self.jif_label.setToolTip(str(article.get("jif_source") or "") + "\n年份标签：" + str(article.get("jif_year") or "未知"))
             title_row.addWidget(self.jif_label, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(title_row)
+        layout.addSpacing(scaled(3))
         layout.addWidget(self.abstract, 1)
         metadata = QLabel(f"{article.get('publication_date') or '日期未知'} · {article.get('source_name') or ''}")
         if visited:

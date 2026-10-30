@@ -80,11 +80,14 @@ class KnowledgeHub(QDialog):
 class ReviewerDialog(ScientificQuestionsDialog):
     def __init__(self,manager,parent=None):
         super().__init__(manager,parent);self.setWindowTitle('AI reviewer · Evidence-based peer review');self.knowledge=knowledge_combo(self);self.files=[];self.pdf_button.hide();button=QPushButton('添加待审稿件（PDF / DOCX / 图片）');button.clicked.connect(self.choose);self.body_layout.insertWidget(3,button,0,Qt.AlignmentFlag.AlignLeft);self.run_button.setText('Read manuscript and review');self.topic.setPlaceholderText('输入研究领域及稿件范围：完整工作或部分结果。PDF会逐页进行视觉读取，按模型规则计费；请使用支持图片的模型。');self.followup.setPlaceholderText('补充审稿要求，或继续讨论上次审稿意见。')
+        from manuscript_drop import ManuscriptDropList
+        self.manuscript_drop=ManuscriptDropList(self);self.body_layout.insertWidget(4,self.manuscript_drop)
     def choose(self):
         from path_dialog import QFileDialog
         from ai_finder import FILE_FILTER
-        self.files,_=QFileDialog.getOpenFileNames(self,'选择自己的研究稿件','',FILE_FILTER)
-        self.status.setText('已选：'+'；'.join(Path(p).name for p in self.files))
+        if self.task:return
+        paths,_=QFileDialog.getOpenFileNames(self,'选择自己的研究稿件','',FILE_FILTER)
+        self.manuscript_drop.add_paths(paths)
     def run(self):
         try:
             engine=self.engine()

@@ -169,7 +169,7 @@ def _find_articles(engine,database,messages,files,attachments,notes,web_fetch=No
             evidence[key]=dict(title=article['title'],doi=article['doi'],pmid=article['pmid'],coverage=document['coverage'],text=note)
         verified.append(article)
     material=context+'\n真实文献证据：\n'+'\n\n'.join(f"[{i}] {a['title']}\nDOI {a['doi']}\n范围：{evidence[a['article_key']]['coverage']}\n{evidence[a['article_key']]['text']}" for i,a in enumerate(verified,1))
-    answer_text,_=engine.reduce(material,progress,'用中文给出可执行的科研文献建议。只输出JSON {"answer":"面向用户的最终回答","references":[实际使用的文献编号]}。先回应科学问题，再逐条说明可参考哪篇文章的哪种方法或理论、如何适配用户问题、关键条件和局限，用[编号]引用。只允许引用提供的真实文献，不输出网址、DOI或虚构文献，不输出思考过程。不把仅摘要称为全文，不把建议称为已验证结论。最后给出需人工核查的关键问题。')
+    answer_text,_=engine.reduce(material,progress,'用科研人员熟悉、自然且严谨的中文给出可执行的科研文献建议。先准确界定用户尚未解决的科学问题，以连贯的段落解释研究逻辑：为什么该机制、理论或方法与问题相关，已有证据能支持什么，尚缺少什么验证，再引出可行的研究路径。术语保持准确，必要时简短解释；减少生硬模板、机械罗列、营销话术和空泛结论。段落之间有必要的铺垫与承接，区分事实、推断和待验证假设。只输出JSON {"answer":"面向用户的最终回答","references":[实际使用的文献编号]}。先回应科学问题，再逐条说明可参考哪篇文章的哪种方法或理论、如何适配用户问题、关键条件和局限，用[编号]引用。只允许引用提供的真实文献，不输出网址、DOI或虚构文献，不输出思考过程。不把仅摘要称为全文，不把建议称为已验证结论。最后给出需人工核查的关键问题。')
     answer=json_object(answer_text);used=selected_indices(answer.get('references'),len(verified));recommended=[dict(verified[i-1],finder_reference=i,finder_coverage=evidence[verified[i-1]['article_key']]['coverage']) for i in used]
     text=str(answer.get('answer') or '').strip()
     if not text:raise ValueError('模型未返回最终建议，未保存空白结果。')
