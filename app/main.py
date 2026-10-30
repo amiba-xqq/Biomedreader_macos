@@ -49,6 +49,10 @@ def install_exception_handler(log_path: Path) -> None:
 
 
 def main() -> int:
+    if '--word-mac-command' in sys.argv:
+        from mac_word_plugin import main as word_command
+        index=sys.argv.index('--word-mac-command')
+        return word_command(sys.argv[index+1:index+3])
     startup_test_directory=None
     if '--startup-test' in sys.argv:
         # Exercise the NORMAL startup/event-loop/release-notes path against a
@@ -303,6 +307,14 @@ def main() -> int:
             QTimer.singleShot(100,finish)
         QTimer.singleShot(650,inspect_normal_startup)
     QTimer.singleShot(150,lambda:first_run_release_notes(window))
+    if sys.platform=='darwin' and not startup_test_directory:
+        def offer_word_plugin():
+            settings=database.get_settings()
+            if settings.get('mac_word_plugin_offer')=='2.2.1-v1':return
+            database.save_settings({'mac_word_plugin_offer':'2.2.1-v1'})
+            from mac_word_plugin import install_plugin
+            install_plugin(window)
+        QTimer.singleShot(2000,offer_word_plugin)
     result=application.exec()
     clear_path=getattr(application,'pending_clear_data',None)
     uninstall=getattr(application,'pending_uninstall',None)

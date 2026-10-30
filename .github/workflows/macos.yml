@@ -45,6 +45,8 @@ jobs:
         run: |
           python packaging/prepare_assets.py
           python packaging/make_icon.py
+          osacompile -o build/BiomedReader.scpt app/assets/mac_word/BiomedReader.applescript
+          python packaging/check_word_template.py
       - name: Test cache recovery, PDF lifecycle, hiding and macOS paths
         run: QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -v
       - name: Test source browser startup
@@ -64,6 +66,7 @@ jobs:
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --browser-self-test
           cd ../..
           python packaging/pdf_smoke.py
+          python packaging/mac_plugin_smoke.py
       - name: Collect macOS crash diagnostics
         if: failure()
         run: |

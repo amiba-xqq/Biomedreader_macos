@@ -2551,6 +2551,12 @@ class SettingsPage(QWidget):
         self.ai_image_route.currentIndexChanged.connect(lambda:database.save_settings({'ai_image_route':self.ai_image_route.currentData()}));ai_form.addRow('AI模型图生成',self.ai_image_route)
 
         note=QLabel('自动报告默认关闭。开启后会逐篇读取本机有权限访问的 PDF／网页，并将提取文字发送到已开启的所选服务，按服务商规则计费。零新增不调用 AI；没有正文权限时只分析摘要并标注。选定服务未开启时使用其它已开启服务。');note.setWordWrap(True);ai_form.addRow(note);layout.addWidget(ai_box)
+        if sys.platform=='darwin':
+            word_box=QGroupBox('Word 插件');word_row=QVBoxLayout(word_box)
+            word_note=QLabel('原生 VBA＋Ribbon 插件：插入／更新引用、期刊样式、字体及 EndNote 文档导出。首次使用请安装模板并重新打开 Word；无需启用所有宏。Mac Word/EndNote 实机兼容性尚待验证。');word_note.setWordWrap(True);word_row.addWidget(word_note)
+            install_word=QPushButton('安装 / 修复 Word 插件');install_word.setProperty('secondary',True)
+            from mac_word_plugin import install_plugin
+            install_word.clicked.connect(lambda:install_plugin(self));word_row.addWidget(install_word,0,Qt.AlignmentFlag.AlignLeft);layout.addWidget(word_box)
         self.biorxiv_years = QSpinBox()
         self.biorxiv_years.setRange(1, 1000)
         self.biorxiv_years.setValue(max(1, min(1000, int(settings.get('biorxiv_recent_years', '2')))))

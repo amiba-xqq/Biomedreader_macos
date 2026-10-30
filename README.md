@@ -32,7 +32,7 @@ Windows 提供 Biomed Reader Word 插件，用于插入/更新引文、切换期
 ### macOS 12 及以上
 
 按芯片下载对应 DMG，打开后把 Biomed Reader 拖入 Applications。应用未进行 Apple Developer ID 公证，首次打开可能需要在系统“隐私与安全性”中确认可信来源后允许打开。
-Mac 不安装 Windows COM 插件；在收藏页使用“导出 Word / EndNote”生成含引文域、嵌入记录与文末参考文献的 DOCX，交由已安装的 Mac EndNote CWYW 接管。没有原生 Mac Word 工具栏。
+Mac 版新增原生 VBA＋Ribbon Word 模板插件，保留收藏页“导出 Word / EndNote”功能。插件提供打开软件、插入与更新引用、期刊样式和字体选择、导出嵌入文献记录的 EndNote Word 文档。Mac 实际 Word/EndNote 联调尚未完成，不能宣称与 Windows 已验证版具有完全一致的实机兼容性。
 API Key 使用 macOS 钥匙串保护。首次保存可能提示授权；从 Windows 迁移的数据中的密钥需要在 Mac 上重新输入。Codex 连接需要另行安装官方 Codex 组件并完成官方登录。
 
 ### 基本流程
@@ -64,3 +64,24 @@ API Key 使用 macOS 钥匙串保护。首次保存可能提示授权；从 Wind
 - 清理无用缓存会清除未被AI报告引用且未收藏的方案文章的AI总结，以及已删除AI推荐、知识库、科学问题、reviewer和寻找文章对话的遗留索引/空闲空间。仍在使用的收藏、历史记录与知识库保留。
 
 升级前请退出软件和Word，并备份本地数据。Windows安装版与完整目录ZIP包含相同程序；ZIP请完整解压后运行。
+
+## Mac 原生 Word 模板插件（2.2.1）
+
+1. 把 DMG 中的 Biomed Reader 拖入“应用程序”，从应用程序打开。不要从挂载的 DMG 中安装插件。
+2. 退出 Word。首次打开软件会提示安装插件；也可进入设置 → Word 插件 → 安装 / 修复 Word 插件。
+3. 重新打开 Word，按 Office 提示只信任本地 BiomedReader.dotm 模板。**不需要启用所有宏，也不需要终端用户开启“信任对VBA工程对象模型的访问”**。
+4. 在 Word 的 Biomed Reader 选项卡点击打开软件；在收藏页勾选文章，再回到 Word 将光标放在正文，点击插入引用。重复插入会更新编号和文末参考文献。
+5. 下拉选择期刊或点击选择期刊按关键词筛选；更换样式后点击更新引用文献。参考文献字体使用 Word 原生字体对话框，默认为 Arial、常规、10.5 磅；引文是否为上标由期刊样式决定。
+6. 更新时，如果引用所对应的原收藏分组已不再包含该文章，会移除该引文并重新编号。跨文献库更新会拒绝执行，防止误删。
+7. 导出为 EndNote 会创建新的文档副本，保留嵌入文献记录（包括 Volume 和 Pages）与文末参考文献。需另行安装 EndNote 桌面版及官方 CWYW；在 EndNote 选项卡核对并更新后再用于正式稿件。软件会尝试调用 CWYW 更新命令，若未能自动格式化请在 EndNote 选项卡手动更新。
+
+默认安装位置：
+
+- `~/Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word/BiomedReader.dotm`
+- `~/Library/Application Scripts/com.microsoft.Word/BiomedReader.applescript`
+
+自定义 Word 启动目录的用户需把模板放入实际启动目录。卸载插件时，退出 Word，移走上述两个文件即可；既有文档请先备份。安装修复会为旧模板及脚本保留 `.previous` 副本。
+
+**验证范围与兼容边界：** 已在 Windows Word 中编译同一套跨平台 VBA 并验证两次插入、更新、分组失效删除和嵌入 EndNote 字段；GitHub macOS 构建验证 AppleScript 语法、模板结构、程序启动及插件 CLI。由于没有安装 Word/EndNote 的 Mac 环境，Mac Ribbon 加载、沙箱授权、字体对话框及 CWYW 接管尚未实机验证，请先使用稿件副本。此版本包含可用功能实现，但不作为“已完成 Mac 全功能兼容认证”的声明。
+
+Biomed Reader 应用维持 macOS 12+ 的部署目标；[微软当前最新版 Office 的系统要求](https://learn.microsoft.com/en-us/officeupdates/release-notes-office-for-mac)高于 macOS 12，旧系统只能使用其可安装的 Office 版本。参考目标为 Word 16.x、EndNote 2025.4.1；[EndNote 支持范围](https://endnote.com/product-details/compatibility/)以官方说明为准。
