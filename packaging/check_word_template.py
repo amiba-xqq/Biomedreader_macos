@@ -9,7 +9,7 @@ with zipfile.ZipFile(p) as z:
 print('Native VBA template, embedded project and Ribbon validated.')
 
 import sys
-sys.path.insert(0,str(p.parents[3]))
+sys.path.insert(0,str(p.parents[2]))
 from mac_word_plugin import validate_template
 assert validate_template(p)
 print("OOXML compatibility namespaces validated.")
