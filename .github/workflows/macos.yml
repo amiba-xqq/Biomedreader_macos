@@ -75,7 +75,7 @@ jobs:
           cp -R 'dist/Biomed Reader.app' build/dmg/
           ln -s /Applications build/dmg/Applications
           cp README.md build/dmg/README.md
-          hdiutil create -volname 'Biomed Reader' -srcfolder build/dmg -format UDZO -ov 'outputs/BiomedReader_2.2.1_macOS12_${{ matrix.label }}.dmg'
+          python packaging/make_dmg.py 'BiomedReader_2.2.1_macOS12_${{ matrix.label }}.dmg'
           hdiutil verify 'outputs/BiomedReader_2.2.1_macOS12_${{ matrix.label }}.dmg'
           cd outputs
           shasum -a 256 *.dmg > 'SHA256_${{ matrix.label }}.txt'
