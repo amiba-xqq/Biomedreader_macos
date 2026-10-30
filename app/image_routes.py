@@ -7,10 +7,14 @@ ROUTES={'ark':'火山引擎方舟 · Ark','bailian':'阿里云百炼','glm':'GLM
 MODELS={'ark':['doubao-seedream-5-0-260128','doubao-seedream-4-5-251128','doubao-seedream-4-0-250828'],'qwen':['qwen-image-2.0-pro','qwen-image-2.0-pro-2026-06-22','qwen-image-2.0','qwen-image-max','qwen-image-plus'],'wan':['wan2.7-image-pro','wan2.7-image'],'zimage':['z-image-turbo'],'glm':['glm-image']}
 ENDPOINTS={'ark':'https://ark.cn-beijing.volces.com/api/v3/images/generations','glm':'https://open.bigmodel.cn/api/paas/v4/images/generations'}
 MODELS['bailian']=MODELS.pop('qwen')+MODELS.pop('wan')+MODELS.pop('zimage')
+MODELS['bailian']=['qwen-image-3.0-pro','qwen-image-3.0']+MODELS['bailian']+['qwen-image-2.0-pro-2026-04-22','qwen-image-2.0-pro-2026-03-03','qwen-image-2.0-2026-03-03','wan2.6-t2i','wan2.6-image','wan2.5-t2i-preview','wan2.2-t2i-plus','wan2.2-t2i-flash','wanx2.1-t2i-plus','wanx2.1-t2i-turbo','wanx2.0-t2i-turbo']
 ALI=('bailian',)
 
 def accepts_reference(model):
-    return model.startswith(('qwen-image-2.','wan2.7-'))
+    return model.startswith(('qwen-image-2.','qwen-image-3.','wan2.7-')) or model=='wan2.6-image'
+
+def legacy_wan(model):
+    return model.startswith(('wan','wanx')) and '-t2i' in model and not model.startswith('wan2.6-')
 
 def ali_base(region):
     if region not in ('cn','sg'):raise ValueError('请选择百炼Key对应的北京或新加坡区域。')
@@ -19,10 +23,15 @@ def image_payload(provider,model,prompt,images=None):
     images=images or []
     if provider=='ark':return dict(model=model,prompt=prompt,size='2K',response_format='b64_json',watermark=True,**(dict(image=images) if images else {}))
     if provider=='glm':return dict(model=model,prompt=prompt,size='1568x1056')
+    if legacy_wan(model):return dict(model=model,input=dict(prompt=prompt),parameters=dict(n=1,size='1280*1280',watermark=True))
     content=([dict(image=v) for v in images] if accepts_reference(model) else [])+[dict(text=prompt)]
-    return dict(model=model,input=dict(messages=[dict(role='user',content=content)]),parameters=dict(n=1,size='1536*1024',watermark=True))
+    parameters=dict(n=1,size='1280*1280',watermark=True)
+    if model=='wan2.6-image':parameters['enable_interleave']=not bool(images)
+    return dict(model=model,input=dict(messages=[dict(role='user',content=content)]),parameters=parameters)
 def result_item(data):
     if data.get('data'):return data['data'][0]
+    for result in (data.get('output') or {}).get('results',[]):
+        if result.get('url'):return dict(url=result['url'])
     for choice in (data.get('output') or {}).get('choices',[]):
         for part in (choice.get('message') or {}).get('content',[]):
             if part.get('image'):return dict(url=part['image'])
@@ -38,7 +47,7 @@ def discover(provider,key,region='cn',session=None):
             if response.status_code!=200:raise ValueError('模型目录读取失败（HTTP '+str(response.status_code)+'），保留官方预置目录；可输入控制台模型或推理接入点ID。')
             rows=[r['id'] for r in response.json().get('data',[]) if isinstance(r,dict) and isinstance(r.get('id'),str)]
             if provider=='ark':rows=[r['id'] for r in response.json().get('data',[]) if isinstance(r,dict) and isinstance(r.get('id'),str) and ('seedream' in r['id'].lower() or 'image' in (r.get('output_modalities') or []) or r['id'].startswith('ep-'))]
-            else:rows=[v for v in rows if (v.startswith(('qwen-image','z-image')) or (v.startswith('wan') and 'image' in v))]
+            else:rows=[v for v in rows if ('edit' not in v and v.startswith(('qwen-image','z-image'))) or (v.startswith('wan') and ('-t2i' in v or v in ('wan2.6-image','wan2.7-image','wan2.7-image-pro')))]
             if not rows:raise ValueError('接口未返回该系列图像模型，保留预置目录，实际权限以控制台为准。')
             return sorted(set(rows))
         finally:response.close()
@@ -97,10 +106,30 @@ def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
         images=reference.get('images') or []
         payload=image_payload(provider,cfg['model'],prompt,images)
         url=ali_base(cfg['region'])+'/api/v1/services/aigc/multimodal-generation/generation' if provider in ALI else ENDPOINTS[provider]
+        if provider in ALI and legacy_wan(cfg['model']):
+            url=ali_base(cfg['region'])+'/api/v1/services/aigc/text2image/image-synthesis';headers['X-DashScope-Async']='enable'
         response=session.post(url,headers=headers,json=payload,timeout=(15,300),allow_redirects=False)
         try:
-            if response.status_code!=200:raise ValueError('绘图接口返回HTTP '+str(response.status_code)+'；未自动重试或切换通道，请核对权限、额度与模型名称。')
-            data=response.json();item=result_item(data)
+            if response.status_code not in (200,202):raise ValueError('绘图接口返回HTTP '+str(response.status_code)+'；未自动重试或切换通道，请核对权限、额度与模型名称。')
+            data=response.json()
+            if provider in ALI and legacy_wan(cfg['model']):
+                import time,re
+                task=(data.get('output') or {}).get('task_id','')
+                if not re.fullmatch(r'[A-Za-z0-9-]{1,120}',task):raise ValueError('绘图接口未返回有效任务ID。')
+                deadline=time.monotonic()+480
+                while time.monotonic()<deadline:
+                    if cancelled():raise InterruptedError('已停止等待；云端任务可能继续计费，请在百炼控制台核对。')
+                    time.sleep(3)
+                    polled=session.get(ali_base(cfg['region'])+'/api/v1/tasks/'+task,timeout=(15,30),allow_redirects=False)
+                    try:
+                        if polled.status_code!=200:raise ValueError('绘图任务查询失败，未重新生成；请在百炼控制台查看原任务。')
+                        data=polled.json()
+                    finally:polled.close()
+                    state=(data.get('output') or {}).get('task_status')
+                    if state=='SUCCEEDED':break
+                    if state in ('FAILED','CANCELED','UNKNOWN'):raise ValueError('百炼绘图任务未完成：'+state)
+                else:raise ValueError('绘图任务仍未完成，未重新生成；请到百炼控制台查看。')
+            item=result_item(data)
             if item.get('b64_json'):raw=base64.b64decode(item['b64_json'],validate=True)
             elif item.get('url'):
                 # Independent download client: never send the API Key to image/CDN URLs.
@@ -194,16 +223,28 @@ class ImageSettingsDialog(QDialog):
         if not self.loading:super().reject()
 class ImageModelCard(QFrame):
     def __init__(self,manager,provider):
-        super().__init__();self.setObjectName('Card');self.manager=manager;self.provider=provider;box=QVBoxLayout(self);title=QLabel(ROUTES[provider]);title.setStyleSheet('font-size:16pt;font-weight:700;color:#A45D23;');box.addWidget(title);self.state=QLabel();box.addWidget(self.state);row=QHBoxLayout();settings=QPushButton('设置');settings.setProperty('secondary',True);settings.clicked.connect(self.settings);row.addWidget(settings);self.toggle=QPushButton();self.toggle.clicked.connect(self.switch);row.addWidget(self.toggle);row.addStretch();box.addLayout(row);manager.changed.connect(self.refresh);self.refresh()
-        if provider=='bailian':
-            bill=QPushButton('打开用户用量/账单');bill.setProperty('secondary',True);bill.clicked.connect(self.open_billing);row.insertWidget(2,bill)
-            note=QLabel('余额请在官方控制台查看；百炼 API Key 不等同于费用中心 AccessKey。课题组学生请由 PI 核对账单。');note.setWordWrap(True);box.addWidget(note)
+        from PySide6.QtWidgets import QToolButton,QWidget,QSizePolicy
+        from PySide6.QtCore import Qt
+        super().__init__();self.setObjectName('AIModelCard');self.manager=manager;self.provider=provider;box=QVBoxLayout(self)
+        header=QHBoxLayout();self.heading=QToolButton();self.heading.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Fixed);self.heading.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon);self.heading.setArrowType(Qt.ArrowType.RightArrow);self.heading.setCheckable(True);self.heading.toggled.connect(self.expand);header.addWidget(self.heading,1)
+        settings=QPushButton('设置');settings.setProperty('secondary',True);settings.clicked.connect(self.settings);header.addWidget(settings);box.addLayout(header)
+        self.model_name=QLabel();self.model_name.setWordWrap(True);box.addWidget(self.model_name);self.state=QLabel();box.addWidget(self.state)
+        row=QHBoxLayout();self.toggle=QPushButton();self.toggle.clicked.connect(self.switch);row.addWidget(self.toggle);row.addStretch();box.addLayout(row)
+        self.details=QWidget();detail=QVBoxLayout(self.details);detail.setContentsMargins(0,10,0,0);self.usage=QLabel();self.usage.setWordWrap(True);detail.addWidget(self.usage)
+        note=QLabel('图片费用以官方账单为准；课题组学生请由 PI 核对账单。普通推理 API Key 不用于查询需要独立账户权限的现金余额。');note.setWordWrap(True);detail.addWidget(note)
+        bill=QPushButton('打开用户用量/账单');bill.setProperty('secondary',True);bill.clicked.connect(self.open_billing);bill_row=QHBoxLayout();bill_row.addWidget(bill);bill_row.addStretch();detail.addLayout(bill_row);box.addWidget(self.details);self.details.hide();manager.changed.connect(self.refresh);self.refresh()
+    def expand(self,checked):
+        from PySide6.QtCore import Qt
+        self.details.setVisible(checked);self.heading.setArrowType(Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow)
     def open_billing(self):
         from PySide6.QtGui import QDesktopServices
         from PySide6.QtCore import QUrl
-        QDesktopServices.openUrl(QUrl('https://bailian.console.aliyun.com/'))
+        QDesktopServices.openUrl(QUrl('https://bailian.console.aliyun.com/' if self.provider=='bailian' else 'https://console.volcengine.com/ark/'))
     def refresh(self):
-        cfg=config(self.manager.store.database,self.provider);self.state.setText(cfg['model']+' · '+('已开启 · 仅用于模型图' if cfg['enabled'] else '未开启 · 仅用于模型图'));self.toggle.setText('关闭模型' if cfg['enabled'] else '开启模型')
+        cfg=config(self.manager.store.database,self.provider);enabled=cfg['enabled'];self.heading.setText(ROUTES[self.provider]);self.heading.setStyleSheet('font-size:16pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
+        self.model_name.setText('当前模型：'+cfg['model']);self.state.setText(('● 已开启 · ' if enabled else '○ 未开启 · ')+'仅用于模型图');self.toggle.setText('关闭模型' if enabled else '开启模型')
+        self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
+        self.usage.setText('课题组通道：PI Key 保留在服务端；个人 Token 用量请在“我的用量”查看。' if cfg.get('route')=='lab' else '个人 API Key 直连。图像按服务商规则计费；完整调用量与费用请在官方账单查看。')
     def settings(self):ImageSettingsDialog(self.manager.store.database,self.provider,self).exec();self.refresh()
     def switch(self):
         db=self.manager.store.database;cfg=config(db,self.provider)

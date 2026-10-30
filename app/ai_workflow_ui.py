@@ -334,7 +334,13 @@ class AIReportDialog(QDialog):
         self.language_summary=summary
         self.presentation.set_result(summary or dict(text=failures.get(key,'总结已删除或尚未生成。')),article,self.mode.currentData());self.stack.setCurrentIndex(1)
         self.language_control.refresh(self.mode.currentData()=='brief')
-        self.render_button.setText('重新生成图文报告' if summary and summary.get('presentation') else '生成新版图文报告')
+        available=(self.report or {}).get('content_modes',{}).get(key,summary.get('report_content_modes',['brief','news']) if summary else [])
+        mode=self.mode.currentData();self.missing_part=mode not in available
+        if self.missing_part:
+            if mode=='news':self.presentation.news.clear()
+            else:
+                for label in self.presentation.brief_labels:label.clear()
+        self.render_button.setText(('生成新闻稿' if mode=='news' else '生成简报') if self.missing_part else ('重新生成新闻稿' if mode=='news' else '重新生成简报'))
         self.report_status.setText(('分析模型：'+summary.get('provider','')+' / '+summary.get('model','')+' · '+__import__('reasoning').result_label(summary)+' · 读取范围：'+summary.get('coverage','')) if summary else failures.get(key,'尚无总结，可生成图文报告。'))
     def change_mode(self):
         mode=self.mode.currentData();self.manager.store.database.save_settings({'ai_report_mode':mode});self.export_button.setEnabled(mode=='news' and not self.editorial_task)
@@ -352,13 +358,17 @@ class AIReportDialog(QDialog):
         try:engine=AnalysisEngine(self.manager.store,provider)
         except ValueError as error:QMessageBox.information(self,'无法生成',str(error));return
         engine.cancelled=lambda:not self.manager.store.database.get_profile(self.profile_id) or self.manager.repository.epoch(key)!=epoch
-        self.render_button.setEnabled(False);self.export_button.setEnabled(False);self.report_status.setText('正在读取原文并生成简报、新闻稿和机制示意图；可最小化本窗口。')
-        def work():return dict(key=key,epoch=epoch,result=engine.summarize(self.manager.store.database,article,web_fetch=self.manager.article_reader.get))
+        self.render_button.setEnabled(False);self.export_button.setEnabled(False);self.report_status.setText('正在基于上次材料补充当前报告内容；可最小化本窗口。')
+        previous=self.manager.repository.summary(key);part=self.mode.currentData()
+        def work():return dict(key=key,epoch=epoch,part=part,result=engine.summarize(self.manager.store.database,article,web_fetch=self.manager.article_reader.get,content_mode=part,previous=previous))
         self.editorial_task=self.manager.submit(self,work,'editorial_loaded','editorial_failed')
     def editorial_loaded(self,payload):
         self.editorial_task=None;self.render_button.setEnabled(True)
         try:self.manager.repository.save_summary(payload['key'],payload['result'],'report:'+str(self.profile_id),payload['epoch'])
         except ValueError as error:self.editorial_failed(str(error));return
+        if self.report:
+            modes=self.report.setdefault('content_modes',{});existing=modes.get(payload['key'],[])
+            modes[payload['key']]=sorted(set(existing)|{payload['part']});self.coordinator.drafts[self.profile_id]=self.report;self.dirty=True
         self.change_mode();self.manager.changed.emit()
         if not payload['result'].get('presentation'):self.report_status.setText('模型未返回完整的结构化稿件，保留文字总结；未自动重复付费调用。可人工核查后重试。')
     def editorial_failed(self,message):
@@ -367,7 +377,7 @@ class AIReportDialog(QDialog):
         if self.editorial_task or self.mode.currentData()!='news' or not self.report:return
         keys=[self.selected_key] if self.selected_key and self.export_scope.currentIndex()==0 else self.report['keys']
         items=[(self.manager.store.database.article_record(key) or {},self.manager.repository.summary(key)) for key in keys]
-        if any(not summary or not summary.get('presentation') for _,summary in items):QMessageBox.information(self,'请先生成新闻稿','所选范围包含没有新版图文报告的文章，请先逐篇生成后导出。');return
+        if any(not summary or not summary.get('presentation') or 'news' not in self.report.get('content_modes',{}).get(article.get('article_key'),summary.get('report_content_modes',['brief','news'])) for article,summary in items):QMessageBox.information(self,'请先生成新闻稿','所选范围包含没有新版图文报告的文章，请先逐篇生成后导出。');return
         from path_dialog import QFileDialog
         path,_=QFileDialog.getSaveFileName(self,'导出带模型水印的新闻稿','BiomedReader_研究新闻稿.pdf','PDF (*.pdf)')
         if not path:return
@@ -439,7 +449,7 @@ class AIReportCoordinator(QObject):
         self.running.add(profile_id);self.changed.emit()
         stop=threading.Event();self.jobs[('stop',profile_id)]=stop;engine.cancelled=stop.is_set
         def work():
-            errors={};keys=batch['keys']
+            errors={};keys=batch['keys'];content_mode=settings.get('ai_report_content','brief');modes={}
             for index,key in enumerate(keys,1):
                 if stop.is_set():
                     for remaining in keys[index-1:]:errors[remaining]='已停止后续调用。'
@@ -448,8 +458,10 @@ class AIReportCoordinator(QObject):
                 self.manager.progress.emit('report:'+str(profile_id),f'AI报告 {index}/{len(keys)}')
                 epoch=self.manager.repository.epoch(key);cached=self.manager.repository.summary(key)
                 try:
-                    if not cached or (cached.get('provider'),cached.get('model'))!=(engine.provider,engine.model):
-                        article=self.window.database.article_record(key);cached=engine.summarize(self.window.database,article,web_fetch=self.manager.article_reader.get)
+                    required={'brief','news'} if content_mode=='both' else {content_mode}
+                    if not cached or (cached.get('provider'),cached.get('model'))!=(engine.provider,engine.model) or not required.issubset(set(cached.get('report_content_modes',['brief','news']))):
+                        article=self.window.database.article_record(key);cached=engine.summarize(self.window.database,article,web_fetch=self.manager.article_reader.get,content_mode=content_mode)
+                    modes[key]=['brief','news'] if content_mode=='both' else [content_mode]
                     self.manager.repository.save_summary(key,cached,'report:'+str(profile_id),epoch)
                 except Exception as error:
                     errors[key]=str(error)[:400]
@@ -457,7 +469,7 @@ class AIReportCoordinator(QObject):
                     if isinstance(error,(AIAPIError,InterruptedError)):
                         for remaining in keys[index:]:errors[remaining]='未继续调用：AI 服务返回错误，请检查额度、网络或模型。'
                         break
-            return dict(profile_id=profile_id,keys=keys,window=batch['window'],errors=errors,created_at=now(),batch_id=batch['created_at'])
+            return dict(profile_id=profile_id,keys=keys,content_modes=modes,window=batch['window'],errors=errors,created_at=now(),batch_id=batch['created_at'])
         receiver=ReportReceiver(self,profile_id);self.jobs[profile_id]=receiver
         self.manager.submit(receiver,work,'completed','failed')
     def completed(self,result):

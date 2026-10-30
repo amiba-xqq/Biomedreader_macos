@@ -11,7 +11,7 @@ def clean_database(database,progress=lambda value:None):
     from cache_cleanup import collect_unused
     progress('正在检查文章、收藏、关键词方案及AI历史引用……')
     with database.connect() as c:
-        c.execute('BEGIN IMMEDIATE');report=collect_unused(c)
+        c.execute('BEGIN IMMEDIATE');report=collect_unused(c,prune_unreported_summaries=True)
         if c.execute('PRAGMA foreign_key_check').fetchone():raise ValueError('数据库关联校验未通过，已撤销本次清理，请先备份。')
     progress('无用缓存已清理，正在压缩数据库并回收磁盘空间……')
     try:
@@ -61,6 +61,6 @@ def request_cleanup(page):
     from local_maintenance import busy
     if busy(page.window()) or page.backup_task or page.cleanup_task:QMessageBox.information(page,'暂不能清理','请先结束联网搜索、AI任务、备份、分享及数据迁移。');return
     text=('将清理主资料库、biorxiv_metadata.sqlite3 中不再使用的文章资料，以及 website_progress.sqlite3 中过期或属于已删除方案的临时网页，并分别压缩数据库。\n'
-          '包括已删除“AI寻找文章”对话的遗留候选卡片、文章引用索引，以及已删除对话/续聊资料留下的数据库空闲空间。\n\n保留所有收藏文章、已链接PDF、有效方案缓存、仍存在的AI对话及其续聊资料、期刊目录和增量检索记录。不删除用户自行选择的原始上传文件。\n建议先使用“备份本地数据（ZIP）”。是否继续？')
+          '包括已删除AI推荐关键词方案、AI寻找文章对话的遗留索引和数据库空闲空间。关键词方案中的文章若未收藏、且不在任何已保存AI报告列表中，将删除其AI总结（含简报、新闻稿和模型图）；文章检索缓存仍保留。\n\n保留所有收藏文章、已链接PDF、有效方案缓存、仍存在的AI对话及其续聊资料、期刊目录和增量检索记录。不删除用户自行选择的原始上传文件。\n建议先使用“备份本地数据（ZIP）”。是否继续？')
     if QMessageBox.question(page,'清理无用缓存',text,QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,QMessageBox.StandardButton.No)!=QMessageBox.StandardButton.Yes:return
     page.cleanup_task=CacheCleanupDialog(page);page.cleanup_task.start()

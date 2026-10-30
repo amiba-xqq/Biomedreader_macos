@@ -50,7 +50,7 @@ class LabAPI:
         for attempt in range(3 if reconnect else 1):
             with AIClient('deepseek',self.token or 'public-registration-request') as client:
                 endpoint=initial_endpoint if attempt!=1 else (LAB_BACKUP_URL if initial_endpoint==LAB_URL else LAB_URL)
-                if attempt==2:configure_system_proxy(client.session)
+                configure_system_proxy(client.session)
                 client.base=endpoint+'/api/lab';client.request_timeout=(20,600 if path=='/image' else 120 if path=='/biomni' else 60)
                 client.timeout_message='课题组登录／管理连接超时；未调用生成模型，不产生模型Token费用。'
                 client.http_error=gateway_error

@@ -6,7 +6,7 @@ from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QDialog,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QTextBrowser,QDialogButtonBox
 from version import APP_VERSION
 
-BUILD_ID='2.2.1-20261029.7'
+BUILD_ID='2.2.1-20261030.4'
 SECTIONS=[
 ('AI寻找文章自动读取网页','本机网页进入目标文章且内容稳定后自动读取，减少手动点击。','仅对AI寻找文章启用。已确认目标文章身份、页面加载完成且正文稳定后自动读取；仅摘要页面会额外等待正文加载。仍处于验证、登录或付费提示时继续等待用户，不自动操作验证码、不提交登录或绕过访问限制。保留“读取当前文章”手动入口；取消和切换文章会停止或重置检测。'),
 ('多格式300 dpi模型图','模型直接交付图像文件，优先PDF；不支持PDF时可使用PNG、JPG、TIF等格式。','对OpenAI文件工具、Codex本机连接和Biomni的文件结果按PDF优先选择；PDF不可用时检查同一任务返回的图片，不自动额外调用模型。验证文件真实格式、完整性和300 dpi分辨率，不用文字、结构图或旧图替代。新闻稿和离线缓存支持这些图片，“保存模型图”保留实际返回的原始格式；旧PDF结果继续可读。没有文件输出能力的通道仍保留文字分析并说明原因。'),

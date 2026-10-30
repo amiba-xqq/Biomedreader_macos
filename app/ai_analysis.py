@@ -95,16 +95,20 @@ class AnalysisEngine:
         artifact=validate_figure(raw)
         if artifact['sha256']==reference.get('sha256'):raise ValueError('模型返回了参考PDF本身，未生成当前论文的新模型图。')
         return artifact
-    def summarize(self,database,article,progress=lambda text:None,web_fetch=None,include_diagram=True):
+    def summarize(self,database,article,progress=lambda text:None,web_fetch=None,include_diagram=True,content_mode="both",previous=None):
         initial_calls,initial_tokens=self.calls,self.tokens
-        document=read_article(database,article,web_fetch=web_fetch,progress=progress)
+        document=(previous or {}).get('report_source') or read_article(database,article,web_fetch=web_fetch,progress=progress)
         material='文章标题：'+str(article.get('title') or '')+'\n作者元数据：'+str(article.get('authors') or '未提供')+'\nDOI：'+str(article.get('doi') or '')+'\n读取范围：'+document['coverage']+'\n来源：'+document['url']+'\n\n摘要（优先结合开头1至2句定位研究前的未知问题；后文发现属于答案，不能泄露到问题中）：\n'+str(article.get('abstract') or '未提供摘要')+'\n\n已读取的论文材料：\n'+document['text']
         from ai_editorial import EDITORIAL_INSTRUCTIONS,parse_editorial,readable_text
-        text,chunked=self.reduce(material,progress,EDITORIAL_INSTRUCTIONS+'\n本次材料范围：'+document['coverage'])
+        instructions=EDITORIAL_INSTRUCTIONS
+        if content_mode=='brief':instructions+='\n本次只生成中英文简报与evidence_limits，news返回空对象；不生成新闻稿或模型图。'
+        elif content_mode=='news':instructions+='\n本次只生成news与evidence_limits，不生成中英文简报；scientific_question固定返回“未生成简报”，highlights和innovations返回空数组。'
+        if previous:material+='\n上次分析（仅作续写上下文，以原文为准）：\n'+str(previous.get('text',''))
+        text,chunked=self.reduce(material,progress,instructions+'\n本次材料范围：'+document['coverage'])
         presentation=parse_editorial(text);news_warning=''
         if presentation:
             from ai_editorial import discovery_sentences
-            if len(discovery_sentences(presentation['news']['main_discovery']))!=2:
+            if content_mode!='brief' and len(discovery_sentences(presentation['news']['main_discovery']))!=2:
                 progress('正在将新闻稿主要发现整理为两句核心结论……')
                 try:
                     revised=self.call('只返回JSON {"main_discovery":"恰好两句话"}。依据提供的论文分析，用2句话概括理论、机制或临床结论，不列具体实验数据、统计量或样本数，不添加分析中没有的事实，保留结论适用范围。',text)
@@ -114,7 +118,7 @@ class AnalysisEngine:
                 except Exception:news_warning='模型未能按两句话整理主要发现；保留已有内容，请核对或重新生成。'
             text=readable_text(presentation)
         generation=None
-        if include_diagram and presentation and (document.get('figure') or {}).get('kind')!='paper':
+        if include_diagram and content_mode!='brief' and presentation and (document.get('figure') or {}).get('kind')!='paper':
             progress('正在请求300 dpi模型图文件，优先PDF，不支持时使用PNG/JPG/TIF等图片……')
             from model_reference import attachment,DIAGRAM_INSTRUCTIONS
             generation=dict(provider=self.provider,model=self.model,status='failed',format='pdf',reference_filename='Model20250528.pdf');presentation['diagram']={}
@@ -133,10 +137,25 @@ class AnalysisEngine:
             source_url=document['url'],coverage=document['coverage'],fulltext=document['fulltext'],chunked=chunked,
             source_hash=hashlib.sha256(document['text'].encode('utf8')).hexdigest())
         if presentation:result['presentation']=presentation
+        if content_mode!='both':
+            result['report_source']={k:v for k,v in document.items() if k in ('text','url','coverage','fulltext')}
+            result['report_content_modes']=[content_mode]
         if news_warning:result['news_warning']=news_warning
         if generation:result['diagram_generation']=generation
         if document.get('figure'):result['figure']=document['figure']
         result['calls']-=initial_calls;result['total_tokens']-=initial_tokens
+        if previous:
+            import copy
+            merged=copy.deepcopy(previous);fresh=result.get('presentation') or {};old=merged.get('presentation') or copy.deepcopy(fresh)
+            if content_mode=='news':
+                old['news']=fresh.get('news',{});old['diagram']=fresh.get('diagram',{})
+                for field in ('figure','diagram_generation'):
+                    if field in result:merged[field]=result[field]
+            elif content_mode=='brief':
+                for field in ('scientific_question','highlights','innovations','english_brief'):old[field]=fresh.get(field)
+            merged.update({k:v for k,v in result.items() if k not in ('presentation','figure','diagram_generation','text','report_content_modes')});merged['presentation']=old
+            merged['report_content_modes']=sorted(set(previous.get('report_content_modes',['brief','news']))|{content_mode})
+            merged['text']=readable_text(old);return merged
         return result
     def questions(self,database,articles,topic,progress=lambda text:None,web_fetch=None,conversation=None):
         from research_report import INSTRUCTIONS,parse_research,research_text

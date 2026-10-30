@@ -30,10 +30,27 @@ def backfill_histories(c):
 def preserve_favorites(c):
     c.execute("INSERT OR IGNORE INTO ai_summary_links SELECT s.article_key,'favorites',NULL FROM ai_summaries s JOIN favorites f ON f.article_key=s.article_key WHERE f.is_favorite=1")
 
-def collect_unused(c,candidates=None):
+def collect_unused(c,candidates=None,prune_unreported_summaries=False):
     """Run inside the caller's transaction; a failed FK check rolls everything back."""
     summaries_before=c.execute('SELECT COUNT(*) FROM ai_summaries').fetchone()[0]
     backfill_histories(c);preserve_favorites(c)
+    c.execute("""INSERT OR IGNORE INTO ai_summary_links
+        SELECT s.article_key,'report:'||r.profile_id,r.profile_id FROM ai_reports r,
+        json_each(r.report_json,'$.keys') j JOIN ai_summaries s ON s.article_key=j.value
+        WHERE j.type='text'""")
+    if prune_unreported_summaries:
+        # Explicit maintenance only: a search cache does not justify keeping
+        # generated summaries forever. Protect summaries appearing in ANY saved
+        # report, and all favorites, regardless of the current group/profile.
+        stale=c.execute("""SELECT s.article_key FROM ai_summaries s
+            WHERE EXISTS(SELECT 1 FROM profile_articles p WHERE p.article_key=s.article_key
+                UNION ALL SELECT 1 FROM profile_results p WHERE p.article_key=s.article_key)
+            AND NOT EXISTS(SELECT 1 FROM favorites f WHERE f.article_key=s.article_key AND f.is_favorite=1)
+            AND NOT EXISTS(SELECT 1 FROM ai_reports r,json_each(r.report_json,'$.keys') j
+                WHERE j.type='text' AND j.value=s.article_key)""").fetchall()
+        c.executemany('INSERT INTO ai_content_epochs VALUES(?,1) ON CONFLICT(article_key) DO UPDATE SET epoch=epoch+1',[(r[0],) for r in stale])
+        c.executemany('DELETE FROM ai_summary_links WHERE article_key=?',[(r[0],) for r in stale])
+        c.executemany('DELETE FROM ai_summaries WHERE article_key=?',[(r[0],) for r in stale])
     c.execute('DELETE FROM ai_finder_cards WHERE history_id NOT IN (SELECT id FROM ai_histories)')
     # Also collect legacy interrupted deletions made before FK enforcement.
     # Dead conversation indexes must not keep attachment/evidence articles live.

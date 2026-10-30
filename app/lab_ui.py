@@ -58,7 +58,8 @@ class LoginDialog(QDialog):
             result=LabAPI().login_pi(provider,key) if self.role=='pi' else LabAPI().login_student(key)
             failures=[]
             for p,k in additional:
-                try:result['identity']=LabAPI(result['token']).save_key(p,k)['identity']
+                try:
+                    gateway=result['identity'].get('gateway_url');identity=LabAPI(result['token'],gateway).save_key(p,k)['identity'];identity['gateway_url']=gateway;result['identity']=identity
                 except ValueError:failures.append(LAB_PROVIDERS[p])
             result['partial_failures']=failures;return result
         self.task=self.manager.submit(self,work,'loaded','failed')
@@ -139,16 +140,19 @@ class LabPanel(QFrame):
     def __init__(self,manager,parent=None):
         super().__init__(parent);self.manager=manager;self.task=None;layout=QVBoxLayout(self)
         row=QHBoxLayout();row.addWidget(QLabel('调用通道'));self.mode=QComboBox();self.mode.addItems(['个人 API Key 直连','课题组授权通道']);row.addWidget(self.mode);row.addStretch();layout.addLayout(row)
-        self.status=plain_label('',True);layout.addWidget(self.status)
+        self.status=plain_label('',True);layout.addWidget(self.status);self.available_buttons={}
         for role,title,description in [('pi','PI · 课题组管理','使用自己的 API Key 建立课题组，创建学生访问ID，管理权限并查看累计 Token 柱状图。'),('student','学生 · 课题组授权','使用 PI 提供的访问ID登录，不需要 PI 的 API Key。也可切回个人通道，使用自己的 Key。')]:
             card=QFrame();card.setObjectName('LabRoleCard');card.setStyleSheet('QFrame#LabRoleCard {background:#FFF8EB;border:1px solid #EDCEAA;border-radius:12px;}');box=QVBoxLayout(card);heading=plain_label(title);heading.setStyleSheet('font-weight:700;color:#B45309;');box.addWidget(heading);box.addWidget(plain_label(description,True));controls=QHBoxLayout()
             login=QPushButton('PI登录' if role=='pi' else '学生登录');login.clicked.connect(lambda checked=False,r=role:self.login(r));controls.addWidget(login)
-            manage=QPushButton('学生与用量管理' if role=='pi' else '我的用量');manage.clicked.connect(lambda checked=False,r=role:self.manage(r));controls.addWidget(manage);controls.addStretch();box.addLayout(controls);layout.addWidget(card)
+            manage=QPushButton('学生与用量管理' if role=='pi' else '我的用量');manage.clicked.connect(lambda checked=False,r=role:self.manage(r));controls.addWidget(manage)
+            available=QPushButton('可用AI模型');available.clicked.connect(self.available_models);controls.addWidget(available);self.available_buttons[role]=available
+            controls.addStretch();box.addLayout(controls);layout.addWidget(card)
         logout=self.logout_button=QPushButton('退出课题组登录');logout.setProperty('secondary',True);logout.clicked.connect(self.logout);logout_row=QHBoxLayout();logout_row.addWidget(logout);logout_row.addStretch();layout.addLayout(logout_row)
         self.mode.currentIndexChanged.connect(self.change_mode);manager.changed.connect(self.reload);self.reload()
     def reload(self):
         state=self.manager.store.lab_state();self.mode.blockSignals(True);self.mode.setCurrentIndex(1 if state and state['active'] else 0);self.mode.blockSignals(False)
         self.logout_button.setVisible(bool(state))
+        for role,button in self.available_buttons.items():button.setVisible(bool(state and state['identity']['role']==role))
         self.status.setText(('已登录：'+state['identity']['name']+' / '+state['identity']['role']+' · '+('课题组通道已启用' if state['active'] else '当前使用个人 Key')) if state else '尚未登录课题组。个人模型设置独立保留。')
     def showEvent(self,event):
         super().showEvent(event)
@@ -165,6 +169,9 @@ class LabPanel(QFrame):
     def change_mode(self,index):
         try:self.manager.store.use_lab(index==1);self.manager.changed.emit()
         except ValueError as error:QMessageBox.information(self,'请先登录',str(error));self.reload()
+    def available_models(self):
+        from lab_models_ui import AvailableModelsDialog
+        AvailableModelsDialog(self.manager,self).exec()
     def login(self,role):LoginDialog(self.manager,role,self).exec()
     def manage(self,role):
         state=self.manager.store.lab_state()
