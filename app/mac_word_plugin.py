@@ -103,11 +103,32 @@ def install_plugin(parent=None):
         if subprocess.run(['/usr/bin/pgrep','-x','Microsoft Word'],capture_output=True).returncode==0:
             QMessageBox.information(parent,'请先退出 Word','请使用 Word → 退出 Word 后，再安装或修复插件。');return
         startup.mkdir(parents=True,exist_ok=True);scripts.mkdir(parents=True,exist_ok=True);directory().mkdir(parents=True,exist_ok=True)
-        for source,target in [(root/'BiomedReader.dotm',startup/'BiomedReader.dotm'),(root/'BiomedReader.applescript',scripts/'BiomedReader.applescript')]:
+        compiled=directory()/'BiomedReader.scpt'
+        compile_bridge(root/'BiomedReader.applescript',compiled,executable,Path.home())
+        probe=run_bridge(compiled,'ping',pack(['']))
+        if probe!=['OK','PONG']:raise ValueError('Word 通信脚本自检未通过。')
+        probe=run_bridge(compiled,'styles',pack(['']))
+        if probe[:1]!=['OK']:raise ValueError('无法通过脚本调用本机应用：'+' | '.join(probe[1:]))
+        for source,target in [(root/'BiomedReader.dotm',startup/'BiomedReader.dotm'),(compiled,scripts/'BiomedReader.scpt')]:
             if target.exists():shutil.copy2(target,target.with_suffix(target.suffix+'.previous'))
             shutil.copy2(source,target)
         validate_template(startup/'BiomedReader.dotm')
         (directory()/'app-path.txt').write_text(str(Path(sys.executable).resolve()),encoding='utf8')
         QMessageBox.information(parent,'Word 插件安装完成','模板已复制并通过结构校验。这是安装完成提示，不是错误。\n请重新打开 Word，按提示信任本插件后使用“Biomed Reader”选项卡。若使用自定义启动目录，请在该目录加载模板。\nMac Word/EndNote 实机联调仍待验证，请先使用文档副本。')
         return True
-    except (OSError,ValueError) as error:QMessageBox.warning(parent,'安装未完成',str(error))
+    except (OSError,ValueError,subprocess.SubprocessError) as error:QMessageBox.warning(parent,'安装未完成',str(error))
+
+def compile_bridge(source,target,executable,user_home):
+    import tempfile
+    def literal(value):return '"'+str(value).replace('\\','\\\\').replace('"','\\"').replace('\r','\\r').replace('\n','\\n')+'"'
+    text=Path(source).read_text(encoding='utf8').replace('__BIOMED_EXECUTABLE__',literal(executable)).replace('__BIOMED_HOME__',literal(user_home))
+    with tempfile.NamedTemporaryFile(suffix='.applescript',delete=False) as file:
+        temp=Path(file.name);file.write(text.encode('utf8'))
+    try:subprocess.run(['/usr/bin/osacompile','-o',str(target),str(temp)],check=True,capture_output=True,timeout=30)
+    finally:temp.unlink(missing_ok=True)
+
+def run_bridge(script,action,payload):
+    # Script path and request are argv, never interpolated as AppleScript code.
+    wrapper='on run argv\nset bridge to load script POSIX file (item 1 of argv)\nreturn bridge\'s bridgeCall(item 2 of argv)\nend run'
+    result=subprocess.run(['/usr/bin/osascript','-e',wrapper,str(script),action+'\n'+payload],check=True,capture_output=True,text=True,timeout=60)
+    return unpack(result.stdout[:-1] if result.stdout.endswith('\n') else result.stdout)

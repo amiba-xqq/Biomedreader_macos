@@ -22,17 +22,22 @@ Private Function Take(ByRef data As String) As String
     Take = Left$(data, n): data = Mid$(data, n + 1)
 End Function
 Private Function Bridge(ByVal action As String, ByVal payload As String) As String
+    On Error GoTo bridgeFailed
     Dim answer As String, state As String
 #If BR_TEST Then
     answer = ActiveDocument.Variables("BRTestResponse_" & action).Value
 #ElseIf Mac Then
-    answer = AppleScriptTask("BiomedReader.applescript", "bridgeCall", action & vbLf & payload)
+    answer = AppleScriptTask("BiomedReader.scpt", "bridgeCall", action & vbLf & payload)
 #Else
     Err.Raise vbObjectError + 203, , "This template is for Word on Mac."
 #End If
     state = Take(answer)
     If state <> "OK" Then Err.Raise vbObjectError + 204, , Take(answer)
-    Bridge = answer
+    Bridge = answer: Exit Function
+bridgeFailed:
+    Dim detail As String: detail = Err.Description
+    If Err.Number = 5 Then detail = "Word无法启动本机通信脚本。请退出Word，在Biomed Reader设置中重新安装/修复插件，再重启Word。若仍失败，请检查脚本权限。"
+    Err.Raise vbObjectError + 204, "Biomed Reader bridge / " & action, detail
 End Function
 Private Sub PutVar(ByVal doc As Document, ByVal key As String, ByVal value As String)
     On Error Resume Next
