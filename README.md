@@ -127,3 +127,13 @@ Biomed Reader 应用维持 macOS 12+ 的部署目标；[微软当前最新版 Of
 升级步骤：使用⌘Q完全退出Word，替换Applications中的Biomed Reader，再从软件设置 → Word插件 → 安装／修复重新安装，最后打开Word。仅替换应用不会替换已安装的旧模板；自定义Word启动目录还需替换该目录中的旧模板，避免重复加载。无需启用所有宏或VBA工程访问权限；仍需按Office提示信任本插件。
 
 已验证：Windows Word从重建的源码工程执行宏、两次插入引用、更新和分组失效删除、带Volume/Pages及文末参考文献的EndNote域导出。GitHub构建同时验证两种Mac架构的应用和AppleScript通信。Mac Word／EndNote实际操作未在此构建环境中验证，不能保证该错误在所有Office配置下均已解决，请先使用文稿副本测试。
+
+
+## 2.2.1 Mac修订：Word后台通信与Codex登录
+
+- Word插入／更新引用等操作优先复用已有后台连接，不再每次激活Biomed Reader窗口；仅“打开Biomed Reader”主动显示主界面。软件未运行时，引用请求以后台模式启动应用，不自动弹出更新内容或插件安装窗口。
+- DMG内置与Apple Silicon／Intel分别匹配的官方Codex CLI 0.166.0，下载源和SHA256在构建配置中固定；无需额外安装Node或修改Finder的PATH。组件仍受账户、网络和服务商权限限制，不包含任何用户账号、API Key或登录令牌。
+- Codex登录兼容官方auth.openai.com和chatgpt.com授权地址，使用系统默认浏览器完成授权，再从Codex读取模型目录。组件使用软件自己的私有登录目录，不读取或复制桌面Codex的登录凭据。
+- 构建新增真实本机Codex的initialize／account/read检查（空白测试目录，不登录、不计费），以及Word后台启动不显示窗口、显式打开才显示的冻结程序检查。macOS最低部署目标仍为12；Mac Word／EndNote实机交互、个人ChatGPT账号的最终授权和推理权限仍需在用户电脑上验证。
+
+升级时退出Biomed Reader与Word，替换Applications内应用后再启动。Codex卡片展开后点击“使用ChatGPT登录”，在默认浏览器授权，返回软件后刷新模型并开启模型。若旧插件有异常，可在设置 → Word插件 → 安装／修复重新安装。官方组件许可随安装包保留；DMG体积会因内置CLI增加。

@@ -5,7 +5,8 @@ root=Path(SPECPATH).resolve().parent
 assets=[(str(root/'app/assets'),'assets')]
 assets+=collect_data_files('citeproc')+collect_data_files('pdfminer')
 assets += [(str(root/'app/README.txt'),'.'),(str(root/'app/THIRD_PARTY_NOTICES.txt'),'.')]
-a=Analysis([str(root/'app/main.py')],pathex=[str(root/'app')],binaries=[],datas=assets,
+assets += [(str(root/'build/codex-runtime/manifest.json'),'codex-runtime')]
+a=Analysis([str(root/'app/main.py')],pathex=[str(root/'app')],binaries=[(str(root/'build/codex-runtime/codex'),'codex-runtime')],datas=assets,
     hiddenimports=['PySide6.QtWebEngineCore','PySide6.QtWebEngineWidgets','citeproc.formatter.html','citeproc.formatter.plain','keyring.backends.macOS'],hookspath=[],runtime_hooks=[],excludes=['tkinter'],noarchive=False)
 pyz=PYZ(a.pure)
 exe=EXE(pyz,a.scripts,[],exclude_binaries=True,name='BiomedReader',debug=False,bootloader_ignore_signals=False,

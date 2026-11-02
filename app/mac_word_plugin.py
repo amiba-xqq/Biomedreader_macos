@@ -18,11 +18,23 @@ def unpack(text):
 
 def directory():return Path.home()/'Library/Application Support/OrangeReader/WordBridge'
 
+def ensure_application(action,folder):
+    """Only an explicit Show request may activate the application's windows."""
+    if sys.platform!='darwin':return
+    if action!='show':
+        try:
+            if 0<=time.time()-(folder/'alive').stat().st_mtime<10:return
+        except OSError:pass
+    app=Path(sys.executable).resolve().parents[2]
+    args=['/usr/bin/open']
+    if action!='show':args+=['-g']
+    args+=['-a',str(app)]
+    if action!='show':args+=['--args','--word-background']
+    subprocess.run(args,check=True,capture_output=True,timeout=15)
+
 def request(action,values=None):
     folder=directory();folder.mkdir(parents=True,exist_ok=True)
-    if sys.platform=='darwin':
-        app=Path(sys.executable).resolve().parents[2]
-        subprocess.run(['/usr/bin/open','-a',str(app)],check=True,capture_output=True)
+    ensure_application(action,folder)
     identifier=uuid.uuid4().hex;path=folder/(identifier+'.request.json');response=folder/(identifier+'.response.json')
     temp=path.with_suffix('.tmp');temp.write_text(json.dumps(dict(action=action,**(values or {})),ensure_ascii=False),encoding='utf8');temp.replace(path)
     try:

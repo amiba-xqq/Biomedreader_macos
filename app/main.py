@@ -49,6 +49,9 @@ def install_exception_handler(log_path: Path) -> None:
 
 
 def main() -> int:
+    if '--codex-self-test' in sys.argv:
+        from codex_diagnostics import self_test
+        return self_test(sys.argv[sys.argv.index('--codex-self-test')+1])
     if '--word-mac-command' in sys.argv:
         from mac_word_plugin import main as word_command
         index=sys.argv.index('--word-mac-command')
@@ -285,13 +288,14 @@ def main() -> int:
         pass
 
     window = MainWindow(database, icon_path)
-    window.show()
+    word_background=sys.platform=='darwin' and '--word-background' in sys.argv
+    if not word_background:window.show()
     from release_notes import first_run_release_notes
     if startup_test_directory:
         from release_notes import ReleaseNotesDialog,BUILD_ID
         settings=QSettings('OrangeReader','BiomedLiterature')
         expected_stamp=BUILD_ID+':'+str(settings.value('installation_id','source'))
-        expect_notes=settings.value('last_release_notes','')!=expected_stamp
+        expect_notes=not word_background and settings.value('last_release_notes','')!=expected_stamp
         def inspect_normal_startup():
             notes=next((widget for widget in application.topLevelWidgets() if isinstance(widget,ReleaseNotesDialog) and widget.isVisible()),None)
             report=dict(version=APP_VERSION,main_window_visible=window.isVisible(),notes_expected=expect_notes,notes_visible=notes is not None)
@@ -304,13 +308,19 @@ def main() -> int:
             # event iteration, then close just this test window.
             def finish():
                 report['notes_stamp_saved']=QSettings('OrangeReader','BiomedLiterature').value('last_release_notes','')==expected_stamp
-                report['passed']=bool(report['main_window_visible'] and report['notes_visible']==expect_notes and report['notes_stamp_saved'] and (not expect_notes or report.get('detailed_notes_work')))
+                if word_background:
+                    window.word_bridge.execute({'action':'show'})
+                    report['explicit_show_visible']=window.isVisible()
+                    report['passed']=bool(not report['main_window_visible'] and not report['notes_visible'] and report['explicit_show_visible'])
+                else:
+                    report['passed']=bool(report['main_window_visible'] and report['notes_visible']==expect_notes and report['notes_stamp_saved'] and (not expect_notes or report.get('detailed_notes_work')))
                 (startup_test_directory/'startup-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8')
                 window.close()
+                application.quit()
             QTimer.singleShot(100,finish)
         QTimer.singleShot(650,inspect_normal_startup)
-    QTimer.singleShot(150,lambda:first_run_release_notes(window))
-    if sys.platform=='darwin' and not startup_test_directory:
+    if not word_background:QTimer.singleShot(150,lambda:first_run_release_notes(window))
+    if sys.platform=='darwin' and not startup_test_directory and not word_background:
         def offer_word_plugin():
             settings=database.get_settings()
             if settings.get('mac_word_plugin_offer')=='2.2.1-v4':return

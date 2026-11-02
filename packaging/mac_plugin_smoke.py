@@ -19,3 +19,9 @@ with tempfile.TemporaryDirectory(prefix='BiomedReader-script-smoke-') as folder:
     assert run_bridge(script,'styles',pack(['']))==['OK',*expected]
     assert run_bridge(script,'invalid-action',pack(['']))[0]=='ERROR'
 print('Real compiled AppleScript handler -> frozen executable -> framed response verified.')
+
+with tempfile.TemporaryDirectory(prefix='BiomedReader-background-smoke-') as folder:
+    subprocess.run([str(exe),'--startup-test',folder,'--word-background'],check=True,timeout=60)
+    report=json.loads((Path(folder)/'startup-report.json').read_text())
+    assert report['passed'] and not report['main_window_visible'] and not report['notes_visible'] and report['explicit_show_visible'],report
+print('Background Word launch stays hidden; explicit Show command reveals the main window.')

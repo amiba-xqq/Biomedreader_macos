@@ -3,17 +3,7 @@ import json,os,queue,shutil,subprocess,threading,time,tempfile,base64
 from pathlib import Path
 from ai_service import INSTRUCTIONS,normal_usage
 
-def executable():
-    path=shutil.which('codex')
-    if path:return path
-    import sys
-    if sys.platform=='darwin':
-        for candidate in ('/Applications/Codex.app/Contents/Resources/codex','/opt/homebrew/bin/codex','/usr/local/bin/codex'):
-            if Path(candidate).is_file() and os.access(candidate,os.X_OK):return candidate
-    roots=Path(os.environ.get('LOCALAPPDATA',''))/'OpenAI/Codex/bin'
-    found=sorted(roots.glob('*/codex.exe'),key=lambda p:p.stat().st_mtime,reverse=True)
-    if found:return str(found[0])
-    raise ValueError('未检测到Codex组件，请安装官方Codex CLI并重新打开软件。')
+from codex_runtime import executable,process_environment,login_url
 
 class RPC:
     def __init__(self):
@@ -21,12 +11,15 @@ class RPC:
         # A separate home avoids altering desktop Codex settings or conversations.
         from data_location import active_data_directory
         home=active_data_directory()/'codex_connection';home.mkdir(parents=True,exist_ok=True)
-        env=dict(os.environ,CODEX_HOME=str(home))
-        for name in ('OPENAI_API_KEY','CODEX_API_KEY','CODEX_ACCESS_TOKEN'):env.pop(name,None)
-        self.process=subprocess.Popen([executable(),'app-server'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,encoding='utf8',env=env,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        binary=executable();env=process_environment(binary,home)
+        try:self.process=subprocess.Popen([binary,'app-server'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,encoding='utf8',env=env,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        except OSError as error:raise ValueError('无法启动Codex组件（'+str(error.errno)+'）。请检查组件架构、macOS版本或重新安装最新版DMG。') from None
         threading.Thread(target=self.read,daemon=True).start()
-        self.request('initialize',dict(clientInfo=dict(name='biomed_reader',title='Biomed Reader',version='2.2'),capabilities={}))
-        self.send(dict(method='initialized'))
+        try:
+            self.request('initialize',dict(clientInfo=dict(name='biomed_reader',title='Biomed Reader',version='2.2.1'),capabilities={}))
+            self.send(dict(method='initialized'))
+        except Exception:
+            self.close();raise
     def read(self):
         try:
             for line in self.process.stdout:
@@ -49,6 +42,7 @@ class RPC:
             if event.get('error'):raise ValueError('Codex组件不可用，请检查安装与登录。')
             if 'id' in event:self.send(dict(id=event['id'],error=dict(code=-32601,message='Interactive tool requests are disabled in Biomed Reader.')))
     def close(self):
+        if self.process.poll() is not None:return
         self.process.terminate()
         try:self.process.wait(5)
         except subprocess.TimeoutExpired:self.process.kill();self.process.wait()
@@ -70,9 +64,10 @@ class CodexClient:
     def login(self):
         import webbrowser
         result=self.rpc.request('account/login/start',dict(type='chatgpt'))
-        url=result.get('authUrl')
-        if not url or not url.startswith('https://auth.openai.com/'):raise ValueError('Codex未返回可识别的官方登录地址。')
-        webbrowser.open(url)
+        url=login_url(result.get('authUrl'))
+        import sys
+        if sys.platform=='darwin':subprocess.run(['/usr/bin/open',url],check=True,capture_output=True,timeout=15)
+        elif not webbrowser.open(url):raise ValueError('未能打开默认浏览器，请检查系统浏览器设置后重试。')
         while True:
             event=self.rpc.next()
             if event.get('method')=='account/login/completed':
