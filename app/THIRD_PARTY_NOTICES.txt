@@ -42,3 +42,5 @@ pdfplumber 0.11.9 and pdfminer.six 20251230 provide local PDF text and font extr
 Their licenses and those of PDFium/pypdfium2, Pillow, cryptography, cffi, pycparser and charset-normalizer
 are retained under assets/third_party_licenses/pdf_import. PDF files are processed locally;
 only recognized titles and DOI identifiers are used for bibliographic matching.
+
+Mac Word template validation uses olefile 0.47 (BSD license). License retained in assets/third_party_licenses/olefile-0.47.txt. https://github.com/decalage2/olefile

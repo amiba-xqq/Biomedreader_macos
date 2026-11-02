@@ -78,7 +78,7 @@ API Key 使用 macOS 钥匙串保护。首次保存可能提示授权；从 Wind
 默认安装位置：
 
 - `~/Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word/BiomedReader.dotm`
-- `~/Library/Application Scripts/com.microsoft.Word/BiomedReader.applescript`
+- `~/Library/Application Scripts/com.microsoft.Word/BiomedReader.scpt`
 
 自定义 Word 启动目录的用户需把模板放入实际启动目录。卸载插件时，退出 Word，移走上述两个文件即可；既有文档请先备份。安装修复会为旧模板及脚本保留 `.previous` 副本。
 
@@ -118,3 +118,12 @@ Biomed Reader 应用维持 macOS 12+ 的部署目标；[微软当前最新版 Of
 本次针对模板已加载但点击按钮出现“无效的过程调用或参数”：安装时生成编译后的BiomedReader.scpt，固定本机应用路径和正确的用户目录，减少Word沙箱环境差异；脚本内部错误返回具体阶段和原因，安装时执行ping及期刊目录调用自检。构建增加真实AppleScript处理器调用冻结应用的端到端测试，不再只检查脚本语法。
 
 升级后请先退出Word，将新应用放入Applications，启动后在设置 → Word插件 → 安装／修复重新安装，再重启Word。旧的模板和脚本会备份；无需调整全部宏权限。若仍失败，请保留新提示的完整错误内容。模板仍须按Office提示信任；本次没有绕过macOS权限或宏安全限制。Mac Word/EndNote实际操作仍需实机核查。
+
+
+## 2.2.1 Mac Word宏储存修订（2026-11-02）
+
+针对模板已安装、Ribbon可见，但点击按钮提示“无法打开宏储存”的情况，重新封装Mac专用VBA工程：使用Macintosh平台标记，移除Windows预编译缓存和未使用的Windows库路径，由本机Word从源码编译。中文提示采用不依赖构建机器ANSI代码页的形式保存。安装和构建会校验宏存储、源码一致性及OOXML结构；通信仍使用上次修订的编译AppleScript脚本和安装自检。
+
+升级步骤：使用⌘Q完全退出Word，替换Applications中的Biomed Reader，再从软件设置 → Word插件 → 安装／修复重新安装，最后打开Word。仅替换应用不会替换已安装的旧模板；自定义Word启动目录还需替换该目录中的旧模板，避免重复加载。无需启用所有宏或VBA工程访问权限；仍需按Office提示信任本插件。
+
+已验证：Windows Word从重建的源码工程执行宏、两次插入引用、更新和分组失效删除、带Volume/Pages及文末参考文献的EndNote域导出。GitHub构建同时验证两种Mac架构的应用和AppleScript通信。Mac Word／EndNote实际操作未在此构建环境中验证，不能保证该错误在所有Office配置下均已解决，请先使用文稿副本测试。

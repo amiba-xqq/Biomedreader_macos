@@ -313,8 +313,8 @@ def main() -> int:
     if sys.platform=='darwin' and not startup_test_directory:
         def offer_word_plugin():
             settings=database.get_settings()
-            if settings.get('mac_word_plugin_offer')=='2.2.1-v3':return
-            database.save_settings({'mac_word_plugin_offer':'2.2.1-v3'})
+            if settings.get('mac_word_plugin_offer')=='2.2.1-v4':return
+            database.save_settings({'mac_word_plugin_offer':'2.2.1-v4'})
             from mac_word_plugin import install_plugin
             install_plugin(window)
         QTimer.singleShot(2000,offer_word_plugin)

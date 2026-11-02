@@ -22,6 +22,23 @@ class NativePluginTests(unittest.TestCase):
         self.assertIn('without altering line endings',(root/'BiomedReader.applescript').read_text(encoding='utf8'))
 
 class TemplateIntegrityTests(unittest.TestCase):
+    def test_portable_vba_cache_and_source_are_validated(self):
+        from vba_storage import validate_storage,portable_source,compress_literals,decompress
+        root=Path(__file__).resolve().parents[1]/'app/assets/mac_word'
+        with zipfile.ZipFile(root/'BiomedReader.dotm') as archive:
+            binary=archive.read('word/vbaProject.bin')
+        source=(root/'BiomedReader.bas').read_text(encoding='utf8')
+        modules=validate_storage(binary,source)
+        self.assertIn(b'AppleScriptTask("BiomedReader.scpt"',modules['BiomedReader'])
+        self.assertTrue(modules['BiomedReader'].isascii())
+        with self.assertRaises(ValueError):validate_storage(binary,source+'\nExtraSource')
+        for data in (b'a',bytes(range(256))*40,portable_source(source)):
+            self.assertEqual(decompress(compress_literals(data)),data)
+        # Changing the cached version header must fail before installation.
+        old=bytes.fromhex('CC61FFFF000300')
+        self.assertIn(old,binary)
+        with self.assertRaises(ValueError):validate_storage(binary.replace(old,bytes.fromhex('CC61B500000300'),1))
+
     def test_final_template_and_dangling_namespace_are_distinguished(self):
         import tempfile
         from mac_word_plugin import validate_template

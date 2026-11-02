@@ -76,7 +76,9 @@ def validate_template(path):
         return False
     with zipfile.ZipFile(path) as archive:
         if archive.testzip() is not None:raise ValueError('Word 模板文件损坏。')
-        if not archive.read('word/vbaProject.bin').startswith(bytes.fromhex('D0CF11E0A1B11AE1')):raise ValueError('Word 模板缺少 VBA 工程。')
+        from vba_storage import validate_storage
+        source=Path(path).with_name('BiomedReader.bas')
+        validate_storage(archive.read('word/vbaProject.bin'),source.read_text(encoding='utf8') if source.is_file() else None)
         for name in archive.namelist():
             if not name.endswith(('.xml','.rels')):continue
             doc=minidom.parseString(archive.read(name))
