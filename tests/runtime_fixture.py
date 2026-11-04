@@ -31,7 +31,8 @@ class Runtime22Tests:
                 manager=getattr(widget,'manager',None)
                 if getattr(getattr(manager,'store',None),'database',None) is self.db:
                     manager.abandon_owner(widget)
-                    if hasattr(widget,'cancel_tasks'):widget.cancel_tasks()
+                    coordinator=getattr(widget,'coordinator',None);cancel=getattr(coordinator,'cancel',None)
+                    if callable(cancel) and getattr(widget,'profile_id',None) in getattr(coordinator,'running',()):cancel(widget.profile_id)
                     widget.approved=True;widget._closing_approved=True
                     if isinstance(widget,QDialog):QDialog.done(widget,0)
                     widget.deleteLater()
