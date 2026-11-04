@@ -49,7 +49,8 @@ jobs:
           python -c "import sys;from pathlib import Path;sys.path.insert(0,'app');from mac_word_plugin import compile_bridge;compile_bridge(Path('app/assets/mac_word/BiomedReader.applescript'),Path('build/BiomedReader.scpt'),Path('/usr/bin/true'),Path.home())"
           python packaging/check_word_template.py
       - name: Test cache recovery, PDF lifecycle, hiding and macOS paths
-        run: QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -v
+        timeout-minutes: 12
+        run: QT_QPA_PLATFORM=offscreen python packaging/run_tests.py
       - name: Test source browser startup
         run: |
           mkdir -p build/source-smoke

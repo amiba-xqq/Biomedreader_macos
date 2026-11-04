@@ -4,9 +4,12 @@ from pathlib import Path
 from unittest.mock import patch
 from cryptography.fernet import Fernet
 import test_hidden_articles
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt,QCoreApplication,QEvent
+from PySide6.QtWidgets import QApplication,QDialog
 from database import Database
+QApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeDialogs)
 app=QApplication.instance() or QApplication([])
+app.setQuitOnLastWindowClosed(False)
 
 def article(key,doi=None):return dict(article_key=key,pmid=key.split(':')[-1],doi=doi or '',pmcid='',title='DNA repair research article '+key,abstract='Example complete abstract',authors='Author A',journal_title='Cell',issn='0092-8674',publication_date='2026-10-01',publication_year=2026,source_name='PubMed',volume='1',pages='1-10',cited_by_count=0,is_open_access=0,landing_page_url='',graphical_abstract_url='')
 class Runtime22Tests:
@@ -16,5 +19,17 @@ class Runtime22Tests:
         self.group,_=self.db.create_favorite_group('Test','DNA');self.row=article('pmid:1');self.pdf=self.root/'original.pdf';self.pdf.write_bytes(b'%PDF-1.4\nTest original\n%%EOF')
         self.profile=self.db.save_profile(dict(name='Topic',query_expression='DNA',journal_issns=['0092-8674'],minimum_jif=0,maximum_results=0,sort_mode='最新发表',search_sources='pubmed'))
     def tearDown(self):
-        try:app.processEvents();self.temp.cleanup()
+        try:
+            # An assertion must not leave modal windows attached to a database
+            # which this fixture is about to remove.
+            for widget in app.topLevelWidgets():
+                manager=getattr(widget,'manager',None)
+                if getattr(getattr(manager,'store',None),'database',None) is self.db:
+                    manager.abandon_owner(widget)
+                    if hasattr(widget,'cancel_tasks'):widget.cancel_tasks()
+                    widget.approved=True;widget._closing_approved=True
+                    if isinstance(widget,QDialog):QDialog.done(widget,0)
+                    widget.deleteLater()
+            QCoreApplication.sendPostedEvents(None,QEvent.Type.DeferredDelete)
+            app.processEvents();self.temp.cleanup()
         finally:self.protection.stop()
