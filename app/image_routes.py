@@ -62,8 +62,15 @@ def config(db,provider):
     from ai_store import AIStore
     lab=AIStore(db).lab_state()
     if lab and lab['active']:
-        prefix='image_lab_'+lab['identity']['user_id']+'_'+provider+'_'
-        return dict(model=settings.get(prefix+'model',MODELS[provider][0]),enabled=settings.get(prefix+'enabled','1' if (provider in lab['identity'].get('providers',[]) or (provider=='bailian' and set(lab['identity'].get('providers',[]))&{'qwen','wan','zimage'})) else '0')=='1',key=lab['encrypted_token'],region=settings.get(prefix+'region','cn'),route='lab',prefix=prefix,gateway=lab['identity'].get('gateway_url'))
+        prefix='image_lab_'+lab['identity'].get('local_owner',lab['identity']['user_id'])+'_'+provider+'_'
+        value=dict(model=settings.get(prefix+'model',MODELS[provider][0]),enabled=settings.get(prefix+'enabled','1' if (provider in lab['identity'].get('providers',[]) or (provider=='bailian' and set(lab['identity'].get('providers',[]))&{'qwen','wan','zimage'})) else '0')=='1',key=lab['encrypted_token'],region=settings.get(prefix+'region','cn'),route='lab',prefix=prefix,gateway=lab['identity'].get('gateway_url'))
+        from lab_local import credentials
+        keys=credentials(AIStore(db));value['usage_owner']=lab['identity'].get('local_owner')
+        if keys:value.update(local_direct=True,key=encrypt_key(keys[provider]) if provider in keys else '')
+        if lab['identity'].get('disabled'):
+            from student_policy import DISABLED_MESSAGE
+            value.update(enabled=False,key='',blocked_reason=DISABLED_MESSAGE)
+        return value
     key=settings.get(prefix+'key','')
     if provider=='glm' and not key:
         with db.connect() as c:
@@ -83,15 +90,25 @@ def pdf_from_pixels(raw):
     result=io.BytesIO();c=canvas.Canvas(result,pagesize=(width*72/300,height*72/300));c.drawImage(ImageReader(io.BytesIO(raw)),0,0,width=width*72/300,height=height*72/300);c.showPage();c.save();return result.getvalue()
 
 def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
+    from ai_cancel import check_cancelled
+    check_cancelled(cancelled)
+    from ai_store import AIStore
+    from student_keys import ensure
+    ensure(AIStore(db))
     cfg=config(db,provider)
+    if cfg.get('blocked_reason'):raise ValueError(cfg['blocked_reason'])
     if not cfg['enabled'] or not cfg['key']:raise ImageUnavailable('所选绘图通道尚未配置并开启，已跳过模型图。')
     if provider=='glm' and len(prompt)>1000:raise ValueError('GLM-Image提示超过官方1000字符限制，未发送请求。')
     if cancelled():raise InterruptedError('已取消绘图。')
-    if cfg.get('route')=='lab':
+    if cfg.get('route')=='lab' and not cfg.get('local_direct'):
         from lab_service import LabAPI
         payload=dict(model=cfg['model'],prompt=prompt,region=cfg['region'])
         if provider!='glm' and (provider not in ALI or accepts_reference(cfg['model'])) and reference.get('images'):payload['image']=reference['images']
         data=LabAPI(decrypt_key(cfg['key']),cfg.get('gateway')).image(provider,payload)
+        if cfg.get('usage_owner'):
+            from lab_local import record
+            from ai_service import normal_usage
+            record(db,cfg['usage_owner'],normal_usage(data.get('usage')),'completed',provider=provider)
         item=result_item(data)
         if item.get('b64_json'):raw=base64.b64decode(item['b64_json'],validate=True)
         elif item.get('url'):
@@ -112,6 +129,7 @@ def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
         try:
             if response.status_code not in (200,202):raise ValueError('绘图接口返回HTTP '+str(response.status_code)+'；未自动重试或切换通道，请核对权限、额度与模型名称。')
             data=response.json()
+            check_cancelled(cancelled)
             if provider in ALI and legacy_wan(cfg['model']):
                 import time,re
                 task=(data.get('output') or {}).get('task_id','')
@@ -129,6 +147,10 @@ def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
                     if state=='SUCCEEDED':break
                     if state in ('FAILED','CANCELED','UNKNOWN'):raise ValueError('百炼绘图任务未完成：'+state)
                 else:raise ValueError('绘图任务仍未完成，未重新生成；请到百炼控制台查看。')
+            if cfg.get('usage_owner'):
+                from lab_local import record
+                from ai_service import normal_usage
+                record(db,cfg['usage_owner'],normal_usage(data.get('usage')),'completed',provider=provider)
             item=result_item(data)
             if item.get('b64_json'):raw=base64.b64decode(item['b64_json'],validate=True)
             elif item.get('url'):
@@ -162,9 +184,13 @@ def draw(engine,text,reference,progress):
     if route in ROUTES:
         cfg=config(engine.store.database,route)
         if not cfg['enabled'] or not cfg['key']:raise ImageUnavailable('所选绘图通道未开启，已跳过模型图。')
-        limit='不超过900个字符' if route=='glm' else '详细但避免重复'
+        limit='不超过850个字符' if route=='glm' else '详细但避免重复'
         progress('正在由当前分析模型准备绘图提示……')
-        prompt=engine.call('根据当前论文分析，编写供图像模型使用的绘图提示，'+limit+'。描述有证据支持的主要机制、实体、空间关系和关键结论，不添加未知事实。模型图不能有太多文字，要美观且符合杂志发表要求，并且易于读者理解。只返回最终提示文本。',text)
+        from model_reference import DIAGRAM_INSTRUCTIONS
+        prompt=engine.call('根据当前论文分析，编写供图像模型使用的绘图提示，'+limit+'。描述有证据支持的主要机制、实体、空间关系和关键结论，不添加未知事实。'+DIAGRAM_INSTRUCTIONS+'只返回最终提示文本。',text)
+        # Enforce the language requirement even if the text model omits it.
+        prompt+='\nAll text, labels, legends and annotations inside the figure must be in English, never Chinese.'
+        if route=='glm' and len(prompt)>1000:raise ValueError('GLM-Image提示超过官方1000字符限制，未发送请求。')
         if route!='glm' and (route not in ALI or accepts_reference(cfg['model'])) and not reference.get('images'):
             from model_reference import attachment
             reference=attachment('codex')
@@ -206,7 +232,7 @@ class ImageSettingsDialog(QDialog):
         import threading
         def work():
             try:
-                if cfg.get('route')=='lab':
+                if cfg.get('route')=='lab' and not cfg.get('local_direct'):
                     from lab_service import LabAPI
                     data=LabAPI(key,cfg.get('gateway')).request('GET','/models?provider='+self.provider+'&region='+region);rows=[r['id'] for r in data['data']]
                 else:rows=discover(self.provider,key,region)
@@ -244,7 +270,7 @@ class ImageModelCard(QFrame):
         cfg=config(self.manager.store.database,self.provider);enabled=cfg['enabled'];self.heading.setText(ROUTES[self.provider]);self.heading.setStyleSheet('font-size:16pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
         self.model_name.setText('当前模型：'+cfg['model']);self.state.setText(('● 已开启 · ' if enabled else '○ 未开启 · ')+'仅用于模型图');self.toggle.setText('关闭模型' if enabled else '开启模型')
         self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
-        self.usage.setText('课题组通道：PI Key 保留在服务端；个人 Token 用量请在“我的用量”查看。' if cfg.get('route')=='lab' else '个人 API Key 直连。图像按服务商规则计费；完整调用量与费用请在官方账单查看。')
+        self.usage.setText('课题组本机直连：使用当前账户的加密缓存Key；用量在本机记录。' if cfg.get('local_direct') else '课题组云端转发：PI Key 保留在服务端；本机用量请在“我的用量”查看。' if cfg.get('route')=='lab' else '个人 API Key 直连。图像按服务商规则计费；完整调用量与费用请在官方账单查看。')
     def settings(self):ImageSettingsDialog(self.manager.store.database,self.provider,self).exec();self.refresh()
     def switch(self):
         db=self.manager.store.database;cfg=config(db,self.provider)

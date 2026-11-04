@@ -18,6 +18,12 @@ def scale_style(style,zoom):
     return re.sub(r'(?<![\w#])([0-9]+(?:\.[0-9]+)?)(pt|px)',
         lambda match:f'{float(match[1])*zoom:g}{match[2]}',style)
 
+def apply_scaled_style(widget,style):
+    """New cards may be created after zoom has already been applied."""
+    widget._zoom_base_style=style
+    widget._zoom_last_style=scale_style(style,factor())
+    widget.setStyleSheet(widget._zoom_last_style)
+
 
 class InterfaceScale(QObject):
     changed=Signal(float)
@@ -133,9 +139,10 @@ class InterfaceScale(QObject):
             for board in self.window.findChildren(KeywordBoard):board.reflow()
             for page in (self.window.results,self.window.favorites):
                 for card in page.findChildren(QWidget):
-                    if hasattr(card,'_base_card_height'):card.setFixedHeight(scaled(card._base_card_height))
+                    if hasattr(card,'_base_card_height') and card.objectName()!='ArticleCard':card.setFixedHeight(scaled(card._base_card_height))
                     if card.objectName()=='ArticleCard':
                         card.setMinimumWidth(scaled(240 if card._base_card_height==280 else 300))
+                        card.title_label.queue_refresh()
                 if hasattr(page,'reflow_cards'):page.reflow_cards()
                 if hasattr(page,'reflow_favorite_cards'):page.reflow_favorite_cards()
             if previous!=zoom:self.changed.emit(zoom)

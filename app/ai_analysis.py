@@ -35,6 +35,7 @@ def byte_chunks(text,budget):
 class AnalysisEngine:
     def __init__(self,store,provider,output_limit=None,client_factory=None):
         self.store=store;self.provider=provider;self.config=store.config(provider)
+        if self.config.get('blocked_reason'):raise ValueError(self.config['blocked_reason'])
         if not self.config['enabled']:raise ValueError('请先在 AI部署 中开启所选模型。')
         self.key=store.key(provider);self.model=self.config['model'];self.fingerprint=key_fingerprint(self.key)
         if self.fingerprint!=self.config['key_fingerprint']:raise ValueError('账户或调用通道已变化，请重新发起分析。')
@@ -42,20 +43,32 @@ class AnalysisEngine:
         metadata=next((row for row in json.loads(self.config['models_json']) if row['id']==self.model),{})
         context=metadata.get('context_window') or 32768
         self.input_budget=max(512,int(context*1.5))
-        self.factory=client_factory or store.client_factory(provider,self.config);self.calls=0;self.tokens=0;self.incomplete=False
+        self._custom_factory=client_factory;self.factory=client_factory or store.client_factory(provider,self.config);self.calls=0;self.tokens=0;self.incomplete=False
         self.cancelled=lambda:False
+    def prepare(self):
+        if not self.config.get('credential_pending'):return
+        state=self.store.lab_state()
+        if not state or not state['active'] or state['fingerprint']!=self.config['key_fingerprint'] or state['identity'].get('local_owner')!=self.config.get('usage_owner'):raise InterruptedError('账户已变化，已停止分析。')
+        from student_keys import ensure
+        ensure(self.store)
+        self.config=self.store.config(self.provider);self.key=self.store.key(self.provider);self.fingerprint=key_fingerprint(self.key)
+        self.factory=self._custom_factory or self.store.client_factory(self.provider,self.config)
     def call(self,instructions,text,limit=None,reference=None):
+        from ai_cancel import check_cancelled
+        check_cancelled(getattr(self,'cancelled',None))
+        self.prepare()
         current=self.store.config(self.provider)
-        if self.cancelled() or not current['enabled'] or current['key_fingerprint']!=self.fingerprint:
+        if self.cancelled() or not current['enabled'] or current.get('usage_owner')!=self.config.get('usage_owner') or current['key_fingerprint']!=self.fingerprint:
             raise InterruptedError('已停止后续 AI 调用；已发送的请求仍可能完成并计费。')
         try:
             with self.factory(self.provider,self.key) as client:
                 client.cancelled=self.cancelled
                 answer,usage,incomplete=client.complete(self.model,instructions,text,**(dict(reference=reference) if reference is not None else {}))
         except Exception:
-            self.store.record(self.provider,self.fingerprint,self.model,outcome='unconfirmed');raise
-        self.store.record(self.provider,self.fingerprint,self.model,usage,outcome='incomplete' if incomplete else 'completed')
+            self.store.record(self.provider,self.fingerprint,self.model,owner=self.config.get('usage_owner'),outcome='unconfirmed');raise
+        self.store.record(self.provider,self.fingerprint,self.model,usage,owner=self.config.get('usage_owner'),outcome='incomplete' if incomplete else 'completed')
         self.calls+=1;self.tokens+=usage.get('total_tokens',0);self.incomplete|=incomplete
+        check_cancelled(getattr(self,'cancelled',None))
         if not answer.strip():raise ValueError('模型没有返回可用文字；已记录接口返回的用量，未自动重试。')
         return answer
     def reduce(self,material,progress,final_instructions):
@@ -74,12 +87,15 @@ class AnalysisEngine:
         progress('正在整合中文分析……')
         return self.call(final_instructions,chunks[0]),level>0
     def result(self,text,**metadata):
+        from ai_cancel import check_cancelled
+        check_cancelled(getattr(self,'cancelled',None))
         return dict(text=text,provider=self.provider,model=self.model,created_at=datetime.now(timezone.utc).isoformat(),
             calls=self.calls,total_tokens=self.tokens,incomplete=self.incomplete,requested_output_limit=self.requested_limit,
             effective_output_limit=self.output_limit,**__import__('reasoning').record(self.config),**metadata)
     def draw_pdf(self,text,reference):
+        self.prepare()
         current=self.store.config(self.provider)
-        if self.cancelled() or not current['enabled'] or current['key_fingerprint']!=self.fingerprint:raise InterruptedError('账户或调用通道已变化，已停止后续绘图请求。')
+        if self.cancelled() or not current['enabled'] or current.get('usage_owner')!=self.config.get('usage_owner') or current['key_fingerprint']!=self.fingerprint:raise InterruptedError('账户或调用通道已变化，已停止后续绘图请求。')
         from model_reference import DIAGRAM_INSTRUCTIONS
         from model_artifact import validate_figure
         with self.factory(self.provider,self.key) as client:
@@ -88,14 +104,16 @@ class AnalysisEngine:
             except Exception:
                 if getattr(client,'pdf_started',False):
                     usage=getattr(client,'pdf_usage',None)
-                    self.store.record(self.provider,self.fingerprint,self.model,usage,outcome='completed' if usage else 'unconfirmed');self.calls+=1;self.tokens+=(usage or {}).get('total_tokens',0)
+                    self.store.record(self.provider,self.fingerprint,self.model,usage,owner=self.config.get('usage_owner'),outcome='completed' if usage else 'unconfirmed');self.calls+=1;self.tokens+=(usage or {}).get('total_tokens',0)
                 raise
-        self.store.record(self.provider,self.fingerprint,self.model,usage,outcome='incomplete' if incomplete else 'completed');self.calls+=1;self.tokens+=usage.get('total_tokens',0)
+        self.store.record(self.provider,self.fingerprint,self.model,usage,owner=self.config.get('usage_owner'),outcome='incomplete' if incomplete else 'completed');self.calls+=1;self.tokens+=usage.get('total_tokens',0)
         if incomplete:raise ValueError('模型图文件生成未完成，未使用旧图替代。')
         artifact=validate_figure(raw)
         if artifact['sha256']==reference.get('sha256'):raise ValueError('模型返回了参考PDF本身，未生成当前论文的新模型图。')
         return artifact
     def summarize(self,database,article,progress=lambda text:None,web_fetch=None,include_diagram=True,content_mode="both",previous=None):
+        from ai_cancel import check_cancelled
+        check_cancelled(getattr(self,'cancelled',None))
         initial_calls,initial_tokens=self.calls,self.tokens
         document=(previous or {}).get('report_source') or read_article(database,article,web_fetch=web_fetch,progress=progress)
         material='文章标题：'+str(article.get('title') or '')+'\n作者元数据：'+str(article.get('authors') or '未提供')+'\nDOI：'+str(article.get('doi') or '')+'\n读取范围：'+document['coverage']+'\n来源：'+document['url']+'\n\n摘要（优先结合开头1至2句定位研究前的未知问题；后文发现属于答案，不能泄露到问题中）：\n'+str(article.get('abstract') or '未提供摘要')+'\n\n已读取的论文材料：\n'+document['text']

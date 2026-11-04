@@ -1045,7 +1045,7 @@ class Database:
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(article_key) DO UPDATE SET
                     tags = excluded.tags, personal_note = excluded.personal_note,
-                    is_favorite = excluded.is_favorite, updated_at = excluded.updated_at
+                    updated_at = excluded.updated_at
                 """,
                 (article_key, favorite, tags, note, saved_at, now),
             )

@@ -1,5 +1,5 @@
 """Saved AI outputs and lightweight report references, independent of search baselines."""
-import json
+import json,threading
 from datetime import datetime,timezone
 
 def now():return datetime.now(timezone.utc).isoformat()
@@ -24,8 +24,15 @@ def install_schema(c):
             (SELECT 1 FROM favorites WHERE article_key=OLD.article_key AND is_favorite=1); END''')
     for operation in ('INSERT','UPDATE OF is_favorite'):
         suffix='insert' if operation=='INSERT' else 'update'
-        c.execute(f'''CREATE TRIGGER IF NOT EXISTS ai_keep_favorite_{suffix} AFTER {operation} ON favorites WHEN NEW.is_favorite=1 BEGIN
-            INSERT OR IGNORE INTO ai_summary_links SELECT article_key,'favorites',NULL FROM ai_summaries WHERE article_key=NEW.article_key; END''')
+        # Upgrade existing libraries as well as new installations. An outer
+        # favorites UPSERT can override a trigger's OR IGNORE conflict policy;
+        # select only missing links so the duplicate insert is never attempted.
+        c.execute(f'DROP TRIGGER IF EXISTS ai_keep_favorite_{suffix}')
+        c.execute(f'''CREATE TRIGGER ai_keep_favorite_{suffix} AFTER {operation} ON favorites WHEN NEW.is_favorite=1 BEGIN
+            INSERT INTO ai_summary_links(article_key,context,profile_id)
+            SELECT s.article_key,'favorites',NULL FROM ai_summaries s
+            WHERE s.article_key=NEW.article_key AND NOT EXISTS
+                (SELECT 1 FROM ai_summary_links l WHERE l.article_key=s.article_key AND l.context='favorites'); END''')
     c.execute('''CREATE TRIGGER IF NOT EXISTS ai_cancel_favorite AFTER UPDATE OF is_favorite ON favorites
         WHEN OLD.is_favorite=1 AND NEW.is_favorite=0 BEGIN
         DELETE FROM ai_summaries WHERE article_key=NEW.article_key;
@@ -34,6 +41,8 @@ def install_schema(c):
 class AIRepository:
     def __init__(self,database):self.database=database
     def save_history(self,kind,title,inputs,result,identifier=None):
+        from ai_cancel import check_cancelled
+        check_cancelled()
         from cache_cleanup import index_history
         with self.database.connect() as c:
             if identifier is not None and c.execute('SELECT 1 FROM ai_histories WHERE id=? AND kind=?',(identifier,kind)).fetchone():
@@ -87,19 +96,42 @@ class AIRepository:
     def summary(self,key):
         with self.database.connect() as c:row=c.execute('SELECT result_json FROM ai_summaries WHERE article_key=?',(key,)).fetchone()
         return json.loads(row[0]) if row else None
-    def save_summary(self,key,result,context,epoch=None):
+    def save_summary(self,key,result,context,epoch=None,track=False):
+        from ai_cancel import check_cancelled
+        check_cancelled()
         with self.database.connect() as c:
             c.execute('BEGIN IMMEDIATE')
-            profile_id=int(context.split(':')[1]) if context.startswith(('profile:','report:')) else None
-            if profile_id is not None and not c.execute('SELECT 1 FROM search_profiles WHERE id=?',(profile_id,)).fetchone():raise ValueError('关键词方案已删除，未保存迟到的 AI 结果。')
-            if context=='favorites' and not c.execute('SELECT 1 FROM favorites WHERE article_key=? AND is_favorite=1',(key,)).fetchone():raise ValueError('文章已取消收藏，未保存迟到的 AI 结果。')
-            row=c.execute('SELECT epoch FROM ai_content_epochs WHERE article_key=?',(key,)).fetchone()
-            if epoch is not None and (row[0] if row else 0)!=epoch:raise ValueError('文章总结已删除或文章已取消收藏，未恢复旧请求的结果。')
-            c.execute('INSERT INTO ai_summaries VALUES(?,?,?) ON CONFLICT(article_key) DO UPDATE SET result_json=excluded.result_json,created_at=excluded.created_at',
-                (key,json.dumps(result,ensure_ascii=False),now()))
-            c.execute('INSERT OR IGNORE INTO ai_summary_links VALUES(?,?,?)',(key,context,profile_id))
-            from cache_cleanup import preserve_favorites
-            preserve_favorites(c)
+            return self._save_summary(c,key,result,context,epoch,track)
+    def _save_summary(self,c,key,result,context,epoch,track=False):
+        from ai_cancel import check_cancelled
+        profile_id=int(context.split(':')[1]) if context.startswith(('profile:','report:')) else None
+        if profile_id is not None and not c.execute('SELECT 1 FROM search_profiles WHERE id=?',(profile_id,)).fetchone():raise ValueError('关键词方案已删除，未保存迟到的 AI 结果。')
+        if context=='favorites' and not c.execute('SELECT 1 FROM favorites WHERE article_key=? AND is_favorite=1',(key,)).fetchone():raise ValueError('文章已取消收藏，未保存迟到的 AI 结果。')
+        row=c.execute('SELECT epoch FROM ai_content_epochs WHERE article_key=?',(key,)).fetchone()
+        if epoch is not None and (row[0] if row else 0)!=epoch:raise ValueError('文章总结已删除或文章已取消收藏，未恢复旧请求的结果。')
+        previous=c.execute('SELECT result_json,created_at FROM ai_summaries WHERE article_key=?',(key,)).fetchone() if track else None
+        added=track and not c.execute('SELECT 1 FROM ai_summary_links WHERE article_key=? AND context=?',(key,context)).fetchone()
+        stamp=now()
+        check_cancelled()
+        c.execute('INSERT INTO ai_summaries VALUES(?,?,?) ON CONFLICT(article_key) DO UPDATE SET result_json=excluded.result_json,created_at=excluded.created_at',
+            (key,json.dumps(result,ensure_ascii=False),stamp))
+        c.execute('INSERT OR IGNORE INTO ai_summary_links VALUES(?,?,?)',(key,context,profile_id))
+        from cache_cleanup import preserve_favorites
+        preserve_favorites(c)
+        if track:return dict(key=key,previous=dict(previous) if previous else None,written_at=stamp,epoch=row[0] if row else 0,added_context=context if added else None)
+    def restore_summaries(self,receipts):
+        """Undo only this run's latest writes, never a later parallel write."""
+        with self.database.connect() as c:
+            c.execute('BEGIN IMMEDIATE')
+            for item in receipts:
+                key=item['key'];row=c.execute('SELECT created_at FROM ai_summaries WHERE article_key=?',(key,)).fetchone()
+                epoch=c.execute('SELECT epoch FROM ai_content_epochs WHERE article_key=?',(key,)).fetchone()
+                if not row or row[0]!=item['written_at'] or (epoch[0] if epoch else 0)!=item['epoch']:continue
+                previous=item['previous']
+                if previous:
+                    c.execute('UPDATE ai_summaries SET result_json=?,created_at=? WHERE article_key=?',(previous['result_json'],previous['created_at'],key))
+                    if item['added_context']:c.execute('DELETE FROM ai_summary_links WHERE article_key=? AND context=?',(key,item['added_context']))
+                else:c.execute('DELETE FROM ai_summaries WHERE article_key=?',(key,))
     def delete_summary(self,key):
         with self.database.connect() as c:
             c.execute('DELETE FROM ai_summaries WHERE article_key=?',(key,))
@@ -117,6 +149,7 @@ class AIRepository:
     def save_report(self,profile_id,report):
         if not report.get('keys'):return False
         with self.database.connect() as c:
+            c.execute('BEGIN IMMEDIATE')
             if not c.execute('SELECT 1 FROM search_profiles WHERE id=?',(profile_id,)).fetchone():return False
             from cache_cleanup import release_report
             release_report(c,profile_id,report['keys'])
@@ -130,3 +163,22 @@ class AIRepository:
         with self.database.connect() as c:
             release_report(c,profile_id,new_keys)
             c.execute('DELETE FROM ai_reports WHERE profile_id=?',(profile_id,))
+
+
+class SummaryChanges:
+    """Keep a temporary undo history while publishing completed summaries."""
+    def __init__(self,repository):self.repository=repository;self.lock=threading.RLock();self.receipts={};self.closed=False
+    def save(self,key,result,context,epoch):
+        from ai_cancel import check_cancelled,AICancelled,CANCEL_MESSAGE
+        with self.lock:
+            if self.closed:raise AICancelled(CANCEL_MESSAGE)
+            check_cancelled();receipt=self.repository.save_summary(key,result,context,epoch,track=True)
+            previous=self.receipts.get(key)
+            if previous and receipt['previous'] and receipt['previous']['created_at']==previous['written_at']:
+                receipt['previous']=previous['previous'];receipt['added_context']=previous['added_context'] or receipt['added_context']
+            self.receipts[key]=receipt
+    def commit(self):
+        with self.lock:self.receipts.clear()
+    def restore(self):
+        with self.lock:
+            self.closed=True;self.repository.restore_summaries(list(self.receipts.values()));self.receipts.clear()

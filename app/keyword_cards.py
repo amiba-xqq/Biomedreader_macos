@@ -1,5 +1,5 @@
 """A five-column default board with independent card widths and local drag ordering."""
-from interface_scale import scaled,factor
+from interface_scale import scaled,factor,apply_scaled_style
 import json
 import uuid
 from datetime import datetime
@@ -62,17 +62,16 @@ class KeywordCard(QFrame):
         stripe = QFrame()
         stripe.setFixedHeight(5)
         stripe.setStyleSheet('background:#F28C20;border:none;border-radius:2px;')
-        title = QLabel(profile['name'])
+        title = self.title_label = QLabel(profile['name'])
         title.setTextFormat(Qt.TextFormat.PlainText)
         title.setWordWrap(True)
-        title.setFixedHeight(56)
-        title.setStyleSheet('font-size:11pt;font-weight:700;border:none;')
+        apply_scaled_style(title,'font-size:11pt;font-weight:700;border:none;')
         title.setToolTip(profile['name'])
         subtitle = QLabel(f"{profile['article_count']} 篇缓存（所有来源）\n默认排序：{profile['sort_mode']}\n最后刷新：{refreshed}")
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet('font-size:9pt;color:#8B7768;border:none;')
+        apply_scaled_style(subtitle,'font-size:9pt;color:#8B7768;border:none;')
         self.search_label = QLabel('正在联网搜索……')
-        self.search_label.setStyleSheet('font-size:9pt;color:#C96812;border:none;')
+        apply_scaled_style(self.search_label,'font-size:9pt;color:#C96812;border:none;')
         self.search_label.setWordWrap(True)
         self.search_progress = QProgressBar()
         self.search_progress.setRange(0,0)
@@ -85,7 +84,7 @@ class KeywordCard(QFrame):
         for widget in (subtitle,self.search_label,self.search_progress):
             layout.addWidget(widget)
         self.elapsed_label=QLabel()
-        self.elapsed_label.setStyleSheet('font-size:9pt;color:#8B7768;border:none;')
+        apply_scaled_style(self.elapsed_label,'font-size:9pt;color:#8B7768;border:none;')
         layout.addWidget(self.elapsed_label)
         self.refreshed_at=profile.get('last_refreshed_at')
         self.update_elapsed()
@@ -199,6 +198,12 @@ class KeywordBoard(QWidget):
         for card in self.cards:
             width=min(available,scaled(card.custom_width) if card.custom_width else automatic)
             height=scaled(self.card_height+30 if card.busy else self.card_height)
+            title=getattr(card,'title_label',None)
+            if title:
+                title.ensurePolished();m=card.layout().contentsMargins();text_width=max(40,width-m.left()-m.right()-4)
+                h=title.fontMetrics().boundingRect(QRect(0,0,text_width,100000),Qt.TextFlag.TextWordWrap,title.text()).height()+scaled(10)
+                title.setFixedHeight(max(scaled(30),h))
+                height=max(height,card.layout().heightForWidth(width)+scaled(8),card.layout().minimumSize().height()+scaled(8))
             if x>edge and x+width>edge+available:
                 x,y,row_height=edge,y+row_height+gap,0
             card.setGeometry(x,y,width,height);card.show()

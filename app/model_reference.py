@@ -3,7 +3,7 @@ import base64,hashlib,io,json,re,sys
 from pathlib import Path
 from functools import lru_cache
 REFERENCE_SHA256='6ed1ea9a4c2de244915a45e8b491d3ecbd206dd44e428d0967c818c2eca835f6'
-DIAGRAM_INSTRUCTIONS='模型图不能有太多文字，要美观且符合杂志发表要求，并且易于读者理解'
+DIAGRAM_INSTRUCTIONS='模型图不能有太多文字，要美观且符合杂志发表要求，并且易于读者理解。图中所有文字、标签、图例和注释均使用英文，不使用中文。'
 
 @lru_cache(maxsize=1)
 def reference_pdf():

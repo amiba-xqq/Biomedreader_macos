@@ -1,139 +1,75 @@
 # 刊禾 · Biomed Reader 2.2.1
 
-面向生物医学研究者的文献检索、离线阅读、收藏与 AI 辅助分析桌面软件。
+面向生物医学研究者的文献检索、收藏管理、离线阅读、引用与 AI 辅助分析桌面软件。
 
 ## 下载
 
-- [Windows 安装版与完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.1)
-- [macOS 12+ Intel / Apple Silicon DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.1)
-- [使用教程与历史版本](https://amiba-xqq.github.io/Biomedreader/)
+| 系统 | 安装包 |
+| --- | --- |
+| Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.1/BiomedReader_Setup_2.2.1_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.1/BiomedReader_2.2.1_Portable_x64.zip) |
+| macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.1/BiomedReader_2.2.1_macOS12_AppleSilicon.dmg) |
+| macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.1/BiomedReader_2.2.1_macOS12_Intel.dmg) |
+
+[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.1) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.1) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
+
+Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 Word，并备份本地资料库。
 
 ## 主要功能
 
-- PubMed、bioRxiv、medRxiv 检索，独立关键词、增量刷新、来源筛选、隐藏文章和离线缓存。
-- 关键词方案与收藏分组；卡片/表格显示；批量导入 PDF、检索收藏、分享分组、链接本地 PDF。
-- JIF 年份与期刊目录筛选、引用格式与 Volume/Pages 信息补全。
-- AI 关键词推荐、中文/英文简报、新闻稿、增量 AI 报告、科研文献对话、领域知识库、科学问题与 AI reviewer。
-- 个人 API Key 或课题组 PI/学生通道。一个学生访问 ID 可使用 PI 已配置的平台；Codex 本机登录不共享。
-- 图像通道：阿里云百炼（Qwen-Image、万相图像、Z-Image）、火山引擎方舟、GLM-Image；也可使用分析模型自身支持的作图工具或跳过。
-
-## 2.2.1 本次更新
-
-百炼图像模型合并为同一配置入口，支持区域与图像模型选择、刷新模型目录和打开官方用量/账单。百炼推理 Key 不用于查询需要独立账户权限的费用中心余额。
-课题组保留已有学生 ID 和旧百炼平台授权映射；登录连接失败时尝试备用入口并重新读取系统代理。服务需要当前网络能够访问 Cloudflare Workers；不可达时不会误报为密钥错误。
+- **文献检索**：PubMed、bioRxiv 与 medRxiv；按来源分别设置关键词，支持期刊范围、年份、JIF、排序、联网增量刷新及离线查看。
+- **文献管理**：关键词方案、收藏分组、卡片与表格视图；标签、个人笔记、PDF 批量导入与本地原文关联；分组分享与引用导出。
+- **文章分析**：AI 关键词推荐、文章总结、简报与新闻稿、增量 AI 报告；中英文简报、模型图及带水印的 PDF 导出。
+- **科研助手**：AI 寻找文章、领域知识库、AI 提出科学问题和 AI reviewer。知识库保存可复用的文献证据资料，不微调云端模型权重。审稿结果按 Summary and significance assessment、Major comments、Minor comments 组织。
+- **科研对话**：正文引用编号可定位右侧文献卡片；正文和卡片分栏、独立滚动；支持消息复制、编辑、删除与对话布局恢复。
+- **AI 部署**：DeepSeek、ChatGPT Codex 本机连接、OpenAI API、Kimi 和 GLM；按模型实际能力选择推理强度。个人通道与 PI／学生课题组通道分别配置，一个学生访问 ID 可使用 PI 已开通的 API 平台；Codex 本机登录不共享。
+- **模型图**：阿里云百炼、火山引擎方舟、GLM-Image、分析模型可调用的作图工具或跳过；绘图平台仅用于模型图，不进入文字分析模型列表。优先使用文章已有模型图，生成能力受所选服务与模型权限限制。
+- **本地数据**：支持备份、迁移与清理无用缓存，按引用关系保留有效收藏、报告、对话和知识库资料。课题组用量支持最近一年每日用量日历和来源筛选。
 
 ## 安装与使用
 
-### Windows 10/11 x64
+### Windows
 
-下载 Setup EXE 并安装；或完整解压 Portable ZIP 后运行 BiomedReader.exe。升级前退出软件与 Word，建议先备份本地数据。
-Windows 提供 Biomed Reader Word 插件，用于插入/更新引文、切换期刊格式和导出 EndNote 文档。Word/EndNote 需自行安装。
+运行 EXE 安装；或将完整目录 ZIP 全部解压后运行 `BiomedReader.exe`。不要只复制 ZIP 内的 EXE。
 
-### macOS 12 及以上
+安装时可选注册当前用户的 Word 引用插件。Word 与 EndNote 需自行安装；插件用于插入／更新引文、选择期刊样式、设置参考文献字体和导出 EndNote Word 文档。
 
-按芯片下载对应 DMG，打开后把 Biomed Reader 拖入 Applications。应用未进行 Apple Developer ID 公证，首次打开可能需要在系统“隐私与安全性”中确认可信来源后允许打开。
-Mac 版新增原生 VBA＋Ribbon Word 模板插件，保留收藏页“导出 Word / EndNote”功能。插件提供打开软件、插入与更新引用、期刊样式和字体选择、导出嵌入文献记录的 EndNote Word 文档。Mac 实际 Word/EndNote 联调尚未完成，不能宣称与 Windows 已验证版具有完全一致的实机兼容性。
-API Key 使用 macOS 钥匙串保护。首次保存可能提示授权；从 Windows 迁移的数据中的密钥需要在 Mac 上重新输入。Codex 连接需要另行安装官方 Codex 组件并完成官方登录。
+### macOS
 
-### 基本流程
+1. 按芯片类型下载 DMG，将 `Biomed Reader.app` 拖入“应用程序”，从应用程序目录启动。
+2. 应用支持 macOS 12 及以上，DMG 未进行 Apple Developer ID 公证。首次打开请核对下载来源，再按系统“隐私与安全性”中的提示允许打开。
+3. DMG 保留原生 Word 模板插件与架构匹配的官方 Codex 组件。Codex 不依赖 Finder 的终端 PATH，也无需另装 Node.js。
 
-1. 在期刊目录选择/建立期刊范围。
-2. 新建关键词方案，设置来源、关键词与年份；首次完整检索，后续默认增量刷新。
-3. 收藏文章、选择分组并按需链接 PDF；使用批量收藏 PDF 可同时匹配多篇论文。
-4. AI 部署中配置本人 Key，或登录 PI 提供的学生访问 ID，再开启模型。生成模型图的平台只用于绘图，不出现在文本分析模型列表。
-5. AI 结果可保存、离线查看与导出；必须人工核对引用和结论。网页全文读取受校园网络、订阅与网页权限限制。
+### Mac Word 插件
 
-## 数据与费用
+1. 用 `⌘Q` 完全退出 Word。进入 Biomed Reader 的“设置 → Word 插件 → 安装／修复 Word 插件”，再重新打开 Word。
+2. 按 Office 提示信任本地 `BiomedReader.dotm` 模板。**无需启用所有宏，也无需开启“信任对 VBA 工程对象模型的访问”。**
+3. 在软件收藏页选择文章，回到 Word 放置光标，通过 Biomed Reader 选项卡插入／更新引用、选择期刊或调整参考文献字体。
+4. 插入、更新等操作复用后台连接；只有“打开 Biomed Reader”主动显示主界面。应用未运行时，引用请求以后台模式启动。
+5. 导出 EndNote 文档时生成文档副本，并保留嵌入文献记录；需安装官方 EndNote CWYW，在 EndNote 选项卡核查和更新。
 
-默认数据目录：Windows `%LOCALAPPDATA%\OrangeReader\BiomedLiterature`；Mac `~/Library/Application Support/OrangeReader/BiomedLiterature`。可在设置中备份、迁移和清理无用缓存。
-不会随发布包上传个人资料库或 API Key。调用云端 AI 会发送所选材料并产生服务商费用；课题组通道由 PI 承担。所有接口有自身的上下文、权限、地区和速率限制。
-本次发布进行了自动化与启动检查；未以用户密钥进行付费生成实测。软件不承诺绕过网络限制、人机验证或付费全文权限。
-
-## 反馈
-
-使用软件反馈页打开预填 GitHub Issue 或提交私密反馈。请勿在 Issue 中上传 API Key、学生访问 ID 或含隐私的数据库。
-
-
-## 最新 2.2.1 使用补充
-
-- AI寻找文章：用户消息下可复制或编辑，AI回复下可复制。编辑后选择发送或取消；重新发送前会提示替换其后的对话与推荐卡片，已收藏文章保留。
-- AI回复默认铺满对话可用宽度；正文与右侧文献栏使用独立分栏，拖动中间分隔条可调整比例。
-- 拖动输入区上方的横向分隔条可调整高度，也可拖到底部完全收起；保留分隔条可重新展开，未发送的草稿不会因此丢失。编辑历史消息会定位到该消息。
-- PI或学生登录后，在对应管理/用量按钮右侧使用“可用AI模型”查询课题组绑定平台及模型目录。目录可见不等于保证所有付费模型权限，调用仍由服务商校验。
-- 设置 → AI报告提供内容：默认只提供简报，也可只提供新闻稿或两者都提供。此选项只作用于AI报告；未生成的模式留空，可在报告窗口点击对应生成按钮，用上次材料补充。
-- 清理无用缓存会清除未被AI报告引用且未收藏的方案文章的AI总结，以及已删除AI推荐、知识库、科学问题、reviewer和寻找文章对话的遗留索引/空闲空间。仍在使用的收藏、历史记录与知识库保留。
-
-升级前请退出软件和Word，并备份本地数据。Windows安装版与完整目录ZIP包含相同程序；ZIP请完整解压后运行。
-
-## Mac 原生 Word 模板插件（2.2.1）
-
-1. 把 DMG 中的 Biomed Reader 拖入“应用程序”，从应用程序打开。不要从挂载的 DMG 中安装插件。
-2. 退出 Word。首次打开软件会提示安装插件；也可进入设置 → Word 插件 → 安装 / 修复 Word 插件。
-3. 重新打开 Word，按 Office 提示只信任本地 BiomedReader.dotm 模板。**不需要启用所有宏，也不需要终端用户开启“信任对VBA工程对象模型的访问”**。
-4. 在 Word 的 Biomed Reader 选项卡点击打开软件；在收藏页勾选文章，再回到 Word 将光标放在正文，点击插入引用。重复插入会更新编号和文末参考文献。
-5. 下拉选择期刊或点击选择期刊按关键词筛选；更换样式后点击更新引用文献。参考文献字体使用 Word 原生字体对话框，默认为 Arial、常规、10.5 磅；引文是否为上标由期刊样式决定。
-6. 更新时，如果引用所对应的原收藏分组已不再包含该文章，会移除该引文并重新编号。跨文献库更新会拒绝执行，防止误删。
-7. 导出为 EndNote 会创建新的文档副本，保留嵌入文献记录（包括 Volume 和 Pages）与文末参考文献。需另行安装 EndNote 桌面版及官方 CWYW；在 EndNote 选项卡核对并更新后再用于正式稿件。软件会尝试调用 CWYW 更新命令，若未能自动格式化请在 EndNote 选项卡手动更新。
-
-默认安装位置：
+默认插件位置：
 
 - `~/Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word/BiomedReader.dotm`
 - `~/Library/Application Scripts/com.microsoft.Word/BiomedReader.scpt`
 
-自定义 Word 启动目录的用户需把模板放入实际启动目录。卸载插件时，退出 Word，移走上述两个文件即可；既有文档请先备份。安装修复会为旧模板及脚本保留 `.previous` 副本。
+使用自定义 Word 启动目录时，请将模板放入实际启动目录，避免重复加载旧副本。修复安装为旧模板和脚本保留 `.previous` 备份；卸载插件前退出 Word，再移走上述文件。
 
-**验证范围与兼容边界：** 已在 Windows Word 中编译同一套跨平台 VBA 并验证两次插入、更新、分组失效删除和嵌入 EndNote 字段；GitHub macOS 构建验证 AppleScript 语法、模板结构、程序启动及插件 CLI。由于没有安装 Word/EndNote 的 Mac 环境，Mac Ribbon 加载、沙箱授权、字体对话框及 CWYW 接管尚未实机验证，请先使用稿件副本。此版本包含可用功能实现，但不作为“已完成 Mac 全功能兼容认证”的声明。
+Mac 模板保留 Macintosh VBA 源码工程、Ribbon、编译 AppleScript 通信及安装自检，不使用 Windows COM。发布构建会检查模板结构、双架构应用、后台通信和 Codex 组件；实际 Mac Word／EndNote 交互及个人 ChatGPT 账户授权仍需在用户环境中验证，请先使用文档副本。应用的 macOS 12 最低要求与 Word／EndNote 各自的系统要求分别适用。
 
-Biomed Reader 应用维持 macOS 12+ 的部署目标；[微软当前最新版 Office 的系统要求](https://learn.microsoft.com/en-us/officeupdates/release-notes-office-for-mac)高于 macOS 12，旧系统只能使用其可安装的 Office 版本。参考目标为 Word 16.x、EndNote 2025.4.1；[EndNote 支持范围](https://endnote.com/product-details/compatibility/)以官方说明为准。
+### AI 基本流程
 
+1. 在“AI 部署”配置服务商，或使用 PI 提供的学生访问 ID 登录课题组；登录默认使用 `biomedreader.cn`，也可选择 `workers.dev` 入口。后续课题组访问保持本次登录所选入口，重新登录可更换。
+2. 使用 Codex 时，展开“ChatGPT Codex · 本机连接”，点击“使用 ChatGPT 登录”，在官方页面完成授权，返回后刷新账户可用模型并开启。
+3. 按需要选择分析模型、推理强度与模型图生成通道。AI 报告默认仅提供简报，也可选择新闻稿或两者；未生成的内容可在报告窗口按需补充。
+4. 全文分析优先读取已关联 PDF，否则尝试本机有权访问的文章网页；缺少全文时会说明材料范围。校园订阅、登录、人机验证与服务商能力仍影响读取结果。
+5. 保存结果后可离线查阅。文献链接、科学结论、方法建议与审稿意见均需人工核对。
 
-## 本次 2.2.1 更新补充：科研对话与卡片阅读
+## 数据、费用与反馈
 
-- AI寻找文章采用更贴近科研人员阅读习惯的表达，围绕科学问题、证据、研究路径和局限展开。既有回答保持原文，新回答使用新提示词。
-- AI回复左侧展示全文，右侧为独立滚动的文献卡片栏，默认占回复宽度约四分之一。拖动中间分隔条调整比例；正文中的 `[1]` 等引用编号可定位右侧对应卡片并高亮提示。右侧滚轮仅滚动文献栏，正文由对话主滚动条控制。
-- 关闭后重新进入同一对话会恢复窗口大小、分栏比例、输入区高度及对话和文献栏滚动位置。文献卡片自动缓存，卡片不显示摘要，可进入详情查看；已收藏文章显示“已收藏”。
-- 每条用户消息及AI回复均可删除，确认后同步清理该条独有的文献卡片、证据与续聊资料；其它对话和已收藏文章保留。移除单独删除文献卡片的入口。
-- AI reviewer支持把本地稿件拖入文件列表，自动添加路径并去重；仅在执行审阅后读取和提交资料。
-- 优化关键词方案及收藏文章卡片的标题换行和摘要间距，避免末行被裁切或遮挡。超长标题显示省略号，完整内容可悬停或进入详情查看。
+默认资料库位置：Windows 为 `%LOCALAPPDATA%\OrangeReader\BiomedLiterature`；Mac 为 `~/Library/Application Support/OrangeReader/BiomedLiterature`。可在设置中查看、备份或迁移。
 
+安装包不包含用户资料库、账号或登录凭据。调用云端 AI 会将所选材料发送给对应服务，费用由所用服务商账户承担；课题组调用费用由 PI 承担。模型能力、上下文、地区、余额与速率限制以服务商实际返回为准。
 
+软件内提供开发者私密反馈和 GitHub Issue。请勿在公开 Issue 中发送 API Key、学生访问 ID、含隐私的数据库或未公开研究材料。
 
-## 本次 2.2.1 修订：审稿与 Mac Word 模板修复
-
-- AI reviewer模拟Molecular Cell特邀审稿人，只输出Summary and significance assessment、Major comments、Minor comments。总结后直接点评逻辑性、实验可靠性和创新性，不给positive/negative总评。Major comments必须包含可执行解决方案，Minor comments限写作和图片呈现细节。
-- Peer Review支持导出逐页带Biomed Reader及模型名称水印的PDF，使用Times New Roman、小四、1.5倍行距。稿件历史仅保存结果及名称／路径，不复制源文件或保存其提取内容；点击文件名打开文件夹，续审时重新读取源文件。
-- AI寻找文章引用编号优先将右侧卡片定位到顶部，末尾按可滚动范围定位。
-- Mac Word模板使用Word原生生成的干净容器重新封装，保留VBA和Ribbon；修复兼容性及类型前缀声明问题，并在构建和安装时校验。已在Windows Word关闭自动修复条件下验证模板打开及新建文档；实际Mac Word与EndNote联调仍需验证。
-
-### Mac升级后修复插件
-
-1. 退出Word，将新版应用拖入Applications替换旧应用，再从Applications启动。
-2. 进入设置 → Word插件 → 安装／修复Word插件，覆盖旧模板和脚本（旧文件保留为.previous备份）。本次升级会再次提示安装修复。
-3. 重新打开Word，确认加载BiomedReader.dotm。截图bug1对应安装完成说明，并非程序崩溃；“Word无法打开此文档模板”才是需要修复的加载错误。
-4. 若Word使用自定义启动目录，在实际启动目录替换旧模板，避免从其它目录再次加载旧副本。无需启用所有宏，也无需开启VBA工程访问权限。先使用文稿副本测试EndNote接管。
-
-
-## 2.2.1 Mac Word通信修订
-
-本次针对模板已加载但点击按钮出现“无效的过程调用或参数”：安装时生成编译后的BiomedReader.scpt，固定本机应用路径和正确的用户目录，减少Word沙箱环境差异；脚本内部错误返回具体阶段和原因，安装时执行ping及期刊目录调用自检。构建增加真实AppleScript处理器调用冻结应用的端到端测试，不再只检查脚本语法。
-
-升级后请先退出Word，将新应用放入Applications，启动后在设置 → Word插件 → 安装／修复重新安装，再重启Word。旧的模板和脚本会备份；无需调整全部宏权限。若仍失败，请保留新提示的完整错误内容。模板仍须按Office提示信任；本次没有绕过macOS权限或宏安全限制。Mac Word/EndNote实际操作仍需实机核查。
-
-
-## 2.2.1 Mac Word宏储存修订（2026-11-02）
-
-针对模板已安装、Ribbon可见，但点击按钮提示“无法打开宏储存”的情况，重新封装Mac专用VBA工程：使用Macintosh平台标记，移除Windows预编译缓存和未使用的Windows库路径，由本机Word从源码编译。中文提示采用不依赖构建机器ANSI代码页的形式保存。安装和构建会校验宏存储、源码一致性及OOXML结构；通信仍使用上次修订的编译AppleScript脚本和安装自检。
-
-升级步骤：使用⌘Q完全退出Word，替换Applications中的Biomed Reader，再从软件设置 → Word插件 → 安装／修复重新安装，最后打开Word。仅替换应用不会替换已安装的旧模板；自定义Word启动目录还需替换该目录中的旧模板，避免重复加载。无需启用所有宏或VBA工程访问权限；仍需按Office提示信任本插件。
-
-已验证：Windows Word从重建的源码工程执行宏、两次插入引用、更新和分组失效删除、带Volume/Pages及文末参考文献的EndNote域导出。GitHub构建同时验证两种Mac架构的应用和AppleScript通信。Mac Word／EndNote实际操作未在此构建环境中验证，不能保证该错误在所有Office配置下均已解决，请先使用文稿副本测试。
-
-
-## 2.2.1 Mac修订：Word后台通信与Codex登录
-
-- Word插入／更新引用等操作优先复用已有后台连接，不再每次激活Biomed Reader窗口；仅“打开Biomed Reader”主动显示主界面。软件未运行时，引用请求以后台模式启动应用，不自动弹出更新内容或插件安装窗口。
-- DMG内置与Apple Silicon／Intel分别匹配的官方Codex CLI 0.166.0，下载源和SHA256在构建配置中固定；无需额外安装Node或修改Finder的PATH。组件仍受账户、网络和服务商权限限制，不包含任何用户账号、API Key或登录令牌。
-- Codex登录兼容官方auth.openai.com和chatgpt.com授权地址，使用系统默认浏览器完成授权，再从Codex读取模型目录。组件使用软件自己的私有登录目录，不读取或复制桌面Codex的登录凭据。
-- 构建新增真实本机Codex的initialize／account/read检查（空白测试目录，不登录、不计费），以及Word后台启动不显示窗口、显式打开才显示的冻结程序检查。macOS最低部署目标仍为12；Mac Word／EndNote实机交互、个人ChatGPT账号的最终授权和推理权限仍需在用户电脑上验证。
-
-升级时退出Biomed Reader与Word，替换Applications内应用后再启动。Codex卡片展开后点击“使用ChatGPT登录”，在默认浏览器授权，返回软件后刷新模型并开启模型。若旧插件有异常，可在设置 → Word插件 → 安装／修复重新安装。官方组件许可随安装包保留；DMG体积会因内置CLI增加。
+[Windows 问题反馈](https://github.com/amiba-xqq/Biomedreader/issues) · [macOS 问题反馈](https://github.com/amiba-xqq/Biomedreader_macos/issues)

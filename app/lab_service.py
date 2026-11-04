@@ -3,7 +3,9 @@ import uuid,time
 from ai_service import AIClient,AIAPIError,AITransportError,Bearer
 
 LAB_URL='https://biomedreader-lab.1310305204.workers.dev'
-LAB_BACKUP_URL='https://biomedreader.1310305204.workers.dev'
+LAB_BACKUP_URL='https://biomedreader-lab-backup.1310305204.workers.dev'
+LAB_CUSTOM_URL='https://biomedreader.cn'
+LAB_GATEWAYS=(LAB_URL,LAB_BACKUP_URL,LAB_CUSTOM_URL)
 _preferred_gateway=LAB_URL
 def configure_system_proxy(session):
     """Re-read the OS proxy for lab requests, including changes after app launch.
@@ -30,28 +32,37 @@ ERRORS={'session_expired_or_disabled':'课题组登录已过期或账户已被�
  'rate_limit':'操作过于频繁，请稍后重试。','not_ready':'课题组服务尚未就绪。','resource_not_owned':'此云端资料不属于当前学生账户，已拒绝访问。','invalid_provider':'此平台不属于当前功能支持的API通道。'}
 ERRORS.update(provider_metadata_transport='课题组服务器暂未连接到服务商的模型列表接口。此步骤不调用生成模型，不产生模型Token费用；请稍后重试。',provider_redirect_rejected='服务商接口返回了意外跳转，已停止转发凭证。请联系开发者检查服务地址。')
 ERRORS.update(invalid_key='API Key格式不正确，请只粘贴服务商提供的密钥，不含Bearer前缀或空格。',session_required='请重新登录课题组。',registration_failed='课题组登记暂未完成，请稍后重新登录。')
+ERRORS['daily_login_limit']='该账户今日已登录20次，请在本地日期进入下一天后再登录。已有登录仍可继续使用。'
+class StudentDisabledError(AIAPIError):
+    def __init__(self,identity=None):
+        from student_policy import DISABLED_MESSAGE
+        super().__init__(DISABLED_MESSAGE);self.identity=identity or {}
 
 def gateway_error(response):
-    try:code=response.json().get('error','')
+    try:data=response.json();code=data.get('error','')
     except Exception:code=''
+    if code=='student_disabled':raise StudentDisabledError(data.get('identity'))
     if code in ERRORS:return ERRORS[code]
     if code in ('provider_transport_unknown','provider_invalid_response'):return '服务商响应未能确认，可能已经计费。未自动重试，请先核对用量。'
     if code.startswith('provider_rejected_'):return '服务商拒绝了请求，请由 PI 检查密钥、额度及所选模型权限。未自动重试。'
     return f'课题组服务未完成请求（HTTP {response.status_code}），请检查登录与网络后重试。'
 
 class LabAPI:
-    def __init__(self,token=None,gateway=None):self.token=token;self.gateway=gateway if gateway in (LAB_URL,LAB_BACKUP_URL) else None
+    def __init__(self,token=None,gateway=None):
+        self.token=token;self.gateway=gateway if gateway in LAB_GATEWAYS else LAB_URL
     def request(self,method,path,payload=None):
         global _preferred_gateway
         # Authentication/read-only metadata may reconnect; never replay mutations
         # such as creating/resetting students, or any billable generation request.
-        reconnect=path in ('/pi/login','/student/login') or method=='GET'
+        reconnect=path in ('/pi/login','/student/login','/student/credentials','/usage/activity') or method=='GET'
         initial_endpoint=self.gateway or _preferred_gateway
         for attempt in range(3 if reconnect else 1):
+            from ai_cancel import check_cancelled
+            check_cancelled()
             with AIClient('deepseek',self.token or 'public-registration-request') as client:
-                endpoint=initial_endpoint if attempt!=1 else (LAB_BACKUP_URL if initial_endpoint==LAB_URL else LAB_URL)
+                endpoint=initial_endpoint  # A login selects one host; never silently change it.
                 configure_system_proxy(client.session)
-                client.base=endpoint+'/api/lab';client.request_timeout=(20,600 if path=='/image' else 120 if path=='/biomni' else 60)
+                client.base=endpoint+'/api/lab';client.request_timeout=(8,600 if path=='/image' else 120 if path=='/biomni' else 20)
                 client.timeout_message='课题组登录／管理连接超时；未调用生成模型，不产生模型Token费用。'
                 client.http_error=gateway_error
                 if not self.token:
@@ -64,15 +75,29 @@ class LabAPI:
                         raise AIAPIError(gateway_error(SimpleNamespace(status_code=502,json=lambda:data)))
                     if path in ('/pi/login','/student/login') and isinstance(data.get('identity'),dict):data['identity']['gateway_url']=endpoint
                     return data
+                except StudentDisabledError:raise
                 except AITransportError:
                     if reconnect and attempt<2:time.sleep(.7);continue
                     suffix='未调用生成模型，不产生模型Token费用。' if reconnect else '请求可能已送达，请核对用量或操作结果后再试。'
-                    raise AITransportError('无法连接课题组服务，已尝试备用服务和重新读取系统代理。请确认当前网络可访问 workers.dev，并检查系统代理是否正常。此提示不代表API Key或学生ID错误。'+suffix) from None
+                    raise AITransportError('无法连接所选课题组入口 '+endpoint+'，已重新读取系统代理。请检查网络，或退出后选择另一入口登录。此提示不代表API Key或学生ID错误。'+suffix) from None
                 except AIAPIError as error:raise AIAPIError('课题组服务请求未成功：'+str(error)) from None
-    def login_pi(self,provider,key):return self.request('POST','/pi/login',dict(provider=provider,api_key=key))
-    def login_student(self,access):return self.request('POST','/student/login',dict(user_id=access.strip()))
+    def login_metadata(self):
+        from datetime import datetime
+        return dict(login_nonce=str(uuid.uuid4()),timezone_offset=int(datetime.now().astimezone().utcoffset().total_seconds()/60))
+    def login_pi(self,provider,key):return self.request('POST','/pi/login',dict(provider=provider,api_key=key,**self.login_metadata()))
+    def login_student(self,access):return self.request('POST','/student/login',dict(user_id=access.strip(),**self.login_metadata()))
+    def renew_student(self,access):return self.request('POST','/student/credentials',dict(user_id=access.strip()))
+    def credentials(self):return self.request('GET','/credentials')
+    def members(self):return self.request('GET','/members')['members']
+    def member_access(self,identifier):
+        from urllib.parse import quote
+        return self.request('GET','/members/access-id?user_id='+quote(identifier,safe=''))
+    def policy(self,allow):return self.request('POST','/policy',dict(allow_local_keys=bool(allow)))
     def me(self):return self.request('GET','/me')['identity']
     def usage(self):return self.request('GET','/usage')['members']
+    def usage_activity(self,days):
+        data=self.request('POST','/usage/activity',dict(days=days))
+        return dict(days=days,daily=data['daily'])
     def create_student(self,name):return self.request('POST','/members',dict(name=name))
     def member_action(self,identifier,action):return self.request('POST','/members/action',dict(user_id=identifier,action=action))
     def save_key(self,provider,key):return self.request('POST','/keys',dict(provider=provider,api_key=key))
@@ -85,6 +110,13 @@ class LabClient(AIClient):
     def __init__(self,provider,token):super().__init__(provider,token);self.base=_preferred_gateway+'/api/lab'
     def http_error(self,response):return gateway_error(response)
     def request(self,method,path,payload=None):
+        try:return self._lab_request(method,path,payload)
+        except StudentDisabledError as error:
+            if getattr(self,'lab_store',None) and getattr(self,'lab_owner',None):
+                from student_policy import disable_cached
+                disable_cached(self.lab_store.database,self.lab_owner,error.identity)
+            raise
+    def _lab_request(self,method,path,payload=None):
         self.request_timeout=(10,600 if method=='POST' else 45)
         if path=='/models':return super().request('GET','/models?provider='+self.provider)
         if path in ('/user/balance','/users/me/balance'):return super().request('GET','/balance?provider='+self.provider)

@@ -5,7 +5,7 @@ import shiboken6
 from PySide6.QtCore import Qt,QUrl
 from PySide6.QtWidgets import (QWidget,QDialog,QVBoxLayout,QHBoxLayout,QLabel,QPushButton,QPlainTextEdit,
     QComboBox,QCheckBox,QMessageBox,QListWidget,QListWidgetItem,QScrollArea,QGroupBox,QProgressBar,QSpinBox,QDialogButtonBox,QGridLayout,QStackedWidget,QSizePolicy,QTabWidget)
-from ai_ui import plain_label,local_time
+from ai_ui import plain_label,local_time,confirm_ai_close
 from ai_store import PROVIDERS
 from ai_analysis import AnalysisEngine
 from ai_repository import now
@@ -52,7 +52,7 @@ class AnalysisDialog(QDialog):
         from compact_fields import CompactFields
         self.model_field_layout=CompactFields(self,[self.models])
         self.run_button=QPushButton('开始分析');self.run_button.clicked.connect(self.run);self.body_layout.addWidget(self.run_button,0,Qt.AlignmentFlag.AlignLeft)
-        self.stop_button=QPushButton('停止后续调用');self.stop_button.setProperty('secondary',True);self.stop_button.clicked.connect(self.stop.set);self.body_layout.addWidget(self.stop_button,0,Qt.AlignmentFlag.AlignLeft)
+        self.stop_button=QPushButton('取消AI任务');self.stop_button.setProperty('secondary',True);self.stop_button.clicked.connect(self.cancel_task);self.body_layout.addWidget(self.stop_button,0,Qt.AlignmentFlag.AlignLeft)
         self.progress=QProgressBar();self.progress.setRange(0,0);self.progress.hide();self.body_layout.addWidget(self.progress)
         self.reasoning_note=plain_label('',True);self.body_layout.addWidget(self.reasoning_note)
         self.status=plain_label('',True);self.body_layout.addWidget(self.status)
@@ -78,7 +78,14 @@ class AnalysisDialog(QDialog):
         self.stop.clear()
         self.run_button.setEnabled(False);self.models.setEnabled(False);self.progress.show();self.status.setText('正在读取与分析，可最小化窗口并同时使用其它 AI 功能……')
         self.task=self.manager.submit(self,work,'completed','failed')
-    def progress_callback(self,text):self.manager.progress.emit(self.channel,text)
+    def cancel_task(self):
+        self.stop.set()
+        for identifier in (self.task,getattr(getattr(self,'language_control',None),'task',None)):
+            if identifier:self.manager.cancel(identifier)
+        self.status.setText('正在取消本地任务，停止后续调用……')
+    def progress_callback(self,text):
+        from ai_cancel import check_cancelled
+        check_cancelled();self.manager.progress.emit(self.channel,text)
     def completed(self,result):self.task=None;self.progress.hide();self.run_button.setEnabled(True);self.models.setEnabled(True);self.display(result)
     def display(self,result,saved=False):
         self.result=result;self.dirty=not saved;self.reasoning_note.setText(__import__('reasoning').result_label(result))
@@ -90,14 +97,21 @@ class AnalysisDialog(QDialog):
         if failures:header+='\n未读成功：'+'；'.join(row['title']+'：'+row['reason'] for row in failures)
         self.output.setPlainText(header+'\n\n'+result.get('text',''));self.status.setText('已加载缓存，可离线查看。' if saved else '分析完成。可保存后离线查看；结论与创新点仍需核查原文。')
     def failed(self,message):
-        self.task=None;self.progress.hide();self.run_button.setEnabled(True);self.models.setEnabled(True);self.status.setText(message);QMessageBox.warning(self,'AI 分析未完成',message)
+        self.task=None;self.progress.hide();self.run_button.setEnabled(True);self.models.setEnabled(True);self.status.setText(message)
+        if not message.startswith('已取消本地AI任务'):QMessageBox.warning(self,'AI 分析未完成',message)
     def save_clicked(self):
         if not self.result:return
         try:self.save_result();self.dirty=False;self.status.setText('已保存，可离线查看。')
         except ValueError as error:QMessageBox.warning(self,'未保存',str(error))
     def confirm_close(self):
-        if self.task:self.status.setText('请求尚在处理，可最小化窗口；返回后可保存并关闭。');return False
         if self.approved:return True
+        pending=(self.task,getattr(self,'export_task',None),getattr(getattr(self,'language_control',None),'task',None))
+        if any(pending) and not confirm_ai_close(self):return False
+        pending=(self.task,getattr(self,'export_task',None),getattr(getattr(self,'language_control',None),'task',None))
+        for identifier in pending:
+            if identifier:self.manager.cancel(identifier)
+        self.stop.set()
+        if any(pending):self.approved=True;return True
         if self.dirty and self.result:
             answer=QMessageBox.question(self,'保存 AI 输出','是否保存本次 AI 输出，以便离线查看？',QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No|QMessageBox.StandardButton.Cancel)
             if answer==QMessageBox.StandardButton.Cancel:return False
@@ -106,9 +120,10 @@ class AnalysisDialog(QDialog):
                 except ValueError as error:QMessageBox.warning(self,'未保存',str(error));return False
         self.approved=True;return True
     def reject(self):
-        if self.confirm_close():super().reject()
+        if self.confirm_close():self.manager.abandon_owner(self);super().reject()
     def closeEvent(self,event):
         if not self.confirm_close():event.ignore();return
+        self.manager.abandon_owner(self)
         super().closeEvent(event)
 
 class SummaryDialog(AnalysisDialog):
@@ -162,8 +177,6 @@ class SummaryDialog(AnalysisDialog):
     def export_done(self,result):self.export_task=None;self.change_view();QMessageBox.information(self,'导出完成','已保存带逐页模型水印的PDF：\n'+result['path'])
     def export_failed(self,message):self.export_task=None;self.change_view();QMessageBox.warning(self,'导出未完成',message)
     def confirm_close(self):
-        if self.language_control.task:self.status.setText('英文简报尚在翻译，可最小化窗口，完成后再关闭。');return False
-        if self.export_task:self.status.setText('PDF尚在导出，可最小化窗口，完成后再关闭。');return False
         return super().confirm_close()
     def run(self):
         try:
@@ -259,7 +272,6 @@ class ScientificQuestionsDialog(AnalysisDialog):
     def export_done(self,result):self.export_task=None;self.pdf_button.setEnabled(True);QMessageBox.information(self,'导出完成','已保存带逐页模型水印的PDF：\n'+result['path'])
     def export_failed(self,message):self.export_task=None;self.pdf_button.setEnabled(True);QMessageBox.warning(self,'导出未完成',message)
     def confirm_close(self):
-        if self.export_task:self.status.setText('PDF尚在导出，可最小化窗口，完成后再关闭。');return False
         return super().confirm_close()
     def save_result(self):
         inputs=getattr(self,'generated_inputs',dict(topic=self.topic.toPlainText(),articles=self.articles))
@@ -294,7 +306,7 @@ class AIReportDialog(QDialog):
         row=QHBoxLayout();self.generate=QPushButton('生成／重新生成当前新增批次报告');self.generate.clicked.connect(lambda:coordinator.generate(profile_id));row.addWidget(self.generate);row.addStretch();previous=QPushButton('上一页');previous.clicked.connect(lambda:self.change_page(-1));row.addWidget(previous);following=QPushButton('下一页');following.clicked.connect(lambda:self.change_page(1));row.addWidget(following);layout.addLayout(row)
         tools=QHBoxLayout();tools.addWidget(QLabel('报告模式'));self.mode=QComboBox();self.mode.addItem('简报','brief');self.mode.addItem('新闻稿','news');self.mode.setCurrentIndex(max(0,self.mode.findData('brief')));self.mode.currentIndexChanged.connect(self.change_mode);tools.addWidget(self.mode)
         self.export_scope=QComboBox();self.export_scope.addItems(['当前文章','本批全部文章']);tools.addWidget(self.export_scope);self.export_button=QPushButton('导出新闻稿PDF');self.export_button.clicked.connect(self.export_pdf);tools.addWidget(self.export_button);tools.addStretch()
-        stop=QPushButton('停止本批后续AI调用');stop.setProperty('secondary',True);stop.clicked.connect(lambda:coordinator.cancel(profile_id));tools.addWidget(stop);layout.addLayout(tools)
+        stop=QPushButton('取消AI任务');stop.setProperty('secondary',True);stop.clicked.connect(self.cancel_tasks);tools.addWidget(stop);layout.addLayout(tools)
         self.report_status=plain_label('',True);layout.addWidget(self.report_status)
         self.stack=QStackedWidget();layout.addWidget(self.stack,1)
         self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);self.content=QWidget();self.rows=QGridLayout(self.content);self.rows.setAlignment(Qt.AlignmentFlag.AlignTop);self.scroll.setWidget(self.content);self.stack.addWidget(self.scroll)
@@ -309,13 +321,18 @@ class AIReportDialog(QDialog):
         bottom.addStretch();close=QPushButton('关闭');close.clicked.connect(self.reject);bottom.addWidget(close);layout.addLayout(bottom)
         coordinator.changed.connect(self.reload);self.manager.changed.connect(self.reload);self.reload()
         self.change_mode()
+    def cancel_tasks(self):
+        self.coordinator.cancel(self.profile_id)
+        for task in (self.editorial_task,self.language_control.task):
+            if task:self.manager.cancel(task)
+        self.report_status.setText('正在取消；已完成的文章总结继续保留。')
     def reload(self):
         self.report=self.coordinator.drafts.get(self.profile_id) or self.manager.repository.report(self.profile_id)
         self.dirty=self.profile_id in self.coordinator.drafts
         if not self.report:self.heading.setText('尚无报告。可为当前新增批次生成；零新增不会调用 AI，也不会替换上次已保存报告。');return
-        keys=self.report['keys'];ranges='；'.join(source+'：'+str(value.get('from') or '完整范围')+' 至 '+str(value.get('to') or '') for source,value in (self.report.get('window') or {}).items())
+        keys=self.report['keys'];total=len(self.report.get('total_keys',keys));ranges='；'.join(source+'：'+str(value.get('from') or '完整范围')+' 至 '+str(value.get('to') or '') for source,value in (self.report.get('window') or {}).items())
         self.page=min(self.page,max(0,(len(keys)-1)//24))
-        self.heading.setText('搜索时间范围：'+ranges+'\n新文章数量：'+str(len(keys))+f' · 第 {self.page+1}/{max(1,math.ceil(len(keys)/24))} 页（每行4篇，点击标题查看总结）')
+        self.heading.setText('搜索时间范围：'+ranges+'\n新文章数量：'+str(total)+' · 已处理：'+str(len(keys))+'/'+str(total)+(' · 正在逐篇生成' if self.profile_id in self.coordinator.running else ' · 已取消，保留已完成内容' if self.report.get('status')=='cancelled' else '')+f' · 第 {self.page+1}/{max(1,math.ceil(len(keys)/24))} 页（每行4篇，点击标题查看总结）')
         while self.rows.count():
             item=self.rows.takeAt(0)
             if item.widget():item.widget().deleteLater()
@@ -364,7 +381,7 @@ class AIReportDialog(QDialog):
         self.editorial_task=self.manager.submit(self,work,'editorial_loaded','editorial_failed')
     def editorial_loaded(self,payload):
         self.editorial_task=None;self.render_button.setEnabled(True)
-        try:self.manager.repository.save_summary(payload['key'],payload['result'],'report:'+str(self.profile_id),payload['epoch'])
+        try:self.coordinator.summary_changes(self.profile_id).save(payload['key'],payload['result'],'report:'+str(self.profile_id),payload['epoch'])
         except ValueError as error:self.editorial_failed(str(error));return
         if self.report:
             modes=self.report.setdefault('content_modes',{});existing=modes.get(payload['key'],[])
@@ -372,7 +389,8 @@ class AIReportDialog(QDialog):
         self.change_mode();self.manager.changed.emit()
         if not payload['result'].get('presentation'):self.report_status.setText('模型未返回完整的结构化稿件，保留文字总结；未自动重复付费调用。可人工核查后重试。')
     def editorial_failed(self,message):
-        self.editorial_task=None;self.render_button.setEnabled(True);self.export_button.setEnabled(self.mode.currentData()=='news');self.report_status.setText(message);QMessageBox.warning(self,'报告操作未完成',message)
+        self.editorial_task=None;self.render_button.setEnabled(True);self.export_button.setEnabled(self.mode.currentData()=='news');self.report_status.setText(message)
+        if not message.startswith('已取消本地AI任务'):QMessageBox.warning(self,'报告操作未完成',message)
     def export_pdf(self):
         if self.editorial_task or self.mode.currentData()!='news' or not self.report:return
         keys=[self.selected_key] if self.selected_key and self.export_scope.currentIndex()==0 else self.report['keys']
@@ -392,27 +410,39 @@ class AIReportDialog(QDialog):
         if not self.report:return
         self.page=max(0,min(max(0,(len(self.report['keys'])-1)//24),self.page+delta));self.stack.setCurrentIndex(0);self.reload();self.scroll.verticalScrollBar().setValue(0)
     def save(self):
-        if self.report and self.manager.repository.save_report(self.profile_id,self.report):self.coordinator.drafts.pop(self.profile_id,None);self.dirty=False;self.heading.setText(self.heading.text()+'\n已保存，可离线查看。')
+        if not self.report:return
+        try:saved=self.manager.repository.save_report(self.profile_id,self.report)
+        except ValueError as error:QMessageBox.warning(self,'未保存报告',str(error));return
+        if saved:
+            self.coordinator.summary_changes(self.profile_id).commit();self.coordinator.drafts.pop(self.profile_id,None);self.dirty=False;self.heading.setText(self.heading.text()+'\n已保存，可离线查看。')
     def translated(self,result):
         key=self.selected_key
         if key:
-            try:self.manager.repository.save_summary(key,result,'report:'+str(self.profile_id),self.manager.repository.epoch(key))
+            try:self.coordinator.summary_changes(self.profile_id).save(key,result,'report:'+str(self.profile_id),self.manager.repository.epoch(key))
             except ValueError as error:QMessageBox.warning(self,'未保存翻译',str(error));return
             self.language_summary=result;self.presentation.set_result(result,self.manager.store.database.article_record(key) or {},self.mode.currentData())
     def confirm(self):
-        if self.language_control.task:self.report_status.setText('英文简报尚在翻译，请等待完成后关闭。');return False
-        if self.editorial_task:self.report_status.setText('报告生成或导出尚未完成，可最小化窗口，完成后再关闭。');return False
         if self.approved:return True
+        busy=self.profile_id in self.coordinator.running or bool(self.editorial_task or self.language_control.task)
+        if busy and not confirm_ai_close(self):return False
+        busy=self.profile_id in self.coordinator.running or bool(self.editorial_task or self.language_control.task)
+        self.cancel_tasks()
+        if busy:
+            self.coordinator.restore_summaries(self.profile_id)
+            self.coordinator.drafts.pop(self.profile_id,None);self.dirty=False;self.approved=True;return True
         if self.dirty:
             answer=QMessageBox.question(self,'保存AI报告','是否保存本次 AI 报告？保存后才替换上次报告。',QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No|QMessageBox.StandardButton.Cancel)
             if answer==QMessageBox.StandardButton.Cancel:return False
             if answer==QMessageBox.StandardButton.Yes:self.save()
             else:self.coordinator.drafts.pop(self.profile_id,None)
+        changes=getattr(self.coordinator,'summary_runs',{}).pop(self.profile_id,None)
+        if changes:changes.commit()
         self.approved=True;return True
     def reject(self):
-        if self.confirm():super().reject()
+        if self.confirm():self.manager.abandon_owner(self);super().reject()
     def closeEvent(self,event):
         if not self.confirm():event.ignore();return
+        self.manager.abandon_owner(self)
         super().closeEvent(event)
 
 from PySide6.QtCore import QObject,Signal,QTimer
@@ -423,8 +453,17 @@ class ReportReceiver(QObject):
 
 class AIReportCoordinator(QObject):
     changed=Signal()
+    article_ready=Signal(object)
     def __init__(self,manager,window):
-        super().__init__(window);self.manager=manager;self.window=window;self.running=set();self.drafts={};self.jobs={};self.zero_notice=None
+        super().__init__(window);self.manager=manager;self.window=window;self.running=set();self.drafts={};self.jobs={};self.zero_notice=None;self.generations={};self.summary_runs={};self.article_ready.connect(self.partial)
+    def summary_changes(self,profile_id):
+        from ai_repository import SummaryChanges
+        changes=self.summary_runs.get(profile_id)
+        if changes is None or changes.closed:changes=SummaryChanges(self.manager.repository);self.summary_runs[profile_id]=changes
+        return changes
+    def restore_summaries(self,profile_id):
+        changes=self.summary_runs.pop(profile_id,None)
+        if changes:changes.restore()
     def after_refresh(self,profile_id,report):
         if not report.incremental:return
         keys=list(dict.fromkeys(getattr(report,'incremental_new_keys',[])))
@@ -446,14 +485,20 @@ class AIReportCoordinator(QObject):
         if not provider:QMessageBox.information(self.window,'AI报告未启动','请先在 AI部署 中设置并开启模型。新文章批次已保留，可稍后点击 AI报告。');return
         try:engine=AnalysisEngine(self.manager.store,provider)
         except ValueError as error:QMessageBox.information(self.window,'无法启动',str(error));return
-        self.running.add(profile_id);self.changed.emit()
+        generation=uuid.uuid4().hex;self.generations[profile_id]=generation
         stop=threading.Event();self.jobs[('stop',profile_id)]=stop;engine.cancelled=stop.is_set
+        self.running.add(profile_id)
+        content_mode=settings.get('ai_report_content','brief')
+        from ai_repository import SummaryChanges
+        changes=SummaryChanges(self.manager.repository);self.summary_runs[profile_id]=changes
+        def snapshot(done,modes,errors,status='running'):
+            return dict(profile_id=profile_id,keys=list(done),total_keys=list(batch['keys']),content_modes=dict(modes),window=batch['window'],errors=dict(errors),created_at=now(),batch_id=batch['created_at'],generation=generation,status=status)
+        self.drafts[profile_id]=snapshot([],{},{});self.changed.emit()
         def work():
-            errors={};keys=batch['keys'];content_mode=settings.get('ai_report_content','brief');modes={}
+            from ai_cancel import check_cancelled
+            errors={};keys=batch['keys'];modes={};done=[]
             for index,key in enumerate(keys,1):
-                if stop.is_set():
-                    for remaining in keys[index-1:]:errors[remaining]='已停止后续调用。'
-                    break
+                check_cancelled(stop.is_set)
                 if not self.window.database.get_profile(profile_id):raise ValueError('方案已删除，已停止后续 AI 调用。')
                 self.manager.progress.emit('report:'+str(profile_id),f'AI报告 {index}/{len(keys)}')
                 epoch=self.manager.repository.epoch(key);cached=self.manager.repository.summary(key)
@@ -461,22 +506,33 @@ class AIReportCoordinator(QObject):
                     required={'brief','news'} if content_mode=='both' else {content_mode}
                     if not cached or (cached.get('provider'),cached.get('model'))!=(engine.provider,engine.model) or not required.issubset(set(cached.get('report_content_modes',['brief','news']))):
                         article=self.window.database.article_record(key);cached=engine.summarize(self.window.database,article,web_fetch=self.manager.article_reader.get,content_mode=content_mode)
+                    check_cancelled(stop.is_set)
+                    changes.save(key,cached,'report:'+str(profile_id),epoch)
                     modes[key]=['brief','news'] if content_mode=='both' else [content_mode]
-                    self.manager.repository.save_summary(key,cached,'report:'+str(profile_id),epoch)
+                except InterruptedError:raise
                 except Exception as error:
+                    check_cancelled(stop.is_set)
                     errors[key]=str(error)[:400]
                     from ai_service import AIAPIError
-                    if isinstance(error,(AIAPIError,InterruptedError)):
-                        for remaining in keys[index:]:errors[remaining]='未继续调用：AI 服务返回错误，请检查额度、网络或模型。'
+                    if isinstance(error,AIAPIError):
+                        done.append(key);self.article_ready.emit(snapshot(done,modes,errors))
                         break
-            return dict(profile_id=profile_id,keys=keys,content_modes=modes,window=batch['window'],errors=errors,created_at=now(),batch_id=batch['created_at'])
+                done.append(key);check_cancelled(stop.is_set)
+                self.article_ready.emit(snapshot(done,modes,errors))
+            return snapshot(done,modes,errors,'completed' if len(done)==len(keys) else 'incomplete')
         receiver=ReportReceiver(self,profile_id);self.jobs[profile_id]=receiver
-        self.manager.submit(receiver,work,'completed','failed')
+        self.jobs[('task',profile_id)]=self.manager.submit(receiver,work,'completed','failed',cancelled=stop.is_set)
+    def partial(self,result):
+        identifier=result['profile_id']
+        if identifier not in self.running or self.generations.get(identifier)!=result.get('generation'):return
+        if self.window.database.get_profile(identifier):
+            self.drafts[identifier]=result;self.changed.emit();self.manager.changed.emit()
     def completed(self,result):
         identifier=result['profile_id'];self.running.discard(identifier)
-        self.jobs.pop(('stop',identifier),None)
+        self.jobs.pop(('stop',identifier),None);self.jobs.pop(('task',identifier),None);self.generations.pop(identifier,None)
+        changes=self.summary_runs.pop(identifier,None)
+        if changes:changes.commit()
         if self.window.database.get_profile(identifier):
-            if any(key not in result.get('errors',{}) for key in result['keys']):self.manager.repository.retire_previous_report(identifier,result['keys'])
             self.drafts[identifier]=result
         self.window.home.reload();self.changed.emit()
         newest=self.manager.repository.batch(identifier)
@@ -484,10 +540,18 @@ class AIReportCoordinator(QObject):
     def failed_for(self,identifier,message):
         # A deleted profile is the only expected job-wide failure; per-article
         # failures are returned as report rows rather than destroying old reports.
-        self.running.discard(identifier);self.changed.emit()
-        self.jobs.pop(('stop',identifier),None)
-        QMessageBox.warning(self.window,'AI报告未完成',message)
+        self.running.discard(identifier);self.generations.pop(identifier,None)
+        self.jobs.pop(('stop',identifier),None);self.jobs.pop(('task',identifier),None)
+        if identifier in self.drafts:self.drafts[identifier]['status']='cancelled' if message.startswith('已取消本地AI任务') else 'failed'
+        self.changed.emit()
+        if not message.startswith('已取消本地AI任务'):QMessageBox.warning(self.window,'AI报告未完成',message)
     def open(self,profile_id):show_window(AIReportDialog(self,profile_id,self.window))
     def cancel(self,profile_id):
         event=self.jobs.get(('stop',profile_id))
         if event:event.set()
+        task=self.jobs.get(('task',profile_id))
+        if task:self.manager.cancel(task)
+        # Ignore already-queued partial UI updates after cancellation. The job
+        # receiver still runs to clean up its own task and running state.
+        self.generations.pop(profile_id,None)
+        if profile_id in self.drafts:self.drafts[profile_id]['status']='cancelled'

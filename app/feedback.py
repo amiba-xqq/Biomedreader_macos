@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QComboBox,QLineEdit,QPl
 from software_update import session_for_updates
 from version import APP_VERSION
 
-FEEDBACK_URL='https://biomedreader.1310305204.workers.dev/api/feedback'
+FEEDBACK_URL='https://biomedreader.cn/api/feedback'
 ISSUE_URL='https://github.com/amiba-xqq/Biomedreader/issues/new'
 
 def validated_feedback(kind,title,body,contact=''):
@@ -36,9 +36,12 @@ class FeedbackTask(QRunnable):
                 response=session.post(FEEDBACK_URL,json={**self.data,'website':''},timeout=(10,30),allow_redirects=False)
                 if response.status_code==429:raise ValueError('提交过于频繁，请稍后再试。填写内容已保留。')
                 if response.status_code!=200:raise ValueError('反馈服务暂时不可用，填写内容已保留，请稍后重试或使用 GitHub Issue。')
-                result=response.json()
+                try:result=response.json()
+                except ValueError:raise ValueError('反馈服务没有返回有效确认，内容已保留，请稍后重试。') from None
                 if result.get('ok') is not True or not result.get('id'):raise ValueError('服务未确认保存反馈，填写内容已保留。')
                 self.signals.finished.emit(result)
+        except ValueError as error:
+            self.signals.failed.emit(str(error))
         except Exception:
             self.signals.failed.emit('未能确认反馈提交。内容已保留，可重试；相同编号不会重复保存。也可改用 GitHub Issue。')
 

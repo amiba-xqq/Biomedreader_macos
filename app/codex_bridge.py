@@ -7,29 +7,37 @@ from codex_runtime import executable,process_environment,login_url
 
 class RPC:
     def __init__(self):
-        self.events=queue.Queue();self.serial=0
+        from ai_cancel import check_cancelled,register_abort
+        check_cancelled();self.events=queue.Queue();self.serial=0;self.send_lock=threading.Lock();self.active_turn=None
         # A separate home avoids altering desktop Codex settings or conversations.
         from data_location import active_data_directory
         home=active_data_directory()/'codex_connection';home.mkdir(parents=True,exist_ok=True)
         binary=executable();env=process_environment(binary,home)
         try:self.process=subprocess.Popen([binary,'app-server'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,encoding='utf8',env=env,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         except OSError as error:raise ValueError('无法启动Codex组件（'+str(error.errno)+'）。请检查组件架构、macOS版本或重新安装最新版DMG。') from None
+        self.detach_abort=register_abort(self.abort)
         threading.Thread(target=self.read,daemon=True).start()
         try:
             self.request('initialize',dict(clientInfo=dict(name='biomed_reader',title='Biomed Reader',version='2.2.1'),capabilities={}))
             self.send(dict(method='initialized'))
-        except Exception:
-            self.close();raise
+        except Exception:self.close();raise
     def read(self):
         try:
             for line in self.process.stdout:
                 try:self.events.put(json.loads(line))
                 except ValueError:continue
         finally:self.events.put(dict(error=dict(message='Codex进程已结束。')))
-    def send(self,value):self.process.stdin.write(json.dumps(value,ensure_ascii=False)+'\n');self.process.stdin.flush()
+    def send(self,value):
+        with self.send_lock:self.process.stdin.write(json.dumps(value,ensure_ascii=False)+'\n');self.process.stdin.flush()
     def next(self,timeout=600):
-        try:return self.events.get(timeout=timeout)
-        except queue.Empty:raise ValueError('Codex等待超时，未自动重复提交任务。') from None
+        from ai_cancel import check_cancelled
+        deadline=time.monotonic()+timeout
+        while True:
+            check_cancelled()
+            remaining=deadline-time.monotonic()
+            if remaining<=0:raise ValueError('Codex等待超时，未自动重复提交任务。')
+            try:return self.events.get(timeout=min(.1,remaining))
+            except queue.Empty:continue
     def request(self,method,params):
         self.serial+=1;identifier=self.serial;self.send(dict(id=identifier,method=method,params=params))
         while True:
@@ -41,11 +49,20 @@ class RPC:
                 return event.get('result') or {}
             if event.get('error'):raise ValueError('Codex组件不可用，请检查安装与登录。')
             if 'id' in event:self.send(dict(id=event['id'],error=dict(code=-32601,message='Interactive tool requests are disabled in Biomed Reader.')))
+    def abort(self):
+        if self.active_turn and self.process.poll() is None:
+            thread,turn=self.active_turn
+            try:self.send(dict(id='biomed-cancel',method='turn/interrupt',params=dict(threadId=thread,turnId=turn)))
+            except (OSError,ValueError):pass
+        self.close()
     def close(self):
+        getattr(self,'detach_abort',lambda:None)()
         if self.process.poll() is not None:return
-        self.process.terminate()
-        try:self.process.wait(5)
-        except subprocess.TimeoutExpired:self.process.kill();self.process.wait()
+        try:
+            self.process.terminate()
+            try:self.process.wait(.75)
+            except subprocess.TimeoutExpired:self.process.kill();self.process.wait(.75)
+        except (OSError,subprocess.TimeoutExpired):pass
 
 class CodexClient:
     def __init__(self,provider='codex',key=None):self.rpc=None
@@ -109,7 +126,7 @@ class CodexClient:
         params=dict(threadId=thread,input=items);effort=getattr(self,'reasoning_effort','default')
         if workspace:params.update(cwd=str(workspace),sandboxPolicy=dict(type='workspaceWrite',writableRoots=[str(workspace)],networkAccess=False))
         if effort!='default':params['effort']=effort
-        turn=self.rpc.request('turn/start',params);parts=[];final=[];usage={}
+        turn=self.rpc.request('turn/start',params);self.rpc.active_turn=(thread,turn['turn']['id']);parts=[];final=[];usage={}
         while True:
             event=self.rpc.next();method=event.get('method');params=event.get('params') or {}
             if 'id' in event:self.rpc.send(dict(id=event['id'],error=dict(code=-32601,message='Tool approval unavailable.')));continue

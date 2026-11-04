@@ -1,5 +1,6 @@
 """Local research chats with verified recommendation cards and explicit collection."""
 import json,threading,uuid,weakref,math
+from datetime import datetime
 from pathlib import Path
 from PySide6.QtCore import Qt,QTimer,QEvent,QPoint
 from PySide6.QtGui import QDesktopServices,QTextBlockFormat
@@ -7,14 +8,14 @@ from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (QWidget,QDialog,QVBoxLayout,QHBoxLayout,QLabel,QPushButton,QComboBox,
     QPlainTextEdit,QScrollArea,QFrame,QTextBrowser,QProgressBar,QMessageBox,QInputDialog,QListWidget,QListWidgetItem,
     QLineEdit,QDialogButtonBox,QCheckBox,QSizePolicy,QTextEdit,QToolButton,QSplitter,QLayout)
-from ai_ui import plain_label,local_time
+from ai_ui import plain_label,local_time,confirm_ai_close
 from ai_store import PROVIDERS
 from ai_analysis import AnalysisEngine
 from ai_finder import find_articles,SUPPORTED,FILE_FILTER
 from ai_workflow_ui import window_flags,show_window
 from card_board import CardBoard
 from chat_navigation import ConversationRail,set_line_spacing
-from finder_presentation import ResearchText,EvidenceScroll,citation_html,highlight_card
+from finder_presentation import ResearchText,EvidenceScroll,EvidenceDock,MessageTime,citation_html,highlight_card
 
 
 class FavoriteRecommendations(QDialog):
@@ -77,7 +78,7 @@ class FinderChat(QDialog):
         if isinstance(size,list) and len(size)==2:
             screen=self.screen().availableGeometry();self.resize(max(600,min(int(size[0]),screen.width())),max(400,min(int(size[1]),screen.height())))
         for message in self.messages:message.setdefault('id',uuid.uuid4().hex)
-        self.articles=manager.repository.finder_cards(self.identifier);self.result=result;self.editing_index=None;self.edit_request=None
+        self.articles=manager.repository.finder_cards(self.identifier);self.result=result;self.editing_index=None;self.edit_request=None;self.interrupted_edit=None
         self.setObjectName('FinderChat')
         self.setStyleSheet("""
 QDialog#FinderChat {background:#F4F5F6;font-family:Arial,Microsoft YaHei;}
@@ -106,9 +107,11 @@ QToolButton:pressed {background:#F4D6B1;}
         composer=QFrame();composer.setObjectName('ResearchComposer');composer_box=QVBoxLayout(composer);composer_box.setContentsMargins(14,10,14,12);composer_box.setSpacing(8)
         self.input=ChatInput(self.send);self.input.setPlaceholderText('描述研究方向、科学问题或方法瓶颈…\n可添加图片、PDF、PPTX、Excel等研究资料。');self.input.setMinimumHeight(0);self.input.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding);self.input.setStyleSheet('QTextEdit {background:transparent;border:none;padding:4px;font-family:Arial,Microsoft YaHei;font-size:11pt;}');self.input.setAccessibleName('科研问题输入');composer_box.addWidget(self.input)
         self.file_label=plain_label('',True);self.file_label.setStyleSheet('color:#879094;font-size:9pt;');composer_box.addWidget(self.file_label)
-        controls=QHBoxLayout();self.add=QPushButton('＋ 科研资料');self.add.setProperty('secondary',True);self.add.clicked.connect(self.add_files);controls.addWidget(self.add);self.clear=QPushButton('清除附件');self.clear.setProperty('secondary',True);self.clear.clicked.connect(self.clear_files);controls.addWidget(self.clear);self.cancel=QPushButton('停止');self.cancel.setToolTip('停止后续模型调用');self.cancel.setProperty('secondary',True);self.cancel.clicked.connect(self.stop.set);controls.addWidget(self.cancel);controls.addStretch();hint=QLabel('Enter 发送 · Shift+Enter 换行');hint.setStyleSheet('font-size:8.5pt;color:#8C9295;');controls.addWidget(hint);self.send_button=QPushButton('查找文献  ↑');self.send_button.clicked.connect(self.send);controls.addWidget(self.send_button);composer_box.addLayout(controls);self.composer=composer;composer_box.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint);composer.setMinimumHeight(0);composer.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Ignored);self.composer_splitter.addWidget(composer);self.composer_splitter.setCollapsible(1,True);self.composer_splitter.widget(0).setMinimumHeight(80);self.composer_splitter.setStretchFactor(0,4);self.composer_splitter.setStretchFactor(1,1);self.composer_splitter.setSizes([410,175])
+        controls=QHBoxLayout();self.add=QPushButton('＋ 科研资料');self.add.setProperty('secondary',True);self.add.clicked.connect(self.add_files);controls.addWidget(self.add);self.clear=QPushButton('清除附件');self.clear.setProperty('secondary',True);self.clear.clicked.connect(self.clear_files);controls.addWidget(self.clear);self.cancel=QPushButton('停止');self.cancel.setToolTip('取消当前本地任务并停止后续调用');self.cancel.setProperty('secondary',True);self.cancel.clicked.connect(self.cancel_task);controls.addWidget(self.cancel);controls.addStretch();hint=QLabel('Enter 发送 · Shift+Enter 换行');hint.setStyleSheet('font-size:8.5pt;color:#8C9295;');controls.addWidget(hint);self.send_button=QPushButton('查找文献  ↑');self.send_button.clicked.connect(self.send);controls.addWidget(self.send_button);composer_box.addLayout(controls);self.composer=composer;composer_box.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint);composer.setMinimumHeight(0);composer.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Ignored);self.composer_splitter.addWidget(composer);self.composer_splitter.setCollapsible(1,True);self.composer_splitter.widget(0).setMinimumHeight(80);self.composer_splitter.setStretchFactor(0,4);self.composer_splitter.setStretchFactor(1,1);self.composer_splitter.setSizes([410,175])
         manager.changed.connect(self.update_models);manager.changed.connect(self.refresh_favorites);manager.progress.connect(self.progress_message);self.update_models();self.render();self.update_state()
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff);self.scroll.viewport().installEventFilter(self)
+        self.scroll.verticalScrollBar().valueChanged.connect(self.update_evidence_positions)
+        self.message_clock=QTimer(self);self.message_clock.setInterval(15000);self.message_clock.timeout.connect(self.update_message_times);self.message_clock.start()
         from compact_fields import CompactFields
         self.compact_models=CompactFields(self,[self.models])
     def update_models(self):
@@ -144,6 +147,10 @@ QToolButton:pressed {background:#F4D6B1;}
         if not self.task and not self.ended:self.append_files([url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()]);event.acceptProposedAction()
     def progress_message(self,channel,text):
         if channel==self.channel:self.status.setText(text)
+    def cancel_task(self):
+        self.stop.set()
+        if self.task:self.manager.cancel(self.task)
+        self.status.setText('正在取消本地任务，停止后续调用……')
     def send(self):
         if self.task or (self.ended and not self.edit_request):return
         request=self.edit_request;self.edit_request=None
@@ -157,25 +164,28 @@ QToolButton:pressed {background:#F4D6B1;}
         self.stop.clear();engine.cancelled=self.stop.is_set;self.pinned=current
         old_files=[]
         if request:
+            self.interrupted_edit=(self.manager.repository.history(self.identifier),self.manager.repository.finder_cards(self.identifier))
             index=request[0];old_files=self.messages[index].get('files',[])
             self.messages=self.messages[:index];self.ended=False;self.result={}
             retained={r['article_key'] for m in self.messages for r in m.get('references',[])}
             self.articles=[a for a in self.articles if a['article_key'] in retained];self.notes={k:v for k,v in self.notes.items() if k in retained};self.manager.repository.replace_finder_cards(self.identifier,self.articles)
         self.editing_index=None
-        entry=dict(role='user',content=text,files=old_files+[Path(p).name for p in self.pending]);self.messages.append(entry);self.input.clear();self.render(scroll_to_end=True);files=list(self.pending);messages=[{k:v for k,v in m.items() if k!='display_width'} for m in self.messages];attachments=list(self.attachments);notes=dict(self.notes);self.persist()
+        entry=dict(role='user',content=text,created_at=datetime.now().astimezone().isoformat(),files=old_files+[Path(p).name for p in self.pending]);self.messages.append(entry);self.input.clear();self.render(scroll_to_end=True);files=list(self.pending);messages=[{k:v for k,v in m.items() if k!='display_width'} for m in self.messages];attachments=list(self.attachments);notes=dict(self.notes);self.persist()
         web_fetch=lambda url:self.manager.article_reader.get(url,automatic=True)
         work=lambda:find_articles(engine,self.manager.store.database,messages,files,attachments,notes,web_fetch,lambda text:self.manager.progress.emit(self.channel,text))
         self.task=self.manager.submit(self,work,'completed','failed');self.update_state();self.status.setText('正在识别问题、检索真实文献并读取证据；可最小化，可与其它AI功能并行运行。')
     def completed(self,result):
+        self.interrupted_edit=None
         self.task=None;self.result=result;self.ended=bool(result.get('ended'));self.attachments=result.get('attachments') or self.attachments;self.notes=result.get('notes') or self.notes;self.pending=[]
-        self.messages.append(dict(role='assistant',content=result['text'],model=result.get('model',''),created_at=result.get('created_at',''),**__import__('reasoning').record(result),references=[dict(article_key=a['article_key'],title=a['title'],doi=a.get('doi',''),pmid=a.get('pmid',''),number=a.get('finder_reference')) for a in result.get('articles',[])]))
+        self.messages.append(dict(role='assistant',content=result['text'],model=result.get('model',''),created_at=datetime.now().astimezone().isoformat(),**__import__('reasoning').record(result),references=[dict(article_key=a['article_key'],title=a['title'],doi=a.get('doi',''),pmid=a.get('pmid',''),number=a.get('finder_reference')) for a in result.get('articles',[])]))
         found={row['article_key']:row for row in self.articles}
         for row in result.get('articles',[]):found[row['article_key']]=row
         self.articles=list(found.values());self.persist();self.manager.repository.replace_finder_cards(self.identifier,self.articles);self.render(scroll_to_end=True);self.update_state();self.status.setText('已完成。推荐卡片来自实际检索记录；请核对原文。'+(' 部分请求失败，本次检索不完整。' if result.get('errors') or result.get('incomplete') else ''))
         self.manager.changed.emit()
         if self.ended:self.status.setText('只能咨询科研相关问题，此对话已结束。')
     def failed(self,message):
-        self.task=None;self.messages.append(dict(role='notice',content='本次未完成：'+message+'\n请求未自动重试。可修改或补充问题后再次发送。'));self.persist();self.render();self.update_state();self.status.setText(message)
+        self.interrupted_edit=None
+        self.task=None;self.messages.append(dict(role='notice',content='本次未完成：'+message+'\n请求未自动重试。可修改或补充问题后再次发送。',created_at=datetime.now().astimezone().isoformat()));self.persist();self.render();self.update_state();self.status.setText(message)
     def persist(self):
         # Only final output/evidence are serialized. Never provider raw response,
         # chain-of-thought, credentials, absolute attachment paths or binary files.
@@ -229,8 +239,8 @@ QToolButton:pressed {background:#F4D6B1;}
                         card=self.article_card(article,ref.get('number'),article['article_key'] in favorite_keys);cards_box.addWidget(card)
                         frame.reference_cards[str(ref.get('number'))]=card
                 if not frame.reference_cards:cards_box.addWidget(plain_label('本条回复暂无推荐文献',True))
-                cards_box.addStretch();evidence.setWidget(cards);right=QWidget();right.setMinimumWidth(125);right_box=QVBoxLayout(right);right_box.setContentsMargins(0,0,0,0);right_box.addWidget(evidence);right_box.addStretch();splitter.addWidget(left);splitter.addWidget(right);box.addWidget(splitter)
-                frame.evidence_scroll=evidence;frame.columns=splitter;frame.text_pane=left
+                cards_box.addStretch();evidence.setWidget(cards);right=EvidenceDock(evidence,self);splitter.addWidget(left);splitter.addWidget(right);box.addWidget(splitter)
+                frame.evidence_scroll=evidence;frame.evidence_dock=right;frame.columns=splitter;frame.text_pane=left
                 splitter.splitterMoved.connect(lambda pos,handle,i=index:self.columns_moved(i))
                 browser.anchorClicked.connect(lambda url,f=frame:self.follow_reference(f,url))
             else:box.addWidget(browser)
@@ -246,6 +256,7 @@ QToolButton:pressed {background:#F4D6B1;}
                 edit=QToolButton();edit.setText('✎');edit.setToolTip('编辑并重新发送');edit.setFixedSize(32,30);edit.clicked.connect(lambda checked=False,i=index:self.edit_message(i));actions.addWidget(edit)
             actions.addStretch();delete=QToolButton();delete.setText('删除');delete.setToolTip('删除本条消息及其独有缓存；保留其它对话和已收藏文章');delete.setEnabled(not self.task)
             delete.clicked.connect(lambda checked=False,i=index:self.delete_message(i));actions.addWidget(delete);self.delete_buttons.append(delete);box.addLayout(actions)
+            frame.message_time=MessageTime(message.get('created_at'));box.addWidget(frame.message_time,0,Qt.AlignmentFlag.AlignRight)
             self.thread.addWidget(frame,0,Qt.AlignmentFlag.AlignRight if user else Qt.AlignmentFlag.AlignLeft)
             frame.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Preferred);self.message_frames.append((frame,browser,user))
             if assistant:
@@ -276,6 +287,18 @@ QToolButton:pressed {background:#F4D6B1;}
             if target.mapTo(self.content,QPoint(0,0)).y()<=top:index=i
             else:break
         self.turn_rail.setCurrentRow(index)
+    def update_message_times(self):
+        now=datetime.now().astimezone()
+        for frame,_,_ in self.message_frames:frame.message_time.refresh(now)
+    def update_evidence_positions(self,*_):
+        for frame,_,_ in getattr(self,'message_frames',[]):
+            if hasattr(frame,'evidence_dock'):frame.evidence_dock.sync_position()
+    def showEvent(self,event):
+        super().showEvent(event)
+        if hasattr(self,'message_frames'):self.update_message_times();self.update_evidence_positions()
+    def changeEvent(self,event):
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.WindowActivate,QEvent.Type.WindowStateChange) and hasattr(self,'message_frames'):self.update_message_times();self.update_evidence_positions()
     def resizeEvent(self,event):
         super().resizeEvent(event)
         if hasattr(self,'message_frames'):self.reflow_messages()
@@ -331,10 +354,11 @@ QToolButton:pressed {background:#F4D6B1;}
                 browser.setFixedWidth(text_width);browser.document().setTextWidth(max(80,text_width-4))
                 height=max(34,math.ceil(browser.document().documentLayout().documentSize().height())+20);browser.setFixedHeight(height)
                 if hasattr(frame,'columns'):
-                    frame.columns.setFixedHeight(max(250,height));frame.evidence_scroll.setMaximumHeight(min(540,max(250,height)))
+                    frame.columns.setFixedHeight(max(250,height))
                 frame.layout().invalidate();frame.layout().activate();frame.setMinimumHeight(frame.layout().minimumSize().height())
                 if hasattr(frame,'width_grip'):frame.width_grip.setGeometry(width-7,16,4,max(26,frame.height()-32));frame.width_grip.raise_()
             self.thread.invalidate();self.thread.activate();self.content.adjustSize()
+            self.update_evidence_positions()
         finally:self._reflowing=False
 
     def columns_moved(self,index):
@@ -347,6 +371,7 @@ QToolButton:pressed {background:#F4D6B1;}
         if url.scheme()!='biomed-ref':return
         card=frame.reference_cards.get(url.path())
         if card is not None:
+            self.update_evidence_positions()
             pane=frame.evidence_scroll
             # Use content coordinates, not ensureWidgetVisible (which merely
             # brings the nearest edge into view and can leave a card low down).
@@ -376,9 +401,9 @@ QToolButton:pressed {background:#F4D6B1;}
 
     def article_card(self,article,number,favorited=False):
         card=QFrame();card.setObjectName('FinderArticle');box=QVBoxLayout(card);box.setContentsMargins(12,12,12,12);box.setSpacing(9)
-        journal=plain_label(article.get('journal_title','')+' · '+article.get('publication_date',''),True);box.addWidget(journal)
-        title=plain_label(('['+str(number)+'] ' if number else '')+article['title']);title.setStyleSheet('font-weight:700;color:#255366;font-size:10.5pt;');box.addWidget(title)
-        coverage=plain_label('读取范围：'+article.get('finder_coverage','检索元数据'),True);coverage.setStyleSheet('font-size:9pt;color:#7B8990;');box.addWidget(coverage)
+        journal=plain_label(article.get('journal_title','')+' · '+article.get('publication_date',''),True);journal.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Preferred);box.addWidget(journal)
+        title=plain_label(('['+str(number)+'] ' if number else '')+article['title']);title.setStyleSheet('font-weight:700;color:#255366;font-size:10.5pt;');title.setMinimumWidth(0);title.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Preferred);box.addWidget(title)
+        coverage=plain_label('读取范围：'+article.get('finder_coverage','检索元数据'),True);coverage.setStyleSheet('font-size:9pt;color:#7B8990;');coverage.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Preferred);box.addWidget(coverage)
         details=QPushButton('文章详情');details.setProperty('secondary',True);details.clicked.connect(lambda:self.article_detail(article));box.addWidget(details)
         collect=QPushButton('已收藏♥' if favorited else '收藏♡');collect.setProperty('article_key',article['article_key']);collect.setEnabled(not favorited)
         collect.clicked.connect(lambda:self.collect([article]));box.addWidget(collect)
@@ -422,12 +447,22 @@ QToolButton:pressed {background:#F4D6B1;}
         row=QHBoxLayout();link=QPushButton('打开DOI/文章页面');link.clicked.connect(lambda:QDesktopServices.openUrl(QUrl('https://doi.org/'+article['doi'] if article.get('doi') else 'https://pubmed.ncbi.nlm.nih.gov/'+article.get('pmid','')+'/')));row.addWidget(link);favorite=QPushButton('收藏到指定分组');favorite.clicked.connect(lambda:self.collect([article]));row.addWidget(favorite);layout.addLayout(row);dialog.exec()
     def confirm_close(self):
         if self.approved:return True
-        if self.task:self.status.setText('请求尚在处理，可最小化窗口，或停止后续调用后等待返回。');return False
+        if self.task and not confirm_ai_close(self):return False
+        self.stop.set()
+        if self.task:self.manager.cancel(self.task)
+        if self.task and self.interrupted_edit:
+            record,articles=self.interrupted_edit
+            if record:
+                inputs=dict(record['inputs'],view_state=self.capture_view())
+                try:self.manager.repository.replace_finder_conversation(self.identifier,inputs,record['result'],articles)
+                except ValueError:pass  # A deleted conversation must stay deleted.
+            self.approved=True;return True
         self.view_state=self.capture_view();self.persist();self.manager.repository.replace_finder_cards(self.identifier,self.articles);self.approved=True;return True
     def reject(self):
-        if self.confirm_close():super().reject()
+        if self.confirm_close():self.manager.abandon_owner(self);super().reject()
     def closeEvent(self,event):
         if not self.confirm_close():event.ignore();return
+        self.manager.abandon_owner(self)
         super().closeEvent(event)
 
 

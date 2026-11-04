@@ -40,4 +40,6 @@ class BriefLanguage(QObject):
         self.task=None
         if self.payload()!=self.source or (self.key and self.manager.repository.epoch(self.key)!=self.epoch):self.refresh();return
         self.source['english_brief']=data;self.updated(self.source);self.presentation.set_language('en');self.refresh()
-    def failed(self,message):self.task=None;self.refresh();QMessageBox.warning(self.dialog,'翻译未完成',message)
+    def failed(self,message):
+        self.task=None;self.refresh()
+        if not message.startswith('已取消本地AI任务'):QMessageBox.warning(self.dialog,'翻译未完成',message)

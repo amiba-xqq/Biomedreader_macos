@@ -253,6 +253,15 @@ def main() -> int:
             assert finder.models.count()==0 and not finder.messages
             finder.close()
             hub=FinderHub(window.ai_manager,window);assert hub.board.count()==1;hub.close()
+            from lab_ui import LoginDialog
+            login_check=LoginDialog(window.ai_manager,'pi');assert not hasattr(login_check,'connection');assert login_check.login.text().startswith('登录（');login_check.reject()
+            assert login_check.gateway.currentData()=='https://biomedreader.cn'
+            from lab_balance_ui import LabBalanceDialog
+            balance_check=LabBalanceDialog(window.ai_manager);assert balance_check.task is None;balance_check.reject()
+            from lab_keys_ui import LabKeysDialog
+            keys_check=LabKeysDialog(window.ai_manager);assert keys_check.table.rowCount()==0;keys_check.reject()
+            import student_keys,lab_member_ids
+            assert not student_keys.expire_on_startup(window.ai_manager.store)
             recommendation=RecommendationDialog(window.ai_manager,window);assert not hasattr(recommendation,'output_limit');recommendation.close()
             # Verify packaged Pillow codecs, figure validation and native previews.
             import io

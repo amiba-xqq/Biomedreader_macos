@@ -300,7 +300,8 @@ class ClickableCard(QFrame):
         stripe.setStyleSheet(f"background:{accent}; border-radius:3px;")
         title_label = QLabel(title)
         title_label.setWordWrap(True)
-        title_label.setStyleSheet("font-size:14pt; font-weight:700; border:none;")
+        from interface_scale import apply_scaled_style
+        apply_scaled_style(title_label,"font-size:14pt; font-weight:700; border:none;")
         subtitle_label = QLabel(subtitle)
         subtitle_label.setWordWrap(True)
         subtitle_label.setObjectName("Muted")
@@ -601,9 +602,13 @@ class ArticleDialog(QDialog):
         if self.ai_manager:self.ai_manager.changed.emit()
 
     def _save_notes(self) -> None:
-        self.database.save_favorite_notes(
-            self.article["article_key"], self.tags.text().strip(), self.note.toPlainText().strip()
-        )
+        try:
+            self.database.save_favorite_notes(
+                self.article["article_key"], self.tags.text().strip(), self.note.toPlainText().strip()
+            )
+        except (sqlite3.Error,OSError) as error:
+            QMessageBox.warning(self,'保存失败','标签和笔记未能保存，输入内容仍保留。请稍后重试。\n'+str(error))
+            return
         self.article["tags"] = self.tags.text().strip()
         self.article["personal_note"] = self.note.toPlainText().strip()
         QMessageBox.information(self, "已保存", "标签和笔记已保存到本地数据库。")
@@ -1059,15 +1064,15 @@ class ArticleCard(QFrame):
         layout = QVBoxLayout(self)
         if compact:layout.setContentsMargins(8,8,8,8);layout.setSpacing(6)
         else:layout.setSpacing(8)
-        journal = QLabel(str(article.get("journal_title") or "期刊名称缺失"))
+        journal = self.journal_label = QLabel(str(article.get("journal_title") or "期刊名称缺失"))
         journal.setStyleSheet("color:#C96812;font-weight:700;border:none;")
         journal.setWordWrap(True)
-        journal._base_card_height=28 if compact else 36
-        journal.setFixedHeight(scaled(journal._base_card_height))
+        journal.setMinimumHeight(scaled(28 if compact else 36))
         title = CardTitle(str(article.get("title") or "无标题"),self,compact)
         title_foreground = "#D97983" if preprint else foreground
         title_weight = 700 if preprint else (400 if visited else 600)
-        title.setStyleSheet(f"font-size:{11 if compact else 12}pt;font-weight:{title_weight};color:{title_foreground};border:none;")
+        from interface_scale import apply_scaled_style
+        apply_scaled_style(title,f"font-size:{11 if compact else 12}pt;font-weight:{title_weight};color:{title_foreground};border:none;")
         self.title_label = title
         title.setToolTip(title.text())
         self.abstract = QTextBrowser()

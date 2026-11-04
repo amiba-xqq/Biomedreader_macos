@@ -42,10 +42,15 @@ class AIClient:
             adapter=VerifiedHTTPSAdapter();adapter.max_retries=Retry(total=0,connect=0,read=0,redirect=0,status=0)
             self.session.mount('https://',adapter)
         self.session.auth=Bearer(self.key);self.session.headers['User-Agent']='BiomedReader/2.2'
-    def __enter__(self):return self
+    def __enter__(self):
+        from ai_cancel import check_cancelled,register_abort
+        check_cancelled();self._cancel_cleanup=register_abort(self.session.close) if self.own else lambda:None;return self
     def __exit__(self,*args):
+        getattr(self,'_cancel_cleanup',lambda:None)()
         if self.own:self.session.close()
     def request(self,method,path,payload=None):
+        from ai_cancel import check_cancelled
+        check_cancelled(getattr(self,'cancelled',None))
         try:
             # Fixed official hosts and no redirects prevent forwarding the key elsewhere.
             response=self.session.request(method,self.base+path,json=payload,timeout=getattr(self,'request_timeout',(10,600 if method=='POST' else 25)),allow_redirects=False)
@@ -59,6 +64,7 @@ class AIClient:
                               404:'模型或接口不可用，请刷新模型列表后重新选择。'}
                     raise AIAPIError(messages.get(code,f'AI 服务暂时不可用（HTTP {code}），请稍后重试。'))
                 data=response.json()
+                check_cancelled(getattr(self,'cancelled',None))
                 if not isinstance(data,dict):raise AIAPIError('AI 服务响应格式无法识别。')
                 return data
             finally:response.close()
@@ -242,7 +248,11 @@ def effective_output_limit(config,requested):
     return min(requested,model.get('max_output_tokens') or requested)
 
 def generate_recommendations(store,provider,topic,client_factory=None,max_output_tokens=None):
+    if provider!='codex':
+        from student_keys import ensure
+        ensure(store)
     config=store.config(provider)
+    if config.get('blocked_reason'):raise ValueError(config['blocked_reason'])
     if not config['enabled']:raise ValueError('所选模型尚未开启，请先在 AI 部署中开启。')
     key=store.key(provider);model=config['model'];fingerprint=key_fingerprint(key)
     if fingerprint!=config['key_fingerprint']:raise ValueError('账户或调用通道已变化，请重新发起生成。')
@@ -251,8 +261,8 @@ def generate_recommendations(store,provider,topic,client_factory=None,max_output
     try:
         with (client_factory or store.client_factory(provider,config))(provider,key) as client:text,usage,incomplete=client.recommend(model,topic,None)
     except Exception:
-        store.record(provider,fingerprint,model,outcome='unconfirmed');raise
-    store.record(provider,fingerprint,model,usage,outcome='incomplete' if incomplete else 'completed')
+        store.record(provider,fingerprint,model,owner=config.get('usage_owner'),outcome='unconfirmed');raise
+    store.record(provider,fingerprint,model,usage,owner=config.get('usage_owner'),outcome='incomplete' if incomplete else 'completed')
     result=parse_suggestions(text)
     if incomplete:result['notes']='本次响应达到输出上限，内容可能不完整。'+result['notes']
     result.update(provider=provider,model=model,usage=usage,topic=topic);result.update(__import__('reasoning').record(config))

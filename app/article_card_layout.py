@@ -33,18 +33,14 @@ class CardTitle(QLabel):
         def text_height(text):
             return metrics.boundingRect(QRect(0,0,width,100000),Qt.TextFlag.TextWordWrap,text).height()
         text=self.full_text
-        if text_height(text)+padding>maximum:
-            # Extremely long titles end on a complete visible line rather than
-            # drawing a clipped descender. The tooltip/details retain all text.
-            low,high=0,len(text)
-            while low<high:
-                middle=(low+high+1)//2
-                if text_height(text[:middle].rstrip()+'…')+padding<=maximum:low=middle
-                else:high=middle-1
-            text=text[:low].rstrip()+'…'
         if self.text()!=text:self.setText(text)
         height=max(minimum,text_height(text)+padding)
         if self.height()!=height:self.setFixedHeight(height)
+        # Grow the whole card rather than truncating title lines or borrowing
+        # the abstract's reserved space. Grid layouts take this minimum height.
+        if layout is not None and hasattr(self.card,'abstract'):
+            required=reserved+height+scaled(8)
+            self.card.setFixedHeight(max(scaled(self.card._base_card_height),required))
 
     def resizeEvent(self,event):
         super().resizeEvent(event)

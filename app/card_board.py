@@ -2,6 +2,7 @@
 from PySide6.QtCore import Qt,Signal
 from PySide6.QtWidgets import QFrame,QVBoxLayout,QLabel,QWidget,QProgressBar
 from keyword_cards import KeywordBoard,KeywordCard
+from interface_scale import apply_scaled_style
 
 class DirectoryCard(QFrame):
     clicked=Signal(object)
@@ -14,8 +15,8 @@ class DirectoryCard(QFrame):
         self.setObjectName('Card');self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip('单击打开；按住拖动调整卡片顺序。')
         layout=QVBoxLayout(self);layout.setContentsMargins(14,14,14,14)
-        heading=QLabel(title);heading.setWordWrap(True);heading.setTextFormat(Qt.TextFormat.PlainText)
-        heading.setStyleSheet('font-size:13pt;font-weight:700;border:none;')
+        heading=self.title_label=QLabel(title);heading.setWordWrap(True);heading.setTextFormat(Qt.TextFormat.PlainText)
+        apply_scaled_style(heading,'font-size:13pt;font-weight:700;border:none;')
         note=QLabel(subtitle);note.setWordWrap(True);note.setStyleSheet('color:#8B7768;border:none;')
         layout.addWidget(heading);layout.addStretch();layout.addWidget(note)
         self.import_status=QLabel();self.import_status.setWordWrap(True);self.import_status.setStyleSheet('font-size:9pt;color:#C96812;border:none;')

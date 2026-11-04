@@ -71,16 +71,21 @@ def public_url(url,resolve=True):
     return url
 
 def download(url,session=None):
+    from ai_cancel import check_cancelled
+    check_cancelled()
     own=session is None;session=session or session_for_updates()
     try:
         for _ in range(8):
+            check_cancelled()
             public_url(url)
             response=session.get(url,timeout=(10,40),allow_redirects=False,stream=True)
             try:
+                check_cancelled()
                 if response.status_code in (301,302,303,307,308):url=urljoin(url,response.headers.get('Location',''));continue
                 if response.status_code!=200:raise ValueError(f'文章网页暂不可读取（HTTP {response.status_code}）；可尝试本机浏览器登录，或链接已下载 PDF。')
                 chunks=[];length=0
                 for chunk in response.iter_content(65536):
+                    check_cancelled()
                     length+=len(chunk)
                     if length>50*1024*1024:raise ValueError('文章文件超过 50 MB，请链接较小的正文 PDF。')
                     chunks.append(chunk)
@@ -96,6 +101,8 @@ def pdf_document(source,label):
     pages=[];characters=0
     with pdfplumber.open(source) as document:
         for index,page in enumerate(document.pages,1):
+            from ai_cancel import check_cancelled
+            check_cancelled()
             text=page.extract_text() or '';characters+=len(text)
             pages.append(f'[PDF 第 {index} 页]\n{text}')
         try:
@@ -106,6 +113,8 @@ def pdf_document(source,label):
     return dict(text='\n\n'.join(pages),url=source_label(label),coverage='PDF 可提取文字（未分析图片像素及未包含的补充材料）',fulltext=True,figure=figure)
 
 def read_article(database,article,web_fetch=None,prefer_pdf=True,progress=lambda text:None):
+    from ai_cancel import check_cancelled
+    check_cancelled()
     errors=[];key=article['article_key']
     if prefer_pdf:
         path=database.linked_pdf(key)
@@ -113,6 +122,7 @@ def read_article(database,article,web_fetch=None,prefer_pdf=True,progress=lambda
             try:
                 progress('正在读取已链接 PDF：'+path.name)
                 return pdf_document(path,'已链接本地 PDF：'+path.name)
+            except InterruptedError:raise
             except Exception as error:errors.append(str(error))
     doi=str(article.get('doi') or '')
     url=('https://doi.org/'+doi) if doi else str(article.get('landing_page_url') or '')
@@ -168,10 +178,19 @@ class ArticleWebReader:
                 super().__init__(parent);self.queue=[];self.active=None;self.dialog=None;self.requested.connect(self.enqueue);self.expired.connect(self.expire)
                 self.auto_timer=QTimer(self);self.auto_timer.setInterval(3000);self.auto_timer.timeout.connect(self.auto_probe);self.probing=False;self.capturing=False
             def get(self,url,automatic=False):
+                from ai_cancel import check_cancelled,register_abort
+                check_cancelled()
                 public_url(url)
+                check_cancelled()
                 request=dict(url=url,event=threading.Event(),result=None,error=None,automatic=automatic)
                 self.requested.emit(request)
-                if not request['event'].wait(600):request['error']='本机网页读取等待超时。';request['event'].set();self.expired.emit(request)
+                def abort():
+                    request['error']='用户取消本机网页读取。';request['event'].set();self.expired.emit(request)
+                unregister=register_abort(abort)
+                try:
+                    if not request['event'].wait(600):request['error']='本机网页读取等待超时。';request['event'].set();self.expired.emit(request)
+                finally:unregister()
+                check_cancelled()
                 if request['error']:
                     if request['error'].startswith('用户取消'):raise InterruptedError(request['error'])
                     raise ValueError(request['error'])
@@ -244,7 +263,13 @@ class ArticleWebReader:
                     self.view.page().runJavaScript(javascript % json.dumps(target),pixels)
                 self.view.page().toHtml(received)
             def expire(self,request):
-                if self.active is request:self.finish(error=request['error'])
+                if self.active is request:
+                    if hasattr(self,'view'):self.view.stop()
+                    downloads=request.pop('downloads',[])
+                    self.finish(error=request['error'])
+                    for download in downloads:
+                        try:download.cancel()
+                        except RuntimeError:pass
                 elif request in self.queue:self.queue.remove(request)
             def download_pdf(self,download):
                 request=self.active
@@ -253,6 +278,7 @@ class ArticleWebReader:
                 try:public_url(url,False)
                 except ValueError:download.cancel();return
                 if 'pdf' not in download.mimeType().lower() and not urlsplit(url).path.lower().endswith('.pdf'):download.cancel();return
+                request.setdefault('downloads',[]).append(download)
                 import tempfile
                 temporary=tempfile.TemporaryDirectory(prefix='biomed-ai-paper-')
                 download.setDownloadDirectory(temporary.name);download.setDownloadFileName('paper.pdf')
@@ -276,5 +302,7 @@ class ArticleWebReader:
                 QTimer.singleShot(0,self.advance)
             def cancel(self):
                 for request in self.queue:request['error']='用户取消本机网页读取。';request['event'].set()
-                self.queue=[];self.finish(error='用户取消本机网页读取。')
+                self.queue=[]
+                if self.active:
+                    self.active['error']='用户取消本机网页读取。';self.expire(self.active)
         return Reader()

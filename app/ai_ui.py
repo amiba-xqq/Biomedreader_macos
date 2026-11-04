@@ -1,9 +1,9 @@
 """Optional API model cards and user-triggered keyword recommendations."""
-import json
+import json,sqlite3
 import weakref
 from datetime import datetime
 import shiboken6
-from PySide6.QtCore import QObject,QRunnable,Signal,Slot,QThreadPool,Qt,QUrl,QEvent
+from PySide6.QtCore import QObject,QRunnable,Signal,Slot,QThreadPool,Qt,QUrl,QEvent,QTimer
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QWidget,QDialog,QFrame,QLabel,QPushButton,QToolButton,QLineEdit,
     QComboBox,QPlainTextEdit,QVBoxLayout,QHBoxLayout,QFormLayout,QScrollArea,QMessageBox,
@@ -16,13 +16,18 @@ class JobSignals(QObject):
     failed=Signal(int,str)
 
 class AIJob(QRunnable):
-    def __init__(self,identifier,work):super().__init__();self.identifier=identifier;self.work=work;self.signals=JobSignals()
+    def __init__(self,identifier,work,cancelled=None):
+        super().__init__();self.identifier=identifier;self.work=work;self.signals=JobSignals()
+        from ai_cancel import Cancellation
+        self.cancellation=Cancellation(cancelled)
     def run(self):
-        try:self.signals.completed.emit(self.identifier,self.work())
+        try:
+            from ai_cancel import interruptible
+            self.signals.completed.emit(self.identifier,interruptible(self.work,self.cancellation))
         except Exception as error:
             # Provider errors are sanitized by AIClient. Never propagate raw
             # transport errors, keys, request objects or response bodies to logs.
-            message=str(error) if isinstance(error,ValueError) else 'AI 操作未完成，请检查网络与配置后重试。'
+            message=str(error) if isinstance(error,(ValueError,InterruptedError)) else 'AI 操作未完成，请检查网络与配置后重试。'
             self.signals.failed.emit(self.identifier,message[:400])
 
 class AIManager(QObject):
@@ -35,22 +40,60 @@ class AIManager(QObject):
         from ai_content import ArticleWebReader
         self.article_reader=ArticleWebReader(database.path.parent,parent or self)
         QThreadPool.globalInstance().setMaxThreadCount(max(8,QThreadPool.globalInstance().maxThreadCount()))
-    def submit(self,owner,work,done,failed):
-        self.serial+=1;identifier=self.serial;task=AIJob(identifier,work)
+        if isinstance(parent,QWidget):
+            self.check_student_session()
+    def check_student_session(self):
+        from student_keys import expire_on_startup
+        try:expired=expire_on_startup(self.store)
+        except (sqlite3.Error,OSError,ValueError):return
+        if expired:
+            self.changed.emit()
+    def submit(self,owner,work,done,failed,cancelled=None):
+        stop=getattr(owner,'stop',None)
+        if cancelled is None and callable(getattr(stop,'is_set',None)):cancelled=stop.is_set
+        self.serial+=1;identifier=self.serial;task=AIJob(identifier,work,cancelled)
         self.jobs[identifier]=(task,weakref.ref(owner),done,failed)
         task.signals.completed.connect(self.completed);task.signals.failed.connect(self.failed)
         QThreadPool.globalInstance().start(task)
         return identifier
+    def cancel(self,identifier):
+        job=self.jobs.get(identifier)
+        if job:job[0].cancellation.cancel()
+    def abandon_owner(self,owner):
+        """Cancel this window's jobs and child controllers, without waiting."""
+        owner._ai_closed=True
+        for identifier,job in list(self.jobs.items()):
+            target=job[1]();current=target
+            while current is not None and shiboken6.isValid(current):
+                if current is owner:
+                    target._ai_closed=True;job[0].cancellation.cancel();self.jobs.pop(identifier,None);break
+                current=current.parent()
     @Slot(int,object)
     def completed(self,identifier,result):self.deliver(identifier,result,False)
     @Slot(int,str)
     def failed(self,identifier,message):self.deliver(identifier,message,True)
     def deliver(self,identifier,result,failed):
         job=self.jobs.pop(identifier,None)
+        if not job:return
+        if job and not failed and job[0].cancellation.cancelled():
+            from ai_cancel import CANCEL_MESSAGE
+            result=CANCEL_MESSAGE;failed=True
         self.changed.emit()
         if job:
             owner=job[1]()
-            if owner is not None and shiboken6.isValid(owner):getattr(owner,job[3] if failed else job[2])(result)
+            if owner is not None and shiboken6.isValid(owner) and not getattr(owner,'_ai_closed',False):getattr(owner,job[3] if failed else job[2])(result)
+
+def confirm_ai_close(dialog):
+    """Ask before interrupting a running task; leave it untouched on cancel."""
+    if getattr(dialog,'_ai_close_question_open',False):return False
+    dialog._ai_close_question_open=True
+    try:
+        box=QMessageBox(dialog);box.setIcon(QMessageBox.Icon.Question);box.setWindowTitle('中断AI任务并关闭')
+        box.setText('当前AI任务仍在运行。关闭窗口将中断本地任务并停止后续AI调用，之前保存的结果会保留。\n是否确认关闭？')
+        confirm=box.addButton('确认关闭',QMessageBox.ButtonRole.AcceptRole)
+        keep=box.addButton('继续分析',QMessageBox.ButtonRole.RejectRole);box.setDefaultButton(keep);box.setEscapeButton(keep)
+        box.exec();return box.clickedButton() is confirm
+    finally:dialog._ai_close_question_open=False
 
 def plain_label(text='',muted=False):
     label=QLabel(text);label.setTextFormat(Qt.TextFormat.PlainText);label.setWordWrap(True)
@@ -125,6 +168,7 @@ class AISettingsDialog(QDialog):
             self.task=self.manager.submit(self,fetch,'models_loaded','failed')
         except ValueError as error:self.failed(str(error))
     def models_loaded(self,models):
+        if self.lab:self.config=self.manager.store.config(self.provider);self.request_fingerprint=self.config['key_fingerprint']
         selected=self.model.currentData() or self.config['model'];self.models=models;self.models_key=self.request_fingerprint
         self.populate(models,selected);self.task=None;self.busy(False);self.status.setText('已联网验证Biomni Lab API凭据；档位来自官方API规范，实际权限以执行结果为准。' if self.provider=='biomni' else f'已联网获取 {len(models)} 个文本模型；选择后点击保存。')
     def failed(self,message):self.task=None;self.busy(False);self.status.setText(message)
@@ -177,7 +221,8 @@ class ModelCard(QFrame):
             self.balance.setText('密钥已更改，原账户余额已隐藏，请重新刷新。')
         self.heading.setText(PROVIDERS[self.provider]);self.heading.setStyleSheet('font-size:16pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
         self.model_name.setText('当前模型：'+(config['model'] or '尚未设置')+' · 推理强度：'+__import__('reasoning').description(config.get('reasoning_effort')))
-        self.state.setText(('● 已开启 · 可用于 AI 功能' if enabled else '○ 未开启')+'\n'+('课题组授权通道 · PI 密钥保留在服务端' if config.get('route')=='lab' else 'API Key 已在本机加密保存' if config['encrypted_key'] else '请先设置您自己的 API Key'))
+        self.state.setText(('● 已开启 · 可用于 AI 功能' if enabled else '○ 未开启')+'\n'+('课题组授权通道 · 当前账户Key已本机加密，直接调用官方API' if config.get('local_direct') else '课题组授权通道 · PI 密钥保留在服务端' if config.get('route')=='lab' else 'API Key 已在本机加密保存' if config['encrypted_key'] else '请先设置您自己的 API Key'))
+        if config.get('blocked_reason'):self.state.setText(config['blocked_reason'])
         self.toggle_button.setText('关闭模型' if enabled else '开启模型')
         self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
         self.usage.setText(f"本软件调用次数：{usage['calls']:,}　未确认用量：{usage['unknown_calls']:,}\n输入 Token：{usage['input_tokens']:,}　输出 Token：{usage['output_tokens']:,}\n总 Token：{usage['total_tokens']:,}　其中缓存输入：{usage['cached_tokens']:,}\n上次调用：{local_time(usage['last_call'])}")
@@ -249,6 +294,7 @@ class RecommendationDialog(QDialog):
         outer.addWidget(plain_label('软件不设置输入或输出Token上限；实际容量与默认输出长度由模型服务决定。',True))
         self.topic=QPlainTextEdit();self.topic.setPlaceholderText('例如：IRAK1及其同家族分子的临床研究');self.topic.setMaximumHeight(140);outer.addWidget(self.topic)
         controls=QHBoxLayout();self.generate=QPushButton('生成英文关键词方案');self.generate.clicked.connect(self.request);controls.addWidget(self.generate)
+        cancel=QPushButton('取消AI任务');cancel.setProperty('secondary',True);cancel.clicked.connect(lambda:self.manager.cancel(self.task) if self.task else None);controls.addWidget(cancel)
         self.status=plain_label('按服务商规则计费；请求失败不自动重试。',True);controls.addWidget(self.status,1);outer.addLayout(controls)
         self.progress=QProgressBar();self.progress.setRange(0,0);self.progress.hide();outer.addWidget(self.progress)
         self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);self.content=QWidget();self.results=QVBoxLayout(self.content);self.results.addStretch();self.scroll.setWidget(self.content);outer.addWidget(self.scroll,1)
@@ -284,11 +330,12 @@ class RecommendationDialog(QDialog):
         else:self.clear_results();self.last_result=None
         self.saved_signature=self.current_signature();self.tabs.setCurrentIndex(0)
     def reject(self):
-        if self.task:self.status.setText('AI 请求尚在处理，可最小化本窗口；返回后可关闭。');return
-        if self.confirm_save():super().reject()
+        if self.task:self.manager.cancel(self.task);self._closing_approved=True
+        if self.confirm_save():self.manager.abandon_owner(self);super().reject()
     def closeEvent(self,event):
-        if self.task:self.status.setText('AI 请求尚在处理，可最小化本窗口；返回后可关闭。');event.ignore();return
+        if self.task:self.manager.cancel(self.task);self._closing_approved=True
         if not self.confirm_save():event.ignore();return
+        self.manager.abandon_owner(self)
         super().closeEvent(event)
     def request(self):
         if self.task:return
@@ -318,6 +365,7 @@ class RecommendationDialog(QDialog):
         self.results.addStretch();usage=result['usage']
         self.status.setText(f"生成完成 · {len(result['suggestions'])} 个方案 · 本次 Token：{usage.get('total_tokens', '接口未返回')}。可复制后粘贴到“添加关键词组”。")
     def failed(self,message):
-        self.task=None;self.update_models();self.model.setEnabled(True);self.progress.hide();self.status.setText(message);QMessageBox.warning(self,'AI生成未完成',message)
+        self.task=None;self.update_models();self.model.setEnabled(True);self.progress.hide();self.status.setText(message)
+        if not message.startswith('已取消本地AI任务'):QMessageBox.warning(self,'AI生成未完成',message)
     def copy(self,text):
         QApplication.clipboard().setText(text);QMessageBox.information(self,'复制成功','复制成功，可以粘贴到“添加关键词组”的关键词或布尔表达式中。')

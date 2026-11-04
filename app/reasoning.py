@@ -45,9 +45,9 @@ def configured_client(factory,provider,key,config):
     effort=config.get('reasoning_effort','default')
     if effort not in options(provider,config.get('model',''),metadata_for(config)):raise ValueError('模型支持的推理强度已变化，请重新打开模型设置。')
     client=factory(provider,key)
-    if config.get('route')=='lab':
-        from lab_service import LAB_URL,LAB_BACKUP_URL
-        if config.get('gateway_url') in (LAB_URL,LAB_BACKUP_URL):client.base=config['gateway_url']+'/api/lab'
+    if config.get('route')=='lab' and not config.get('local_direct'):
+        from lab_service import LAB_GATEWAYS
+        if config.get('gateway_url') in LAB_GATEWAYS:client.base=config['gateway_url']+'/api/lab'
     client.reasoning_effort=effort;return client
 
 def record(config):
