@@ -1,6 +1,6 @@
 import unittest
 from runtime_fixture import app,article,Runtime22Tests
-from PySide6.QtCore import QPoint,Qt
+from PySide6.QtCore import QPoint,Qt,QCoreApplication,QEvent
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel
 from ui import ArticleCard,APP_STYLE
 from keyword_cards import KeywordBoard,KeywordCard
@@ -14,6 +14,11 @@ class Tests(unittest.TestCase):
     setUp=Runtime22Tests.setUp
     def tearDown(self):
         app.biomed_scale=1;app.setStyleSheet(APP_STYLE);Runtime22Tests.tearDown(self)
+    def test_pending_title_refresh_is_safe_when_card_is_destroyed(self):
+        import shiboken6
+        card=ArticleCard(article('pmid:disposed'));title=card.title_label;title.queue_refresh()
+        card.deleteLater();QCoreApplication.sendPostedEvents(None,QEvent.Type.DeferredDelete)
+        self.assertFalse(shiboken6.isValid(title));app.processEvents();title.refresh_height()
     def test_dynamic_cards_created_after_zoom_have_scaled_complete_titles(self):
         for zoom in (1,1.5,2):
             app.biomed_scale=zoom;app.setStyleSheet(scale_style(APP_STYLE,zoom))
