@@ -18,7 +18,12 @@ class Runtime22Tests:
         self.temp=tempfile.TemporaryDirectory(dir=Path(__file__).parent);self.root=Path(self.temp.name).resolve();self.db=Database(self.root/'biomed_literature.sqlite3')
         self.group,_=self.db.create_favorite_group('Test','DNA');self.row=article('pmid:1');self.pdf=self.root/'original.pdf';self.pdf.write_bytes(b'%PDF-1.4\nTest original\n%%EOF')
         self.profile=self.db.save_profile(dict(name='Topic',query_expression='DNA',journal_issns=['0092-8674'],minimum_jif=0,maximum_results=0,sort_mode='最新发表',search_sources='pubmed'))
+        # Registered before test-specific cleanups, so it runs last in LIFO
+        # order and keeps their widgets/database valid until they finish.
+        self.addCleanup(Runtime22Tests.cleanup,self)
     def tearDown(self):
+        app.processEvents()
+    def cleanup(self):
         try:
             # An assertion must not leave modal windows attached to a database
             # which this fixture is about to remove.
