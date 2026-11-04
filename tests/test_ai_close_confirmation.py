@@ -25,7 +25,9 @@ class Tests(unittest.TestCase):
             observed.append(dict(title=box.windowTitle(),text=box.text(),default=box.defaultButton().text(),escape=box.escapeButton().text()))
             next(button for button in box.buttons() if button.text()==('确认关闭' if accept else '继续分析')).click()
         QTimer.singleShot(0,choose);value=action()
-        self.assertEqual(len(observed),1);self.assertIsNotNone(observed[0]);self.assertEqual(observed[0]['title'],'中断AI任务并关闭')
+        # QMessageBox intentionally ignores window titles on macOS. Verify the
+        # warning actually displayed to the user, rather than window decoration.
+        self.assertEqual(len(observed),1);self.assertIsNotNone(observed[0]);self.assertIn('当前AI任务仍在运行',observed[0]['text'])
         self.assertIn('中断',observed[0]['text']);self.assertIn('保存的结果会保留',observed[0]['text']);self.assertEqual(observed[0]['default'],'继续分析');self.assertEqual(observed[0]['escape'],'继续分析')
         return value
     def test_summary_and_all_assistant_windows_require_confirmation_for_both_close_controls(self):
@@ -68,10 +70,10 @@ class Tests(unittest.TestCase):
         manager=self.manager();dialog=SummaryDialog(manager,self.row,'profile:'+str(self.profile));dialog.show();blocked=Blocked(dict(text='Finished while deciding',provider='deepseek',model='fixture'));dialog.start(blocked);until(blocked.entered.is_set)
         seen=[]
         def decide():
-            box=app.activeModalWidget();seen.append(box.windowTitle());blocked.release.set()
+            box=app.activeModalWidget();seen.append(box.text());blocked.release.set()
             QTimer.singleShot(120,lambda:next(button for button in box.buttons() if button.text()=='继续分析').click())
         QTimer.singleShot(0,decide);self.assertFalse(dialog.close());until(lambda:dialog.task is None)
-        self.assertTrue(dialog.isVisible());self.assertEqual(dialog.result['text'],'Finished while deciding');self.assertFalse(blocked.aborted.is_set());self.assertEqual(seen,['中断AI任务并关闭'])
+        self.assertTrue(dialog.isVisible());self.assertEqual(dialog.result['text'],'Finished while deciding');self.assertFalse(blocked.aborted.is_set());self.assertEqual(len(seen),1);self.assertIn('当前AI任务仍在运行',seen[0])
         with patch.object(QMessageBox,'question',return_value=QMessageBox.StandardButton.Yes):dialog.close()
         self.assertEqual(manager.repository.summary(self.row['article_key'])['text'],'Finished while deciding');app.processEvents()
 
