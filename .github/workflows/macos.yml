@@ -66,6 +66,7 @@ jobs:
           cd build/smoke
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --startup-test "$PWD/test-data" --self-test
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --browser-self-test
+          '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --feedback-self-test "$PWD/feedback-transport.json"
           cd ../..
           python packaging/pdf_smoke.py
           python packaging/mac_plugin_smoke.py

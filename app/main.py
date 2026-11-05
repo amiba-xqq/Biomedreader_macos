@@ -49,6 +49,9 @@ def install_exception_handler(log_path: Path) -> None:
 
 
 def main() -> int:
+    if '--feedback-self-test' in sys.argv:
+        from feedback import run_feedback_self_test
+        return run_feedback_self_test(sys.argv[sys.argv.index('--feedback-self-test')+1])
     if '--codex-self-test' in sys.argv:
         from codex_diagnostics import self_test
         return self_test(sys.argv[sys.argv.index('--codex-self-test')+1])

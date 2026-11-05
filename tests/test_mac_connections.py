@@ -14,7 +14,10 @@ class MacWordActivationTests(unittest.TestCase):
         import mac_word_plugin as plugin
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);(root/'alive').touch()
-            with patch.object(plugin.sys,'platform','darwin'),patch.object(plugin.subprocess,'run') as launch:
+            # Use an explicit fresh heartbeat: filesystem timestamps can be a
+            # fraction ahead of time.time() on Windows build hosts.
+            heartbeat=(root/'alive').stat().st_mtime
+            with patch.object(plugin.time,'time',return_value=heartbeat+1),patch.object(plugin.sys,'platform','darwin'),patch.object(plugin.subprocess,'run') as launch:
                 for action in ('render','selected'):plugin.ensure_application(action,root)
                 launch.assert_not_called()
                 plugin.ensure_application('show',root)
