@@ -300,10 +300,10 @@ def export_pdf(path,result):
     def page_chrome(canvas,document):
         page_width,page_height = A4
         canvas.saveState()
-        canvas.setFont('BRProtocolYaHei',9)
+        canvas.setFont(chinese,9)
         canvas.setFillColor(HexColor('#52666F'))
         header = 'AI Protocol  |  '+display_title(result)
-        while pdfmetrics.stringWidth(header,'BRProtocolYaHei',9)>page_width-128:
+        while pdfmetrics.stringWidth(header,chinese,9)>page_width-128:
             header = header.rstrip('…')[:-2]+'…'
         canvas.drawString(64,page_height-33,header)
         canvas.drawRightString(page_width-64,28,f'第 {document.page} 页')
