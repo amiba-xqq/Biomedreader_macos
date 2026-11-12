@@ -69,11 +69,17 @@ jobs:
           cd build/smoke
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --startup-test "$PWD/test-data" --self-test
           '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --browser-self-test
-          '../../dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --feedback-self-test "$PWD/feedback-transport.json"
           cd ../..
           python packaging/pdf_smoke.py
           python packaging/mac_plugin_smoke.py
           python packaging/codex_smoke.py
+      - name: Report live feedback service availability
+        continue-on-error: true
+        run: |
+          result=0
+          'dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --feedback-self-test "$PWD/build/smoke/feedback-transport.json" || result=$?
+          cat build/smoke/feedback-transport.json
+          exit "$result"
       - name: Collect macOS crash diagnostics
         if: failure()
         run: |
