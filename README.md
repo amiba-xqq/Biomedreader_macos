@@ -6,11 +6,11 @@
 
 | 系统 | 安装包 |
 | --- | --- |
-| Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.1/BiomedReader_Setup_2.2.1_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.1/BiomedReader_2.2.1_Portable_x64.zip) |
+| Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.2/BiomedReader_Setup_2.2.2_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.2/BiomedReader_2.2.2_Portable_x64.zip) |
 | macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.1/BiomedReader_2.2.1_macOS12_AppleSilicon.dmg) |
 | macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.1/BiomedReader_2.2.1_macOS12_Intel.dmg) |
 
-[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.1) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.1) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
+[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.2) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.1) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
 
 Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 Word，并备份本地资料库。
 
