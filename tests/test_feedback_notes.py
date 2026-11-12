@@ -16,13 +16,16 @@ class Tests(unittest.TestCase):
         self.assertEqual(session.post.call_args.args[0],FEEDBACK_URL)
         self.assertFalse(session.post.call_args.kwargs['allow_redirects']);self.assertIn('过于频繁',errors[0])
     def test_both_release_views_are_consolidated_and_exclude_requested_content(self):
-        self.assertEqual(len(SECTIONS),10)
+        headings=[heading for heading,*_ in SECTIONS]
+        self.assertEqual(len(headings),len(set(headings)))
         dialog=ReleaseNotesDialog()
         for index in (0,1):
             dialog.mode.setCurrentIndex(index);text=dialog.browser.toPlainText()
             for banned in ('Biomni','biomni','本机加密','本地缓存API','下载真实API','15天','卡片标题缩放','反馈连接修复','反馈连接与卡片标题缩放'):
                 self.assertNotIn(banned,text)
-            self.assertIn('Word',text);self.assertIn('EndNote',text);self.assertLess(len(text),3500)
+            for required in ('AI Protocol','AI 作图','Scientific Agent Skills','Word','EndNote'):
+                self.assertIn(required,text)
+            self.assertLess(len(text),3500)
         dialog.close()
 
 if __name__=='__main__':unittest.main(defaultTest='Tests')
