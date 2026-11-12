@@ -41,6 +41,9 @@ jobs:
         run: python -m pip install --no-binary=cryptography --no-cache-dir cryptography==50.0.2
       - name: Install pinned build dependencies
         run: python -m pip install -r requirements-build.txt
+      - name: Prepare Monterey-compatible Apple Silicon Fortran runtimes
+        if: matrix.architecture == 'arm64'
+        run: python packaging/prepare_arm_scipy.py
       - name: Prepare bundled assets and icon
         run: |
           python packaging/prepare_assets.py

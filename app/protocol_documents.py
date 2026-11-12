@@ -340,8 +340,8 @@ def write_protocol(path,result,writer):
         raise
     except PermissionError:
         raise ValueError('无法写入此位置。请关闭已打开的同名文件，或选择可写入的文件夹。') from None
-    except OSError:
-        raise ValueError('无法保存 Protocol。请检查目录、文件名和剩余磁盘空间。') from None
+    except OSError as error:
+        raise ValueError('无法保存 Protocol。请检查目录、文件名和剩余磁盘空间。') from error
     return str(target)
 
 

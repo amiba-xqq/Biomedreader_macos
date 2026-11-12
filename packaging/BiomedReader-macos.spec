@@ -4,6 +4,8 @@ from PyInstaller.utils.hooks import collect_data_files
 root=Path(SPECPATH).resolve().parent
 assets=[(str(root/'app/assets'),'assets')]
 assets+=collect_data_files('citeproc')+collect_data_files('pdfminer')+collect_data_files('openpyxl')+collect_data_files('docx')
+# python-docx opens its header/footer templates via parts/../templates.
+assets+=collect_data_files('docx',include_py_files=True,includes=['parts/__init__.py'])
 assets += [(str(root/'app/README.txt'),'.'),(str(root/'app/THIRD_PARTY_NOTICES.txt'),'.')]
 assets += [(str(root/'build/codex-runtime/manifest.json'),'codex-runtime')]
 assets += [(str(root/'app'/name),'figure_scripts') for name in
