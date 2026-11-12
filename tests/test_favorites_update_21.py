@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication,QMessageBox,QDialog
 from database import Database
 from favorite_tools import filter_grouped_favorites,FavoriteSearchDialog,confirm_unfavorite,search_terms
 from ui import FavoritesPage,ArticleDialog,ResultsPage,BulkUnfavoriteDialog
+from version import APP_VERSION
 from software_update import (check_release,version_numbers,platform_package,download_artifact,
     asset_response,validate_artifact,UpdateCancelled,SoftwareUpdateWidget,MANIFEST_URL)
 
@@ -170,7 +171,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(session.get.call_count,1)
     def test_update_widget_reports_latest_without_download(self):
         widget=SoftwareUpdateWidget()
-        with patch('software_update.check_release',return_value=dict(current='2.2.1',latest='2.2.1',newer=False,artifact=None)),patch.object(QMessageBox,'information') as notice,patch('software_update.download_artifact') as download:
+        with patch('software_update.check_release',return_value=dict(current=APP_VERSION,latest=APP_VERSION,newer=False,artifact=None)),patch.object(QMessageBox,'information') as notice,patch('software_update.download_artifact') as download:
             widget.check();deadline=time.monotonic()+10
             while widget.task is not None and time.monotonic()<deadline:app.processEvents();time.sleep(.01)
             self.assertIsNone(widget.task);notice.assert_called_once();download.assert_not_called()

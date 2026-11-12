@@ -3,6 +3,7 @@ import io
 import json
 import os
 import re
+import sys
 import tempfile
 import threading
 from contextlib import closing
@@ -59,15 +60,38 @@ def flow_image(result):
     height = 36+len(stages)*120
     image = Image.new('RGB',(1200,height),'#FFFFFF')
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype(str(FONT_DIR/'msyh.ttc'),39)
+    font = None if sys.platform=='darwin' else ImageFont.truetype(str(FONT_DIR/'msyh.ttc'),39)
     for index,stage in enumerate(stages):
         top = 20+index*120
         draw.rounded_rectangle((35,top,1165,top+83),radius=16,fill='#FFF5E8',outline='#CE8743',width=3)
-        draw.text((600,top+41),f'{index+1}. {stage}',font=font,anchor='mm',fill='#292321')
+        if font:
+            draw.text((600,top+41),f'{index+1}. {stage}',font=font,anchor='mm',fill='#292321')
         if index<len(stages)-1:
             draw.line((600,top+87,600,top+108),fill='#9A5D28',width=4)
             draw.polygon([(591,top+105),(609,top+105),(600,top+116)],fill='#9A5D28')
     data = io.BytesIO()
+    if sys.platform=='darwin':
+        from PySide6.QtCore import QBuffer,QIODevice,QRect,Qt
+        from PySide6.QtGui import QColor,QFont,QImage,QPainter
+        image.save(data,'PNG')
+        canvas = QImage.fromData(data.getvalue())
+        painter = QPainter(canvas)
+        try:
+            caption = QFont()
+            caption.setPixelSize(39)
+            painter.setFont(caption)
+            painter.setPen(QColor('#292321'))
+            for index,stage in enumerate(stages):
+                painter.drawText(QRect(35,20+index*120,1130,83),Qt.AlignmentFlag.AlignCenter,f'{index+1}. {stage}')
+        finally:
+            painter.end()
+        canvas.setDotsPerMeterX(11811)
+        canvas.setDotsPerMeterY(11811)
+        buffer = QBuffer()
+        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+        if not canvas.save(buffer,'PNG'):
+            raise ValueError('无法导出实验流程图。')
+        return bytes(buffer.data())
     image.save(data,'PNG',dpi=(300,300))
     return data.getvalue()
 
@@ -233,7 +257,6 @@ def export_pdf(path,result):
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer
 
-    import sys
     if sys.platform=='darwin':
         from reportlab.pdfbase.cidfonts import UnicodeCIDFont
         from figure_render import arial_paths

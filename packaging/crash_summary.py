@@ -22,6 +22,9 @@ for report in (Path.home()/'Library/Logs/DiagnosticReports').glob('*.ips'):
 # Hosted runners may not save .ips reports. Capture the debugger in memory and
 # emit only function names, never raw output, addresses, paths or variables.
 root=Path(__file__).resolve().parents[1]
+smoke_directory=root/'build/source-smoke'
+if not smoke_directory.is_dir():
+    sys.exit(0)
 trace_code="""import sys,runpy
 from pathlib import Path
 main=Path(sys.argv[1]);sys.path.insert(0,str(main.parent));sys.argv=[str(main),'--browser-self-test']
