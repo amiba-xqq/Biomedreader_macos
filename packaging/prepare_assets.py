@@ -5,7 +5,8 @@ for path in (root/'app/assets').glob('*.json.gz'):
     output=path.with_suffix('');data=gzip.decompress(path.read_bytes())
     json.loads(data);output.write_bytes(data)
     print(output.name,hashlib.sha256(data).hexdigest())
-for name in ('pdfplumber','pdfminer.six','pypdfium2','cryptography','citeproc-py','lxml'):
+for name in ('pdfplumber','pdfminer.six','pypdfium2','pypdf','cryptography','citeproc-py','lxml',
+             'numpy','scipy','matplotlib','openpyxl','xlrd','python-docx'):
     distribution=importlib.metadata.distribution(name)
     for relative in distribution.files or ():
         if not any(part.lower().startswith(('license','copying','notice','authors')) for part in relative.parts):continue
