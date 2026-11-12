@@ -1,4 +1,8 @@
-# 刊禾 · Biomed Reader 2.2.1
+# 刊禾 · Biomed Reader 2.2.2
+
+- **AI 作图**：支持 WB／gel、IF、qPCR 和 Excel／CSV 作图、可编辑 PDF／SVG 导出，以及基于项目上下文的连续修改。
+- **AI Protocol**：从资料提取实验方法并编辑中文方案，支持 Word／PDF 导出和方案分享。
+- **内置科研技能**：按任务加载随软件提供的科研分析、审稿和可视化技能。
 
 - PubMed、bioRxiv、medRxiv 检索，独立关键词、增量刷新、筛选与离线阅读。
 - 收藏分组、标签笔记、PDF 关联、批量导入、引用格式与本地数据管理。

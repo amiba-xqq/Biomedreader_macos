@@ -1,4 +1,4 @@
-# 刊禾 · Biomed Reader 2.2.1
+# 刊禾 · Biomed Reader 2.2.2
 
 面向生物医学研究者的文献检索、收藏管理、离线阅读、引用与 AI 辅助分析桌面软件。
 
@@ -7,10 +7,10 @@
 | 系统 | 安装包 |
 | --- | --- |
 | Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.2/BiomedReader_Setup_2.2.2_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.2/BiomedReader_2.2.2_Portable_x64.zip) |
-| macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.1/BiomedReader_2.2.1_macOS12_AppleSilicon.dmg) |
-| macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.1/BiomedReader_2.2.1_macOS12_Intel.dmg) |
+| macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.2/BiomedReader_2.2.2_macOS12_AppleSilicon.dmg) |
+| macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.2/BiomedReader_2.2.2_macOS12_Intel.dmg) |
 
-[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.2) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.1) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
+[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.2) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.2) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
 
 Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 Word，并备份本地资料库。
 
@@ -20,6 +20,9 @@ Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 
 - **文献管理**：关键词方案、收藏分组、卡片与表格视图；标签、个人笔记、PDF 批量导入与本地原文关联；分组分享与引用导出。
 - **文章分析**：AI 关键词推荐、文章总结、简报与新闻稿、增量 AI 报告；中英文简报、模型图及带水印的 PDF 导出。
 - **科研助手**：AI 寻找文章、领域知识库、AI 提出科学问题和 AI reviewer。知识库保存可复用的文献证据资料，不微调云端模型权重。审稿结果按 Summary and significance assessment、Major comments、Minor comments 组织。
+- **AI 作图**：支持 WB／gel、IF、qPCR 和 Excel／CSV 作图、可编辑 PDF／SVG 导出，以及基于项目上下文的连续修改。
+- **AI Protocol**：从资料提取实验方法并编辑中文方案，支持 Word／PDF 导出和方案分享。
+- **内置科研技能**：按任务加载随软件提供的科研分析、审稿和可视化技能。
 - **科研对话**：正文引用编号可定位右侧文献卡片；正文和卡片分栏、独立滚动；支持消息复制、编辑、删除与对话布局恢复。
 - **AI 部署**：DeepSeek、ChatGPT Codex 本机连接、OpenAI API、Kimi 和 GLM；按模型实际能力选择推理强度。个人通道与 PI／学生课题组通道分别配置，一个学生访问 ID 可使用 PI 已开通的 API 平台；Codex 本机登录不共享。
 - **模型图**：阿里云百炼、火山引擎方舟、GLM-Image、分析模型可调用的作图工具或跳过；绘图平台仅用于模型图，不进入文字分析模型列表。优先使用文章已有模型图，生成能力受所选服务与模型权限限制。

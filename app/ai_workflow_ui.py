@@ -298,12 +298,29 @@ class AIAssistantPage(QWidget):
             from ai_finder_ui import FinderHub
             show_window(FinderHub(manager,self))
         finder=self.assistant_board.add_card('finder','AI寻找文章','描述研究方向、待解决问题并提供资料\n检索真实文献，寻找可借鉴的方法与理论',open_finder);finder.mouseMoveEvent=lambda event:None
+        def open_figure(_):
+            from figure_ui import FigureHub
+            show_window(self.findChild(FigureHub) or FigureHub(manager,self))
+        figure=self.assistant_board.add_card('figure','AI作图','WB / gel、IF、qPCR、Excel / CSV\n裁剪原图、计算统计并导出可编辑图件',open_figure)
+        figure.mouseMoveEvent=lambda event:None
+        def open_protocol(_):
+            from protocol_ui import ProtocolHub
+            show_window(self.findChild(ProtocolHub) or ProtocolHub(manager,self))
+        protocol=self.assistant_board.add_card('protocol','AI Protocol','提取实验方法并编写中文操作草案\n编辑、导出与打包分享',open_protocol)
+        protocol.mouseMoveEvent=lambda event:None
+        scroll=QScrollArea()
+        scroll.setWidgetResizable(True)
+        layout.removeWidget(self.assistant_board)
+        scroll.setWidget(self.assistant_board)
+        layout.addWidget(scroll,1)
 
 class AIReportDialog(QDialog):
     def __init__(self,coordinator,profile_id,parent=None):
         super().__init__(parent);window_flags(self);self.coordinator=coordinator;self.manager=coordinator.manager;self.profile_id=profile_id;self.page=0;self.dirty=False;self.approved=False;self.editorial_task=None
         self.setWindowTitle('AI报告');self.resize(1000,820);layout=QVBoxLayout(self);self.heading=plain_label();layout.addWidget(self.heading)
         row=QHBoxLayout();self.generate=QPushButton('生成／重新生成当前新增批次报告');self.generate.clicked.connect(lambda:coordinator.generate(profile_id));row.addWidget(self.generate);row.addStretch();previous=QPushButton('上一页');previous.clicked.connect(lambda:self.change_page(-1));row.addWidget(previous);following=QPushButton('下一页');following.clicked.connect(lambda:self.change_page(1));row.addWidget(following);layout.addLayout(row)
+        self.batch_progress=QProgressBar();self.batch_progress.hide();layout.addWidget(self.batch_progress)
+        self.batch_status=plain_label('',True);self.batch_status.hide();layout.addWidget(self.batch_status)
         tools=QHBoxLayout();tools.addWidget(QLabel('报告模式'));self.mode=QComboBox();self.mode.addItem('简报','brief');self.mode.addItem('新闻稿','news');self.mode.setCurrentIndex(max(0,self.mode.findData('brief')));self.mode.currentIndexChanged.connect(self.change_mode);tools.addWidget(self.mode)
         self.export_scope=QComboBox();self.export_scope.addItems(['当前文章','本批全部文章']);tools.addWidget(self.export_scope);self.export_button=QPushButton('导出新闻稿PDF');self.export_button.clicked.connect(self.export_pdf);tools.addWidget(self.export_button);tools.addStretch()
         stop=QPushButton('取消AI任务');stop.setProperty('secondary',True);stop.clicked.connect(self.cancel_tasks);tools.addWidget(stop);layout.addLayout(tools)
@@ -313,20 +330,41 @@ class AIReportDialog(QDialog):
         detail=QWidget();detail_layout=QVBoxLayout(detail);back=QPushButton('← 返回文章标题');back.setProperty('secondary',True);back.clicked.connect(lambda:self.stack.setCurrentIndex(0));detail_layout.addWidget(back,0,Qt.AlignmentFlag.AlignLeft)
         self.detail_title=plain_label();self.detail_title.setStyleSheet('font-weight:700;color:#B45309;');detail_layout.addWidget(self.detail_title)
         self.render_button=QPushButton('生成新版图文报告');self.render_button.clicked.connect(self.generate_editorial);detail_layout.addWidget(self.render_button,0,Qt.AlignmentFlag.AlignLeft)
+        self.editorial_channel='report-editorial:'+uuid.uuid4().hex
+        self.editorial_progress=QProgressBar();self.editorial_progress.setRange(0,0);self.editorial_progress.hide();detail_layout.addWidget(self.editorial_progress)
+        self.editorial_status=plain_label('',True);self.editorial_status.hide();detail_layout.addWidget(self.editorial_status)
         from report_design import ReportPresentation
         self.presentation=ReportPresentation();self.detail_text=self.presentation.news;detail_layout.addWidget(self.presentation,1);self.stack.addWidget(detail);self.selected_key=None
         bottom=QHBoxLayout();save=QPushButton('保存AI报告');save.clicked.connect(self.save);bottom.addWidget(save)
         from brief_language import BriefLanguage
         self.language_summary=None;self.language_control=BriefLanguage(self,self.manager,self.presentation,lambda:self.language_summary,self.translated);bottom.addWidget(self.language_control.button)
         bottom.addStretch();close=QPushButton('关闭');close.clicked.connect(self.reject);bottom.addWidget(close);layout.addLayout(bottom)
-        coordinator.changed.connect(self.reload);self.manager.changed.connect(self.reload);self.reload()
+        coordinator.changed.connect(self.reload);self.manager.changed.connect(self.reload);self.manager.progress.connect(self.progress_message);self.reload()
         self.change_mode()
+    def update_batch_progress(self):
+        running=self.profile_id in self.coordinator.running
+        self.generate.setEnabled(not running)
+        self.batch_progress.setVisible(running);self.batch_status.setVisible(running)
+        if not running:return
+        report=self.coordinator.drafts.get(self.profile_id) or {}
+        total=len(report.get('total_keys',report.get('keys',[])))
+        processed=len(report.get('keys',[]))
+        self.batch_progress.setRange(0,total if processed else 0)
+        self.batch_progress.setValue(processed)
+        self.batch_progress.setFormat('已处理 %v/%m 篇 · %p%')
+        self.batch_status.setText(f'已处理 {processed}/{total} 篇，AI模型正在分析……')
+    def progress_message(self,channel,text):
+        if channel=='report:'+str(self.profile_id) and self.profile_id in self.coordinator.running:
+            self.batch_status.setText(text)
+        elif channel==self.editorial_channel and self.editorial_task:
+            self.editorial_status.setText(text)
     def cancel_tasks(self):
         self.coordinator.cancel(self.profile_id)
         for task in (self.editorial_task,self.language_control.task):
             if task:self.manager.cancel(task)
         self.report_status.setText('正在取消；已完成的文章总结继续保留。')
     def reload(self):
+        self.update_batch_progress()
         self.report=self.coordinator.drafts.get(self.profile_id) or self.manager.repository.report(self.profile_id)
         self.dirty=self.profile_id in self.coordinator.drafts
         if not self.report:self.heading.setText('尚无报告。可为当前新增批次生成；零新增不会调用 AI，也不会替换上次已保存报告。');return
@@ -377,10 +415,15 @@ class AIReportDialog(QDialog):
         engine.cancelled=lambda:not self.manager.store.database.get_profile(self.profile_id) or self.manager.repository.epoch(key)!=epoch
         self.render_button.setEnabled(False);self.export_button.setEnabled(False);self.report_status.setText('正在基于上次材料补充当前报告内容；可最小化本窗口。')
         previous=self.manager.repository.summary(key);part=self.mode.currentData()
-        def work():return dict(key=key,epoch=epoch,part=part,result=engine.summarize(self.manager.store.database,article,web_fetch=self.manager.article_reader.get,content_mode=part,previous=previous))
+        self.editorial_progress.show();self.editorial_status.setText('AI模型正在生成'+('新闻稿' if part=='news' else '简报')+'，请稍候……');self.editorial_status.show()
+        def progress(text):
+            from ai_cancel import check_cancelled
+            check_cancelled()
+            self.manager.progress.emit(self.editorial_channel,text)
+        def work():return dict(key=key,epoch=epoch,part=part,result=engine.summarize(self.manager.store.database,article,progress=progress,web_fetch=self.manager.article_reader.get,content_mode=part,previous=previous))
         self.editorial_task=self.manager.submit(self,work,'editorial_loaded','editorial_failed')
     def editorial_loaded(self,payload):
-        self.editorial_task=None;self.render_button.setEnabled(True)
+        self.editorial_task=None;self.editorial_progress.hide();self.editorial_status.hide();self.render_button.setEnabled(True)
         try:self.coordinator.summary_changes(self.profile_id).save(payload['key'],payload['result'],'report:'+str(self.profile_id),payload['epoch'])
         except ValueError as error:self.editorial_failed(str(error));return
         if self.report:
@@ -389,7 +432,7 @@ class AIReportDialog(QDialog):
         self.change_mode();self.manager.changed.emit()
         if not payload['result'].get('presentation'):self.report_status.setText('模型未返回完整的结构化稿件，保留文字总结；未自动重复付费调用。可人工核查后重试。')
     def editorial_failed(self,message):
-        self.editorial_task=None;self.render_button.setEnabled(True);self.export_button.setEnabled(self.mode.currentData()=='news');self.report_status.setText(message)
+        self.editorial_task=None;self.editorial_progress.hide();self.editorial_status.hide();self.render_button.setEnabled(True);self.export_button.setEnabled(self.mode.currentData()=='news');self.report_status.setText(message)
         if not message.startswith('已取消本地AI任务'):QMessageBox.warning(self,'报告操作未完成',message)
     def export_pdf(self):
         if self.editorial_task or self.mode.currentData()!='news' or not self.report:return
@@ -500,12 +543,18 @@ class AIReportCoordinator(QObject):
             for index,key in enumerate(keys,1):
                 check_cancelled(stop.is_set)
                 if not self.window.database.get_profile(profile_id):raise ValueError('方案已删除，已停止后续 AI 调用。')
-                self.manager.progress.emit('report:'+str(profile_id),f'AI报告 {index}/{len(keys)}')
+                article=self.window.database.article_record(key)
+                title=str((article or {}).get('title') or key)
+                def progress(text):
+                    check_cancelled(stop.is_set)
+                    self.manager.progress.emit('report:'+str(profile_id),f'正在分析第 {index}/{len(keys)} 篇 · '+title+'\n'+text)
+                progress('AI模型正在读取与分析……')
                 epoch=self.manager.repository.epoch(key);cached=self.manager.repository.summary(key)
                 try:
                     required={'brief','news'} if content_mode=='both' else {content_mode}
-                    if not cached or (cached.get('provider'),cached.get('model'))!=(engine.provider,engine.model) or not required.issubset(set(cached.get('report_content_modes',['brief','news']))):
-                        article=self.window.database.article_record(key);cached=engine.summarize(self.window.database,article,web_fetch=self.manager.article_reader.get,content_mode=content_mode)
+                    from scientific_skills import receipt
+                    if not cached or cached.get('scientific_skills')!=receipt('summary') or (cached.get('provider'),cached.get('model'))!=(engine.provider,engine.model) or not required.issubset(set(cached.get('report_content_modes',['brief','news']))):
+                        cached=engine.summarize(self.window.database,article,progress=progress,web_fetch=self.manager.article_reader.get,content_mode=content_mode)
                     check_cancelled(stop.is_set)
                     changes.save(key,cached,'report:'+str(profile_id),epoch)
                     modes[key]=['brief','news'] if content_mode=='both' else [content_mode]

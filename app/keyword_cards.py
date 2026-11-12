@@ -158,7 +158,7 @@ class KeywordBoard(QWidget):
     def __init__(self,columns=5,card_height=245):
         super().__init__()
         self.cards = []
-        self.columns=columns;self.card_height=card_height
+        self.columns=columns;self.card_height=card_height;self.row_gap=16
         self.scroll_area = None
         self.scroll_step = 0
         self.scroll_timer = QTimer(self)
@@ -205,7 +205,7 @@ class KeywordBoard(QWidget):
                 title.setFixedHeight(max(scaled(30),h))
                 height=max(height,card.layout().heightForWidth(width)+scaled(8),card.layout().minimumSize().height()+scaled(8))
             if x>edge and x+width>edge+available:
-                x,y,row_height=edge,y+row_height+gap,0
+                x,y,row_height=edge,y+row_height+scaled(self.row_gap),0
             card.setGeometry(x,y,width,height);card.show()
             x+=width+gap;row_height=max(row_height,height)
         self.empty.setVisible(not self.cards)

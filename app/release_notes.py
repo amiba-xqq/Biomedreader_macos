@@ -6,8 +6,17 @@ from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QDialog,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QTextBrowser,QDialogButtonBox
 from version import APP_VERSION
 
-BUILD_ID='2.2.1-20261104.5'
-SECTIONS=[('文献检索与增量更新',
+BUILD_ID='2.2.2-20261111.3'
+SECTIONS=[('2.2.2 · AI Protocol',
+  'AI 助手新增 AI Protocol，可从论文、学位论文、收藏文献或自拟方法编写中文实验方案。',
+  '自动加载内置科研写作、科学证据评估与文献检索技能。支持指定要提取的方法、检索补充资料、生成流程图与中文草案，并在全屏中编辑。可导出 Word 或 PDF，也可批量打包分享和导入。'),
+ ('2.2.2 · AI 作图',
+  'AI 助手可建立 WB / gel、IF、qPCR 和 Excel / CSV 作图项目，导出无水印、可编辑的 PDF / SVG。',
+  '自动加载内置科研可视化技能。支持原图选区、WB 标尺校平、IF 多通道同步裁剪，以及 qPCR 按独立重复计算 ΔΔCt 并导出统计 CSV。可框选预览区域后继续让模型修改排版。删除卡片同时删除其本地缓存。'),
+ ('2.2.2 · 内置 Scientific Agent Skills',
+  '内置七项科研技能，自动用于文章总结、AI报告、科学问题、同行评审和文献寻找，安装后即可使用。',
+  '随安装包提供 Scientific Critical Thinking、Scientific Writing、Scientific Brainstorming、Hypothesis Generation、Peer Review、Paper Lookup 和 Literature Review，以及相应参考资料。按任务加载科研工作流，支持 Codex 本机连接及 DeepSeek、Kimi、GLM、OpenAI API 等分析通道。结果记录使用的技能与内置版本；按生物医学同行的表达组织问题、核对论据、区分证据与假说，并结合现有检索、全文读取和报告导出流程。'),
+ ('文献检索与增量更新',
   '整合 PubMed、bioRxiv 和 medRxiv，支持独立关键词、筛选及批量刷新。',
   '关键词方案可分别设置 PubMed 与预印本关键词、候选数、年份、文章类型和期刊目录。支持最新发表、相关性和综合排序；首次完整检索，后续按成功刷新日期增量合并，也可手动完整检索。全部联网刷新按照卡片顺序依次运行。'),
  ('关键词方案与离线阅读',

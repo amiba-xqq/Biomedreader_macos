@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject,QRunnable,Signal,Slot,QThreadPool,Qt,QUrl,QEv
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QWidget,QDialog,QFrame,QLabel,QPushButton,QToolButton,QLineEdit,
     QComboBox,QPlainTextEdit,QVBoxLayout,QHBoxLayout,QFormLayout,QScrollArea,QMessageBox,
-    QApplication,QDialogButtonBox,QProgressBar,QSizePolicy,QSpinBox,QTabWidget)
+    QApplication,QDialogButtonBox,QGridLayout,QProgressBar,QSizePolicy,QSpinBox,QTabWidget)
 from ai_store import AIStore,PROVIDERS,key_fingerprint
 from ai_service import AIClient,generate_recommendations
 
@@ -200,11 +200,11 @@ class ModelCard(QFrame):
         from ai_service import BALANCE_PROVIDERS
         self.balance=plain_label('点击刷新余额，可向 '+PROVIDERS[provider]+' 查询账户当前余额。' if provider in BALANCE_PROVIDERS else 'GLM 暂未接入可核实的普通 API Key 现金余额接口，请打开官方账户账单查看。' if provider=='glm' else '普通 OpenAI API Key 未在本页查询账户余额。请在 OpenAI 平台查看账单和完整账户用量。');details.addWidget(self.balance)
         if provider=='biomni':self.balance.setText('Biomni Lab未提供可核实的Token/余额查询接口；任务按平台规则计费。缺失用量不代表零消耗，请在Biomni Lab账户核对。')
-        controls=QHBoxLayout()
+        controls=QVBoxLayout()
         if provider in BALANCE_PROVIDERS:
             self.balance_button=QPushButton('刷新余额');self.balance_button.setProperty('secondary',True);self.balance_button.clicked.connect(self.refresh_balance);controls.addWidget(self.balance_button)
         dashboard=QPushButton('打开账户用量／账单');dashboard.setProperty('secondary',True)
-        dashboard.clicked.connect(lambda:QDesktopServices.openUrl(QUrl({'deepseek':'https://platform.deepseek.com/usage','openai':'https://platform.openai.com/usage','kimi':'https://platform.kimi.com','glm':'https://bigmodel.cn','biomni':'https://biomni.phylo.bio'}.get(provider,'https://platform.openai.com/usage'))));controls.addWidget(dashboard);controls.addStretch();details.addLayout(controls)
+        dashboard.clicked.connect(lambda:QDesktopServices.openUrl(QUrl({'deepseek':'https://platform.deepseek.com/usage','openai':'https://platform.openai.com/usage','kimi':'https://platform.kimi.com','glm':'https://bigmodel.cn','biomni':'https://biomni.phylo.bio'}.get(provider,'https://platform.openai.com/usage'))));controls.addWidget(dashboard,0,Qt.AlignmentFlag.AlignLeft);details.addLayout(controls)
         details.addWidget(plain_label('统计范围：本资料库、本软件、当前 Key 的已确认响应。包含不同模型的调用，不代表整个账户；超时或响应丢失可能已计费，但无法计入确认 Token。',True))
         layout.addWidget(self.details);self.details.hide();manager.changed.connect(self.reload);self.reload()
     def mousePressEvent(self,event):
@@ -219,7 +219,7 @@ class ModelCard(QFrame):
         config=self.manager.store.config(self.provider);enabled=bool(config['enabled']);usage=self.manager.store.usage(self.provider)
         if hasattr(self,'balance_fingerprint') and config['key_fingerprint']!=self.balance_fingerprint:
             self.balance.setText('密钥已更改，原账户余额已隐藏，请重新刷新。')
-        self.heading.setText(PROVIDERS[self.provider]);self.heading.setStyleSheet('font-size:16pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
+        self.heading.setText(PROVIDERS[self.provider]);self.heading.setStyleSheet('font-size:12pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
         self.model_name.setText('当前模型：'+(config['model'] or '尚未设置')+' · 推理强度：'+__import__('reasoning').description(config.get('reasoning_effort')))
         self.state.setText(('● 已开启 · 可用于 AI 功能' if enabled else '○ 未开启')+'\n'+('课题组授权通道 · 当前账户Key已本机加密，直接调用官方API' if config.get('local_direct') else '课题组授权通道 · PI 密钥保留在服务端' if config.get('route')=='lab' else 'API Key 已在本机加密保存' if config['encrypted_key'] else '请先设置您自己的 API Key'))
         if config.get('blocked_reason'):self.state.setText(config['blocked_reason'])
@@ -266,15 +266,20 @@ class AIDeploymentPage(QWidget):
         scroll=QScrollArea();scroll.setWidgetResizable(True);content=QWidget();layout=QVBoxLayout(content);self.cards={}
         from lab_ui import LabPanel
         self.lab_panel=LabPanel(manager);layout.addWidget(self.lab_panel)
+        self.model_grid=QGridLayout()
+        self.model_grid.setSpacing(12)
+        for column in range(3):
+            self.model_grid.setColumnStretch(column,1)
+        layout.addLayout(self.model_grid)
         for provider in PROVIDERS:
             if provider=='codex':
                 from codex_bridge import CodexCard
                 self.cards[provider]=CodexCard(manager)
             else:self.cards[provider]=ModelCard(manager,provider)
-            layout.addWidget(self.cards[provider])
         from image_routes import ImageModelCard
         self.image_cards=[ImageModelCard(manager,p) for p in ('ark','bailian')]
-        for card in self.image_cards:layout.addWidget(card)
+        for index,card in enumerate([*self.cards.values(),*self.image_cards]):
+            self.model_grid.addWidget(card,index//3,index%3,Qt.AlignmentFlag.AlignTop)
         layout.addStretch();scroll.setWidget(content);outer.addWidget(scroll,1)
 
 class RecommendationDialog(QDialog):

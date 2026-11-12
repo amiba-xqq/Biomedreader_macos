@@ -92,15 +92,14 @@ class AnalysisEngine:
         return dict(text=text,provider=self.provider,model=self.model,created_at=datetime.now(timezone.utc).isoformat(),
             calls=self.calls,total_tokens=self.tokens,incomplete=self.incomplete,requested_output_limit=self.requested_limit,
             effective_output_limit=self.output_limit,**__import__('reasoning').record(self.config),**metadata)
-    def draw_pdf(self,text,reference):
+    def _draw_asset(self,text,reference,instructions,method):
         self.prepare()
         current=self.store.config(self.provider)
         if self.cancelled() or not current['enabled'] or current.get('usage_owner')!=self.config.get('usage_owner') or current['key_fingerprint']!=self.fingerprint:raise InterruptedError('账户或调用通道已变化，已停止后续绘图请求。')
         from model_reference import DIAGRAM_INSTRUCTIONS
-        from model_artifact import validate_figure
         with self.factory(self.provider,self.key) as client:
             client.cancelled=self.cancelled
-            try:raw,usage,incomplete=client.generate_pdf(self.model,DIAGRAM_INSTRUCTIONS,text,reference)
+            try:raw,usage,incomplete=getattr(client,method)(self.model,instructions or DIAGRAM_INSTRUCTIONS,text,reference)
             except Exception:
                 if getattr(client,'pdf_started',False):
                     usage=getattr(client,'pdf_usage',None)
@@ -108,6 +107,12 @@ class AnalysisEngine:
                 raise
         self.store.record(self.provider,self.fingerprint,self.model,usage,owner=self.config.get('usage_owner'),outcome='incomplete' if incomplete else 'completed');self.calls+=1;self.tokens+=usage.get('total_tokens',0)
         if incomplete:raise ValueError('模型图文件生成未完成，未使用旧图替代。')
+        return raw
+    def draw_pixels(self,text,reference,instructions):
+        return self._draw_asset(text,reference,instructions,'generate_pixels')
+    def draw_pdf(self,text,reference,instructions=None):
+        from model_artifact import validate_figure
+        raw=self._draw_asset(text,reference,instructions,'generate_pdf')
         artifact=validate_figure(raw)
         if artifact['sha256']==reference.get('sha256'):raise ValueError('模型返回了参考PDF本身，未生成当前论文的新模型图。')
         return artifact
@@ -118,7 +123,9 @@ class AnalysisEngine:
         document=(previous or {}).get('report_source') or read_article(database,article,web_fetch=web_fetch,progress=progress)
         material='文章标题：'+str(article.get('title') or '')+'\n作者元数据：'+str(article.get('authors') or '未提供')+'\nDOI：'+str(article.get('doi') or '')+'\n读取范围：'+document['coverage']+'\n来源：'+document['url']+'\n\n摘要（优先结合开头1至2句定位研究前的未知问题；后文发现属于答案，不能泄露到问题中）：\n'+str(article.get('abstract') or '未提供摘要')+'\n\n已读取的论文材料：\n'+document['text']
         from ai_editorial import EDITORIAL_INSTRUCTIONS,parse_editorial,readable_text
-        instructions=EDITORIAL_INSTRUCTIONS
+        from scientific_skills import enhance,receipt
+        instructions=enhance('summary',EDITORIAL_INSTRUCTIONS)
+        progress('已加载内置科研技能：科学证据评估、科研写作')
         if content_mode=='brief':instructions+='\n本次只生成中英文简报与evidence_limits，news返回空对象；不生成新闻稿或模型图。'
         elif content_mode=='news':instructions+='\n本次只生成news与evidence_limits，不生成中英文简报；scientific_question固定返回“未生成简报”，highlights和innovations返回空数组。'
         if previous:material+='\n上次分析（仅作续写上下文，以原文为准）：\n'+str(previous.get('text',''))
@@ -153,7 +160,7 @@ class AnalysisEngine:
                 generation['status']='skipped' if isinstance(error,ImageUnavailable) else 'failed';generation['error']=str(error)[:500]
         result=self.result(text,article_key=article['article_key'],title=article.get('title',''),doi=article.get('doi',''),
             source_url=document['url'],coverage=document['coverage'],fulltext=document['fulltext'],chunked=chunked,
-            source_hash=hashlib.sha256(document['text'].encode('utf8')).hexdigest())
+            source_hash=hashlib.sha256(document['text'].encode('utf8')).hexdigest(),scientific_skills=receipt('summary'))
         if presentation:result['presentation']=presentation
         if content_mode!='both':
             result['report_source']={k:v for k,v in document.items() if k in ('text','url','coverage','fulltext')}
@@ -177,6 +184,9 @@ class AnalysisEngine:
         return result
     def questions(self,database,articles,topic,progress=lambda text:None,web_fetch=None,conversation=None):
         from research_report import INSTRUCTIONS,parse_research,research_text
+        from scientific_skills import enhance,receipt
+        instructions=enhance('questions',INSTRUCTIONS)
+        progress('已加载内置科研技能：科学问题发散、研究假说构建')
         conversation=conversation or {};evidence=dict(conversation.get('evidence_notes') or {});failures=[];read=[]
         for index,article in enumerate(articles,1):
             key=article['article_key'];progress(f'整理文献 {index}/{len(articles)} · '+article.get('title',''))
@@ -194,19 +204,19 @@ class AnalysisEngine:
         material='用户课题：'+topic+'\n本次补充要求：'+str(conversation.get('message') or '首次分析')+'\n\n已保存的历史对话（用于延续与修正，不视为独立证据）：\n'+json.dumps(conversation.get('turns') or [],ensure_ascii=False)+'\n\n领域知识库资料（用于拓展视角，不限定选题范围）：\n'+('\n\n'.join(notes) if notes else '未加载领域知识库。依据用户领域及模型一般知识进行探索性推演；未进行实时文献核查，不得声称已阅读收藏论文、全文或最新研究。背景不确定时明确标注需核实。')
         if failures and len(read)<len(articles):
             result=self.result('分析未完成；已保留成功读取的证据笔记，未编造缺失问题。',topic=topic,article_keys=[a['article_key'] for a in read],read_count=len(read),failures=failures,evidence_notes=evidence,chunked=False);result['incomplete']=True;return result
-        try:text,chunked=self.reduce(material,progress,INSTRUCTIONS)
+        try:text,chunked=self.reduce(material,progress,instructions)
         except (AIAPIError,InterruptedError) as error:
             result=self.result('最终推演尚未完成，成功读取的证据笔记已保留，可保存对话后继续。',topic=topic,article_keys=[a['article_key'] for a in read],read_count=len(read),failures=failures,evidence_notes=evidence,chunked=False);result['incomplete']=True;result['validation_error']=str(error);return result
         data=parse_research(text,read)
         if data and len(data['questions'])<10:
             progress('正在补足不同方向的科学问题……')
             try:
-                supplement,_=self.reduce(material+'\n已生成的问题：\n'+json.dumps(data,ensure_ascii=False),progress,INSTRUCTIONS+'\n上次有效问题不足10条，本次完整返回至少12条，不重复、不编造依据。')
+                supplement,_=self.reduce(material+'\n已生成的问题：\n'+json.dumps(data,ensure_ascii=False),progress,instructions+'\n上次有效问题不足10条，本次完整返回至少12条，不重复、不编造依据。')
                 extra=parse_research(supplement,read)
             except (AIAPIError,InterruptedError) as error:extra=None;failures.append(dict(title='问题补足',reason=str(error)[:400]))
             if extra:
                 combined=dict(categories=extra['categories'],questions=data['questions']+extra['questions']);data=parse_research(json.dumps(combined,ensure_ascii=False),read);data.update(categories=extra['categories'],classification_basis=extra['classification_basis'])
-        result=self.result(research_text(data) if data else text,topic=topic,article_keys=[a['article_key'] for a in read],read_count=len(read),failures=failures,evidence_notes=evidence,chunked=chunked)
+        result=self.result(research_text(data) if data else text,topic=topic,article_keys=[a['article_key'] for a in read],read_count=len(read),failures=failures,evidence_notes=evidence,chunked=chunked,scientific_skills=receipt('questions'))
         if data:
             data.setdefault('classification_basis','primary_gene_molecule')
             for row in data['articles']:row['coverage']=evidence[row['article_key']]['coverage']

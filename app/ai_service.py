@@ -93,6 +93,8 @@ class AIClient:
             for field in ('max_output_tokens','context_window'):
                 if isinstance(item.get(field),int) and item[field]>0:row[field]=item[field]
             if isinstance(item.get('effort'),dict):row['effort']=item['effort']
+            if isinstance(item.get('input_modalities'),list):
+                row['input_modalities']=[mode for mode in ('text','image') if mode in item['input_modalities']]
             rows.append(row)
         rows=list({row['id']:row for row in rows}.values());rows.sort(key=lambda row:row['id'].casefold())
         if not rows:raise AIAPIError('该 Key 未返回可用文本模型。请检查 API 权限与账户状态。')
@@ -157,7 +159,9 @@ class AIClient:
         if self.provider in ('openai','deepseek'):
             content=[dict(type='input_text',text=text)]
             if reference['mode']=='pdf':content.append(dict(type='input_file',filename=reference['filename'],file_data=reference['file_data'],detail='high'))
-            else:content.extend(dict(type='input_image',image_url=value) for value in reference['images'])
+            else:
+                content.extend(dict(type='input_file',filename=name,file_data=value) for name,value in reference.get('files',[]))
+                content.extend(dict(type='input_image',image_url=value) for value in reference['images'])
             payload=dict(model=model,instructions=instructions,input=[dict(role='user',content=content)],store=False);payload.update(payload_fields(self.provider,getattr(self,'reasoning_effort','default'),responses=True));data=self.request('POST','/responses',payload)
             answer='\n'.join(part['text'] for item in data.get('output',[]) if item.get('type')=='message' for part in item.get('content',[]) if part.get('type')=='output_text' and isinstance(part.get('text'),str))
             return answer,normal_usage(data.get('usage')),data.get('status')=='incomplete'
@@ -166,10 +170,18 @@ class AIClient:
         return (choice.get('message') or {}).get('content') or '',normal_usage(data.get('usage')),choice.get('finish_reason')=='length'
 
     def generate_pdf(self,model,instructions,text,reference):
+        from image_routes import pdf_from_pixels
+        raw,usage,incomplete=self.generate_pixels(model,instructions,text,reference)
+        return pdf_from_pixels(raw),usage,incomplete
+
+    def generate_pixels(self,model,instructions,text,reference):
         if self.provider!='openai':raise ValueError('当前服务商通道没有可接收的模型图文件产出接口。文字分析仍可使用；请使用支持文件输出的OpenAI API、Codex本机连接或Biomni。')
         from reasoning import payload_fields
-        from image_routes import pdf_from_pixels,ImageUnavailable
-        content=[dict(type='input_text',text=text),dict(type='input_file',filename=reference['filename'],file_data=reference['file_data'])]
+        from image_routes import ImageUnavailable
+        content=[dict(type='input_text',text=text)]
+        if reference.get('file_data'):
+            content.append(dict(type='input_file',filename=reference['filename'],file_data=reference['file_data']))
+        content.extend(dict(type='input_image',image_url=value) for value in reference.get('images',[]))
         payload=dict(model=model,instructions=instructions,input=[dict(role='user',content=content)],tools=[dict(type='image_generation')],tool_choice=dict(type='image_generation'),store=False)
         payload.update(payload_fields(self.provider,getattr(self,'reasoning_effort','default'),responses=True))
         self.pdf_started=True;data=self.request('POST','/responses',payload);self.pdf_usage=normal_usage(data.get('usage'))
@@ -177,7 +189,7 @@ class AIClient:
             if item.get('type')=='image_generation_call' and item.get('result'):
                 encoded=item['result']
                 if len(encoded)>34*1024*1024:raise ValueError('生成图像超过大小限制。')
-                return pdf_from_pixels(__import__('base64').b64decode(encoded,validate=True)),self.pdf_usage,False
+                return __import__('base64').b64decode(encoded,validate=True),self.pdf_usage,False
         raise ImageUnavailable('当前模型未返回图像工具结果，已跳过模型图。')
 
     def container_file_content(self,container,file):

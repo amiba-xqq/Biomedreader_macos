@@ -78,18 +78,27 @@ def config(db,provider):
         key=row[0] if row else ''
     return dict(model=settings.get(prefix+'model',MODELS.get(provider,['server-managed'])[0]),enabled=settings.get(prefix+'enabled','0')=='1',key=key,region=settings.get(prefix+'region','cn'),route='personal',prefix=prefix)
 
-def pdf_from_pixels(raw):
+def pixel_dimensions(raw):
     # Preserve original pixels; define the PDF page size at 300 pixels/inch.
     # No upsampling and no claim that the model produced vectors.
+    if len(raw)>24*1024*1024:raise ValueError('模型图文件超过24 MB。')
+    try:
+        with Image.open(io.BytesIO(raw)) as im:
+            if im.width*im.height>32_000_000 or min(im.size)<512 or getattr(im,'n_frames',1)!=1:
+                raise ValueError('模型图像素尺寸不合适，或返回了多帧图片。')
+            im.load()
+            return im.size
+    except (OSError,Image.DecompressionBombError):
+        raise ValueError('绘图通道未返回可读取的静态图片。') from None
+
+
+def pdf_from_pixels(raw):
     from reportlab.pdfgen import canvas
     from reportlab.lib.utils import ImageReader
-    if len(raw)>24*1024*1024:raise ValueError('模型图文件超过24 MB。')
-    with Image.open(io.BytesIO(raw)) as im:
-        if im.width*im.height>32_000_000 or min(im.size)<512:raise ValueError('模型图像素尺寸不合适。')
-        im.load();width,height=im.size
+    width,height=pixel_dimensions(raw)
     result=io.BytesIO();c=canvas.Canvas(result,pagesize=(width*72/300,height*72/300));c.drawImage(ImageReader(io.BytesIO(raw)),0,0,width=width*72/300,height=height*72/300);c.showPage();c.save();return result.getvalue()
 
-def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
+def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None,*,pixels=False):
     from ai_cancel import check_cancelled
     check_cancelled(cancelled)
     from ai_store import AIStore
@@ -115,7 +124,7 @@ def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
             from ai_content import download
             raw=download(item['url'])[0]
         else:raise ValueError('课题组绘图接口没有返回图片。')
-        return pdf_from_pixels(raw)
+        return raw if pixels else pdf_from_pixels(raw)
     own=session is None;session=session or session_for_updates()
     try:
         from ai_service import Bearer
@@ -160,7 +169,7 @@ def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
             else:raise ValueError('图像服务未返回图片。')
         finally:response.close()
         if cancelled():raise InterruptedError('已取消绘图。')
-        result=pdf_from_pixels(raw)
+        result=raw if pixels else pdf_from_pixels(raw)
         with db.connect() as c:
             c.execute('CREATE TABLE IF NOT EXISTS ai_image_calls(provider TEXT,model TEXT,created_at TEXT)')
             c.execute("INSERT INTO ai_image_calls VALUES(?,?,datetime('now'))",(provider,cfg['model']))
@@ -168,14 +177,17 @@ def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None):
     finally:
         if own:session.close()
 
-def selected_route(engine):
-    route=engine.store.database.get_settings().get('ai_image_route','native')
+def configured_route(db,provider,override=None):
+    route=override or db.get_settings().get('ai_image_route','native')
     if route in ('stability','byteplus','biomni'):return 'off'
     if route in ('qwen','wan','zimage'):return 'bailian'
     if route!='native':return route
-    if engine.provider=='glm':return 'glm'
-    if engine.provider in ('codex','openai'):return engine.provider
+    if provider=='glm':return 'glm'
+    if provider in ('codex','openai'):return provider
     return None
+
+def selected_route(engine):
+    return configured_route(engine.store.database,engine.provider)
 
 def draw(engine,text,reference,progress):
     from model_artifact import validate_figure
@@ -267,7 +279,7 @@ class ImageModelCard(QFrame):
         from PySide6.QtCore import QUrl
         QDesktopServices.openUrl(QUrl('https://bailian.console.aliyun.com/' if self.provider=='bailian' else 'https://console.volcengine.com/ark/'))
     def refresh(self):
-        cfg=config(self.manager.store.database,self.provider);enabled=cfg['enabled'];self.heading.setText(ROUTES[self.provider]);self.heading.setStyleSheet('font-size:16pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
+        cfg=config(self.manager.store.database,self.provider);enabled=cfg['enabled'];self.heading.setText(ROUTES[self.provider]);self.heading.setStyleSheet('font-size:12pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
         self.model_name.setText('当前模型：'+cfg['model']);self.state.setText(('● 已开启 · ' if enabled else '○ 未开启 · ')+'仅用于模型图');self.toggle.setText('关闭模型' if enabled else '开启模型')
         self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
         self.usage.setText('课题组本机直连：使用当前账户的加密缓存Key；用量在本机记录。' if cfg.get('local_direct') else '课题组云端转发：PI Key 保留在服务端；本机用量请在“我的用量”查看。' if cfg.get('route')=='lab' else '个人 API Key 直连。图像按服务商规则计费；完整调用量与费用请在官方账单查看。')

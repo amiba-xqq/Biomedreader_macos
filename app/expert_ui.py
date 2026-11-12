@@ -132,9 +132,11 @@ class ReviewerDialog(ScientificQuestionsDialog):
                 catalogue=[dict(article_id=i,title=article.get('title',''),article_key=article['article_key'],evidence=notes.get(article['article_key'],{})) for i,article in enumerate(articles,1)]
                 context='Field: '+topic+'\nReference evidence (numbered library materials):\n'+json.dumps(catalogue,ensure_ascii=False)+'\nManuscript:\n'+'\n'.join(material)+'\nPrevious final review:\n'+previous+'\nFollowup:\n'+followup
                 from peer_review import INSTRUCTIONS,parse_review,review_text
-                raw,_=engine.reduce(context,self.progress_callback,INSTRUCTIONS)
+                from scientific_skills import enhance,receipt
+                self.progress_callback('已加载内置科研技能：同行评审、科学证据评估')
+                raw,_=engine.reduce(context,self.progress_callback,enhance('reviewer',INSTRUCTIONS))
                 review=parse_review(raw)
-                return engine.result(review_text(review),topic=topic,peer_review=review)
+                return engine.result(review_text(review),topic=topic,peer_review=review,scientific_skills=receipt('reviewer'))
             self.start(work)
         except ValueError as error:QMessageBox.information(self,'无法审稿',str(error))
     def display(self,result,saved=False):
@@ -160,7 +162,6 @@ class ReviewerDialog(ScientificQuestionsDialog):
 
     def open_manuscript_folder(self,link):
         from PySide6.QtCore import QUrl
-        from PySide6.QtGui import QDesktopServices
         url=QUrl(link)
         if url.scheme()!='biomed-manuscript':return
         try:
@@ -168,7 +169,12 @@ class ReviewerDialog(ScientificQuestionsDialog):
             if index<0:return
             item=self.source_files[index]
         except (ValueError,IndexError):return
-        folder=Path(item['path']).parent
+        self.reveal_manuscript(item['path'])
+
+    def reveal_manuscript(self,path):
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        folder=Path(path).parent
         if not folder.is_dir():QMessageBox.information(self,'文件夹不可用','原文件夹已移动或删除，请重新添加稿件。');return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder))):QMessageBox.warning(self,'无法打开文件夹','请检查系统默认文件管理器设置。')
 
@@ -197,10 +203,16 @@ class ReviewerDialog(ScientificQuestionsDialog):
         self.export_task=self.manager.submit(self,lambda:dict(path=export_review_pdf(path,result)),'export_done','export_failed')
 
 class ExpertBoard(CardBoard):
+    def __init__(self,columns=4):
+        super().__init__(columns)
+        self.row_gap=48
+
     def paintEvent(self,event):
         super().paintEvent(event)
         if len(self.cards)<3:return
         painter=QPainter(self);painter.setRenderHint(QPainter.RenderHint.Antialiasing);painter.setPen(QPen(QColor('#D9A26D'),2))
         for card in self.cards[1:3]:
-            a=self.cards[0].geometry();b=card.geometry();path=QPainterPath();path.moveTo(a.center().x(),a.bottom());path.cubicTo(a.center().x(),a.bottom()+38,b.center().x(),b.bottom()+38,b.center().x(),b.bottom());painter.drawPath(path)
+            a=self.cards[0].geometry();b=card.geometry()
+            if a.top()!=b.top():continue
+            path=QPainterPath();path.moveTo(a.center().x(),a.bottom());path.cubicTo(a.center().x(),a.bottom()+38,b.center().x(),b.bottom()+38,b.center().x(),b.bottom());painter.drawPath(path)
         painter.end()

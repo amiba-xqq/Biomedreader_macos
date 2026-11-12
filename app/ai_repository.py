@@ -40,16 +40,18 @@ def install_schema(c):
 
 class AIRepository:
     def __init__(self,database):self.database=database
-    def save_history(self,kind,title,inputs,result,identifier=None):
+    def save_history(self,kind,title,inputs,result,identifier=None,*,created_at=None):
         from ai_cancel import check_cancelled
         check_cancelled()
         from cache_cleanup import index_history
         with self.database.connect() as c:
             if identifier is not None and c.execute('SELECT 1 FROM ai_histories WHERE id=? AND kind=?',(identifier,kind)).fetchone():
-                c.execute('UPDATE ai_histories SET title=?,input_json=?,result_json=?,created_at=? WHERE id=?',(title[:300],json.dumps(inputs,ensure_ascii=False),json.dumps(result,ensure_ascii=False),now(),identifier));index_history(c,identifier,inputs,result);return identifier
+                c.execute("""UPDATE ai_histories SET title=?,input_json=?,result_json=?,
+                          created_at=CASE WHEN kind='protocol' THEN created_at ELSE ? END WHERE id=?""",
+                          (title[:300],json.dumps(inputs,ensure_ascii=False),json.dumps(result,ensure_ascii=False),now(),identifier));index_history(c,identifier,inputs,result);return identifier
             if identifier is not None:raise ValueError('此AI对话已删除，未恢复已删除的缓存。')
             cursor=c.execute('INSERT INTO ai_histories(kind,title,input_json,result_json,created_at) VALUES(?,?,?,?,?)',
-                (kind,title[:300],json.dumps(inputs,ensure_ascii=False),json.dumps(result,ensure_ascii=False),now()))
+                (kind,title[:300],json.dumps(inputs,ensure_ascii=False),json.dumps(result,ensure_ascii=False),created_at or now()))
             index_history(c,cursor.lastrowid,inputs,result);return cursor.lastrowid
     def histories(self,kind):
         with self.database.connect() as c:return [dict(row) for row in c.execute('SELECT id,title,created_at FROM ai_histories WHERE kind=? ORDER BY created_at DESC,id DESC',(kind,))]

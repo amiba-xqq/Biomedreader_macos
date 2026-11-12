@@ -2,6 +2,7 @@
 import json,os,queue,shutil,subprocess,threading,time,tempfile,base64
 from pathlib import Path
 from ai_service import INSTRUCTIONS,normal_usage
+from version import APP_VERSION
 
 from codex_runtime import executable,process_environment,login_url
 
@@ -18,7 +19,7 @@ class RPC:
         self.detach_abort=register_abort(self.abort)
         threading.Thread(target=self.read,daemon=True).start()
         try:
-            self.request('initialize',dict(clientInfo=dict(name='biomed_reader',title='Biomed Reader',version='2.2.1'),capabilities={}))
+            self.request('initialize',dict(clientInfo=dict(name='biomed_reader',title='Biomed Reader',version=APP_VERSION),capabilities={}))
             self.send(dict(method='initialized'))
         except Exception:self.close();raise
     def read(self):
@@ -94,8 +95,14 @@ class CodexClient:
         if reference is None:return self.turn(model,instructions,[dict(type='text',text=text)])
         with tempfile.TemporaryDirectory(prefix='biomed-codex-reference-') as folder:
             items=[dict(type='text',text=text)]
+            if reference.get('mode')=='project':
+                for name,raw in reference['local_files']:
+                    (Path(folder)/Path(name).name).write_bytes(raw)
+                items[0]['text'] += '\n在当前目录读取 preview.pdf 和上面列出的素材。只返回绘图脚本 JSON。'
             for index,value in enumerate(reference['images']):
                 path=Path(folder)/f'Model20250528-page-{index+1}.png';path.write_bytes(base64.b64decode(value.split(',',1)[1],validate=True));items.append(dict(type='localImage',path=str(path)))
+            if reference.get('mode')=='project':
+                return self.turn(model,instructions,items,workspace=Path(folder),read_only=True)
             return self.turn(model,instructions,items)
     def recommend(self,model,topic,max_output_tokens=None):return self.complete(model,INSTRUCTIONS,topic)
     def describe_image(self,model,instructions,data_url):
@@ -103,28 +110,30 @@ class CodexClient:
             path=Path(folder)/'image.jpg';path.write_bytes(base64.b64decode(data_url.split(',',1)[1],validate=True))
             return self.turn(model,instructions,[dict(type='text',text='Read the research image.'),dict(type='localImage',path=str(path))])
     def generate_pdf(self,model,instructions,text,reference):
-        from model_pdf import MAX_PDF_BYTES
-        from model_artifact import FIGURE_DELIVERY,choose_file
+        from image_routes import pdf_from_pixels
+        raw,usage,incomplete=self.generate_pixels(model,instructions,text,reference)
+        return pdf_from_pixels(raw),usage,incomplete
+    def generate_pixels(self,model,instructions,text,reference):
         with tempfile.TemporaryDirectory(prefix='biomed-codex-pdf-') as folder:
             workspace=Path(folder).resolve();items=[]
             for index,value in enumerate(reference.get('images') or []):
                 path=workspace/f'reference-page-{index+1}.png';path.write_bytes(base64.b64decode(value.split(',',1)[1],validate=True));items.append(dict(type='localImage',path=str(path)))
-            from model_reference import reference_pdf
-            (workspace/'Model20250528.pdf').write_bytes(reference_pdf())
-            items.insert(0,dict(type='text',text='必须使用内置 image_gen.imagegen 图像工具，不能用代码画图、不能返回文字结构图。若工具不可用，回复IMAGE_TOOL_UNAVAILABLE并停止。参考页面图已提供。生成当前论文的模型图，优先保存原始图片；无需自行转PDF，客户端将保留像素按300 dpi物理尺寸封装。\n'+instructions+'\n'+text))
+            if reference and not reference.get('project'):
+                from model_reference import reference_pdf
+                (workspace/'Model20250528.pdf').write_bytes(reference_pdf())
+            items.insert(0,dict(type='text',text='必须使用内置 image_gen.imagegen 图像工具。若工具不可用，回复IMAGE_TOOL_UNAVAILABLE并停止。按下方要求生成图件，优先保存原始图片；客户端将保留像素按300 dpi封装。\n'+instructions+'\n'+text))
             self.image_workspace=workspace;self.generated_images=[]
             self.pdf_started=True;_,usage,incomplete=self.turn(model,instructions,items,workspace=workspace);self.pdf_usage=usage
             if self.generated_images:
-                from image_routes import pdf_from_pixels
-                return pdf_from_pixels(self.generated_images[-1]),usage,incomplete
+                return self.generated_images[-1],usage,incomplete
             from image_routes import ImageUnavailable
             raise ImageUnavailable('当前Codex会话未返回图像工具结果，已跳过模型图。请更新CLI并检查ChatGPT账户图像权限。')
-    def turn(self,model,instructions,items,workspace=None):
-        options=dict(model=model,developerInstructions=instructions,approvalPolicy='never',sandbox='workspace-write' if workspace else 'read-only',ephemeral=True)
-        if workspace:options.update(cwd=str(workspace),config={'features.image_generation':True})
+    def turn(self,model,instructions,items,workspace=None,read_only=False):
+        options=dict(model=model,developerInstructions=instructions,approvalPolicy='never',sandbox='workspace-write' if workspace and not read_only else 'read-only',ephemeral=True)
+        if workspace:options.update(cwd=str(workspace),config={'features.image_generation':not read_only})
         thread=self.rpc.request('thread/start',options)['thread']['id']
         params=dict(threadId=thread,input=items);effort=getattr(self,'reasoning_effort','default')
-        if workspace:params.update(cwd=str(workspace),sandboxPolicy=dict(type='workspaceWrite',writableRoots=[str(workspace)],networkAccess=False))
+        if workspace and not read_only:params.update(cwd=str(workspace),sandboxPolicy=dict(type='workspaceWrite',writableRoots=[str(workspace)],networkAccess=False))
         if effort!='default':params['effort']=effort
         turn=self.rpc.request('turn/start',params);self.rpc.active_turn=(thread,turn['turn']['id']);parts=[];final=[];usage={}
         while True:
@@ -194,7 +203,7 @@ class CodexCard(QFrame):
         self.model_name=plain_label();layout.addWidget(self.model_name);self.state=plain_label();layout.addWidget(self.state)
         toggle_row=QHBoxLayout();self.toggle_button=QPushButton('开启模型');self.toggle_button.clicked.connect(self.toggle);toggle_row.addWidget(self.toggle_button);toggle_row.addStretch();layout.addLayout(toggle_row)
         self.details=QWidget();details=QVBoxLayout(self.details);details.setContentsMargins(0,10,0,0)
-        self.status=plain_label('官方本机App Server；使用个人ChatGPT登录，不参与课题组Key共享。',True);details.addWidget(self.status);self.models=QComboBox();details.addWidget(self.models);row=QHBoxLayout()
+        self.status=plain_label('官方本机App Server；使用个人ChatGPT登录，不参与课题组Key共享。',True);details.addWidget(self.status);self.models=QComboBox();self.models.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon);details.addWidget(self.models);row=QVBoxLayout()
         for label,fn in [('检测 / 刷新模型',self.refresh),('使用 ChatGPT 登录',self.login)]:
             button=QPushButton(label);button.clicked.connect(fn);button.setProperty('secondary',True);row.addWidget(button)
         row.addStretch();details.addLayout(row);layout.addWidget(self.details);self.details.hide()
@@ -203,7 +212,7 @@ class CodexCard(QFrame):
         self.reload();manager.changed.connect(self.reload)
     def reload(self):
         config=self.manager.store.config('codex');enabled=bool(config['enabled']);self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}');self.models.clear()
-        self.heading.setStyleSheet('font-size:16pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
+        self.heading.setStyleSheet('font-size:12pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
         self.model_name.setText('当前模型：'+(config['model'] or '尚未设置')+' · 推理强度：'+__import__('reasoning').description(config.get('reasoning_effort')))
         self.state.setText('● 已开启 · 可用于 AI 功能' if enabled else '○ 未开启')
         for row in json.loads(config['models_json']):self.models.addItem(row['name'],row['id'])

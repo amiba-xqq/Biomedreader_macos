@@ -59,6 +59,8 @@ def result_label(result):
     if 'reasoning_effort' not in result:return '推理强度：未记录（历史结果）'
     text='推理强度：'+description(result['reasoning_effort'])
     if result.get('reasoning_default_advertised'):text+='（接口公布默认：'+description(result['reasoning_default_advertised'])+'）'
+    skills=result.get('scientific_skills') or []
+    if skills:text+=' · 内置科研技能：'+'、'.join(item.get('label',item.get('name','')) for item in skills if isinstance(item,dict))
     return text
 
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QComboBox,QLabel

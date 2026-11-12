@@ -78,7 +78,7 @@ def manuscript_refs(paths):
 def history_result(result):
     """Allowlist final output and model metadata; never persist manuscript material."""
     fields=('text','peer_review','topic','provider','model','created_at','calls','total_tokens','incomplete',
-            'requested_output_limit','effective_output_limit','reasoning_effort','reasoning_requested','reasoning_effective','reasoning_mode','reasoning_label','reasoning_default_advertised')
+            'requested_output_limit','effective_output_limit','reasoning_effort','reasoning_requested','reasoning_effective','reasoning_mode','reasoning_label','reasoning_default_advertised','scientific_skills')
     return {key:result[key] for key in fields if key in result}
 
 

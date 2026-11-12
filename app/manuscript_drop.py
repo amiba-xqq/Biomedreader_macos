@@ -13,7 +13,8 @@ class ManuscriptDropList(QListWidget):
         self.setMinimumHeight(75)
         self.setMaximumHeight(150)
         self.setStyleSheet('QListWidget {background:#FFFCF7;border:1px dashed #D9B68E;border-radius:10px;padding:8px;}')
-        self.setToolTip('将 PDF、DOCX 或图片拖到此处，或点击上方按钮选择文件；仅添加路径，点击审阅后才读取和发送。')
+        self.setToolTip('将 PDF、DOCX 或图片拖到此处，或点击上方按钮选择文件。双击已添加文件可打开所在文件夹。')
+        self.itemDoubleClicked.connect(self.reveal)
         self.refresh()
 
     def refresh(self):
@@ -25,7 +26,13 @@ class ManuscriptDropList(QListWidget):
         for value in self.reviewer.files:
             item=QListWidgetItem(Path(value).name)
             item.setToolTip(value)
+            item.setData(Qt.ItemDataRole.UserRole,value)
             self.addItem(item)
+
+    def reveal(self,item):
+        path = item.data(Qt.ItemDataRole.UserRole)
+        if path:
+            self.reviewer.reveal_manuscript(path)
 
     def add_paths(self, paths):
         if self.reviewer.task:return

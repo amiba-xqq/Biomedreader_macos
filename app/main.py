@@ -249,8 +249,429 @@ def main() -> int:
                 assert 'Runtime question 12?' in all_text
             research_dialog.close()
             from ai_finder_ui import FinderHub,FinderChat
-            from ai_ui import RecommendationDialog
-            assert window.ai_assistant_page.assistant_board.count()==4
+            from ai_ui import AIDeploymentPage,RecommendationDialog
+            assert window.ai_assistant_page.assistant_board.count()==6
+            deployment=AIDeploymentPage(window.ai_manager,window)
+            assert deployment.model_grid.itemAtPosition(0,2) and deployment.model_grid.itemAtPosition(1,2)
+            deployment.deleteLater()
+            from figure_ui import FigureHub,apply_if_scale,build_project,direct_if_edit,figure_tests
+            from figure_script import read_script,renderer_source
+            from figure_data import GROUPED_CHARTS,csv_bytes,ordinary_values,qpcr_export_csv,qpcr_file_names,qpcr_values,tests_for
+            import xlrd,openpyxl
+            assert xlrd.__version__ and openpyxl.__version__
+            figure_hub=FigureHub(window.ai_manager,window)
+            figure_id=figure_hub.store.create('Figure runtime check','qpcr')
+            figure_source=directory/'qpcr-check.csv'
+            figure_source.write_text('Sample Name,Target Name,Ct Mean\nControl,GAPDH,20\nControl,X,25\nDrug,GAPDH,20\nDrug,X,24\n',encoding='utf8')
+            figure_hub.store.attach(figure_id,[figure_source])
+            assert figure_hub.store.files(figure_id)[0]['path']==str(figure_source)
+            with database.connect() as connection:
+                assert connection.execute('SELECT length(data) FROM figure_files WHERE project=?',(figure_id,)).fetchone()[0]==0
+            figure_options=dict(sample='Sample Name',gene='Target Name',ct='Ct Mean',reference='GAPDH',
+                                control='Control',sheet='',header=0,title='Runtime plot',ylabel='Relative RNA level',
+                                kind='bar',test='pooled')
+            figure_style=read_script('use_backend("matplotlib")\nset_gridlines(True)','qpcr')
+            assert 'def chart(' in renderer_source('qpcr')
+            class PlotModelCheck:
+                model='preview-fixture'
+                def call(self,instruction,text,reference=None):
+                    assert reference['images'][0].startswith('data:image/png;base64,iVBOR')
+                    assert json.loads(text)['figure']['scene']['width_pt']>0
+                    return json.dumps(dict(script='import matplotlib.pyplot as plt\nimport numpy as np\n'
+                        'import matplotlib.colors as mc\nx = canvas_width()\nresize_canvas([x+36,canvas_height()])\n'
+                        'for y in np.linspace(20,35,2):\n    plt.text(x+2,y,"Check",color=mc.to_hex("steelblue"))'))
+            figure_state,figure_files=build_project(figure_hub.store,figure_id,'qpcr',
+                dict(options=figure_options,style=figure_style,history=[]),PlotModelCheck(),'Check',None,send_preview=True)
+            assert figure_files['pdf'].startswith(b'%PDF') and b'<text ' in figure_files['svg']
+            assert figure_files['svg'].count(b'>Check</text>')==2
+            assert b'Drug,X,24.0,20.0,4.0,-1.0,2.0' in figure_files['plot.csv']
+            class ScriptMaterialFixture:
+                provider='codex'
+                model='script-material-fixture'
+                def call(self,instructions,text,reference=None):
+                    payload=json.loads(text)
+                    assert payload['raw_rendering_code']['figure_render.py'].startswith('"""')
+                    assert payload['materials'][0]['name']=='qpcr-check.csv'
+                    assert reference['local_files'][0][1].startswith(b'%PDF')
+                    label=next(item for item in payload['figure']['scene']['elements']
+                               if item['kind']=='text' and item['args'][2]=='Runtime plot')
+                    return json.dumps(dict(script=f'edit_element([{label["id"]},"text","Edited plot"])\n'
+                        'set_setting(["options.comparison_mode","none"])\nset_statistical_test("none")'))
+            grouped_options=dict(figure_options,sample_grouping={'Control':['Vehicle','Control'],'Drug':['Treatment','Drug']})
+            edited_state,script_outputs=build_project(figure_hub.store,figure_id,'qpcr',
+                dict(options=grouped_options,style={},history=[]),ScriptMaterialFixture(),'Edit',None,
+                drawing_route='vector',send_preview=True)
+            assert b'>Edited plot</text>' in script_outputs['svg']
+            assert b'Treatment / Drug,X,24.0,20.0,4.0,0.0,1.0' in script_outputs['plot.csv']
+            assert len(script_outputs['tests.csv'].splitlines())==1
+            class ContinueFigureCheck:
+                provider='codex'
+                model='continue-figure-fixture'
+                def call(self,instructions,text,reference=None):
+                    payload=json.loads(text)
+                    assert payload['prior_revisions'][-1]['request']=='Edit'
+                    assert 'Edited plot' in payload['prior_revisions'][-1]['script']
+                    assert any(element['args'][2]=='Edited plot' for element in payload['figure']['scene']['elements']
+                               if element['kind']=='text')
+                    return json.dumps(dict(script='add_text([12,12,"Second revision"])'))
+            _,continued=build_project(figure_hub.store,figure_id,'qpcr',edited_state,ContinueFigureCheck(),
+                'Keep that title and add a label',None,drawing_route='vector',send_preview=True,previous_figure=script_outputs)
+            assert b'>Edited plot</text>' in continued['svg'] and b'>Second revision</text>' in continued['svg']
+            from figure_render import chart
+            samples={'A1':['siNC','Vehicle','A1'],'A2':['siNC','Drug','A1'],
+                     'A3':['siU1','Vehicle','A3'],'A4':['siU1','Drug','A3']}
+            long_table='Sample,Value\nA1,10\nA2,20\nA3,4\nA4,12\nA1,10\nA2,22\nA3,4\nA4,14\n'
+            grouped_table_options=dict(sample='Sample',ct='Value',sheet='',header=1,control='A1',
+                                       title='',ylabel='Relative level',sample_grouping=samples)
+            cells=ordinary_values([dict(name='grouped.csv',data=long_table.encode())],grouped_table_options)
+            assert [row['value'] for row in cells[:4]]==[1,2,1,3] and len({row['group'] for row in cells})==4
+            qpcr_grouped_data='Sample Name,Target Name,Ct Mean\n'+''.join(
+                f'{sample},GAPDH,20\n{sample},X,{ct}\n' for sample,ct in zip(samples,(25,24,23,22)))
+            cells_qpcr=qpcr_values([dict(name='grouped.csv',data=qpcr_grouped_data.encode())],
+                                   dict(figure_options,control='A1',sample_grouping=samples))
+            assert [row['value'] for row in cells_qpcr]==[1,2,1,2] and len({row['group'] for row in cells_qpcr})==4
+            unscaled={name:[group,treatment,''] for name,(group,treatment,_) in samples.items()}
+            raw_qpcr=qpcr_values([dict(name='grouped.csv',data=qpcr_grouped_data.encode())],
+                                 dict(figure_options,control='',sample_grouping=unscaled))
+            assert [row['value'] for row in raw_qpcr]==[1/32,1/16,1/8,1/4]
+            assert all(row['delta_delta_ct'] is None for row in raw_qpcr)
+            raw_table=ordinary_values([dict(name='grouped.csv',data=long_table.encode())],
+                                      dict(grouped_table_options,sample_grouping=unscaled))
+            assert [row['value'] for row in raw_table[:4]]==[10,20,4,12]
+            from figure_grouping import GroupingDialog
+            from PySide6.QtWidgets import QStyleOptionViewItem,QTableWidgetSelectionRange
+            grouping=GroupingDialog(window,list(samples),samples,'A1',True)
+            grouping.swap_columns()
+            cell=grouping.table.model().index(0,1)
+            delegate=grouping.table.itemDelegateForColumn(1)
+            editor=delegate.createEditor(grouping.table,QStyleOptionViewItem(),cell)
+            delegate.setEditorData(editor,cell)
+            assert editor.findText('Compound')<0 and editor.findText('Drug')>=0 and editor.currentText()=='Vehicle'
+            editor.setEditText('New condition')
+            delegate.setModelData(editor,grouping.table.model(),cell)
+            grouping.table.setRangeSelected(QTableWidgetSelectionRange(1,2,3,2),True)
+            grouping.batch_value.setEditText('Shared')
+            grouping.fill_selection()
+            grouping.table.cellWidget(0,3).setCurrentIndex(0)
+            grouping.finish()
+            assert grouping.result_settings['A1']==['New condition','siNC','']
+            assert grouping.result_settings['A4']==['Drug','Shared','A3']
+            for kind in GROUPED_CHARTS:
+                grouped_svg=chart(cells,{},dict(grouped_table_options,kind=kind,geometry='table'),[])['svg']
+                assert all(label in grouped_svg for label in (b'>siNC</text>',b'>siU1</text>',b'>Vehicle</text>',b'>Drug</text>'))
+            from qpcr_mapping import MappingDialog
+            qpcr_fixture=[]
+            for index,drug_ct in enumerate((24,23,22),1):
+                source=('Sample Name,Target Name,Cт,Ct Mean\n'
+                        'Control,GAPDH,20,99\nControl,X,22,99\nControl,X,25,99\nControl,X,25.5,99\n'
+                        f'Drug,GAPDH,20,99\nDrug,X,{drug_ct-2},99\nDrug,X,{drug_ct},99\nDrug,X,{drug_ct+2},99\n'
+                        'Unused,X,Undetermined,99\nDrug,Y,Undetermined,99\n')
+                qpcr_fixture.append(dict(id=index,name=f'replicate{index}.csv',data=source.encode('utf8')))
+            qpcr_settings={**figure_options,'test':'paired','test_basis':'delta_ct','show_replicates':True,
+                'name_mapping':{'samples':{'Control':{'name':'Vehicle','keep':False},'Drug':{'name':'Treated'},
+                                            'Unused':{'keep':False}},
+                                'genes':{'GAPDH':{'keep':False},'X':{'name':'Mapped X'},'Y':{'keep':False}}}}
+            qpcr_points=qpcr_values(qpcr_fixture,qpcr_settings)
+            assert len(qpcr_points)==6 and {row['target'] for row in qpcr_points}=={'Mapped X'}
+            assert qpcr_points[0]['value']==1 and qpcr_points[0]['ct']==25.25 and qpcr_points[0]['technical_rows_used']==2
+            assert qpcr_points[1]['ct']==24 and qpcr_points[1]['technical_wells_removed']==2
+            assert 0<figure_tests(qpcr_points,qpcr_settings,'qpcr')[0]['p_unadjusted']<.1
+            qpcr_svg=chart(qpcr_points,{},dict(qpcr_settings,control='Vehicle',geometry='qpcr'),[])['svg']
+            assert qpcr_svg.count(b'<circle ')==6 and qpcr_svg.count(b'opacity="0.7"')==6 and b'>Treated</text>' in qpcr_svg
+            assert b'rotate(-45 ' in qpcr_svg
+            mapping_check=MappingDialog(window,qpcr_file_names(qpcr_fixture,qpcr_settings),qpcr_settings)
+            assert mapping_check.tables['1','samples'].item(0,0).checkState()==Qt.CheckState.Checked
+            from PySide6.QtWidgets import QLineEdit
+            mapping_check.show()
+            sample_table=mapping_check.tables['1','samples']
+            sample_table.edit(sample_table.model().index(1,2))
+            QApplication.processEvents()
+            name_editor=sample_table.findChild(QLineEdit)
+            assert name_editor and name_editor.height()>name_editor.fontMetrics().height()+6
+            sample_table.setFocus()
+            mismatch=mapping_check.tables['2','samples'].item(1,2)
+            mismatch.setText('Other')
+            assert mapping_check.validate() and mismatch.foreground().color().name()=='#b42318'
+            mismatch.setText('Treated')
+            mapping_check.finish()
+            assert mapping_check.result_settings['file_mappings']['1']['samples']['Control']['keep']
+            assert qpcr_values(qpcr_fixture,{**qpcr_settings,**mapping_check.result_settings})==qpcr_points
+            import base64,csv,io,re
+            columns=('replicate','group','target','value')
+            matrix_fixture=[*qpcr_points,dict(replicate=2,group='Treated',target='Extra target',value=1.5)]
+            detail=csv_bytes(matrix_fixture,columns)
+            exported=list(csv.reader(io.StringIO(qpcr_export_csv(detail).decode('utf-8-sig'))))
+            assert exported[0]==['group','Mapped X','','','Extra target'] and exported[3]==[]
+            assert [row[0] for row in exported[1:3]]==['Vehicle','Treated']
+            assert exported[1][1:4]==['1.0']*3 and exported[2][4]=='1.5'
+            assert exported[4:]==list(csv.reader(io.StringIO(detail.decode('utf-8-sig'))))
+            for comparison_mode in ('manual','all'):
+                marked=chart(qpcr_points,{},dict(qpcr_settings,control='Vehicle',geometry='qpcr',comparison_mode=comparison_mode),
+                             [dict(target='Mapped X',group_a='Vehicle',group_b='Treated',p_unadjusted=.6)])['svg']
+                assert marked.count(b'stroke="#000000" stroke-width="0.5"')==3 and b'>n.s.</text>' in marked
+                assert re.search(rb'y="85\.0"[^>]*rotate\(-90 [^>]+>Relative RNA level<',marked)
+            from PIL import Image
+            image_fixture=io.BytesIO()
+            Image.new('RGB',(600,520),'#ADBC48').save(image_fixture,'PNG')
+            class DirectFigureCheck:
+                model='image-tool-fixture'
+                provider='codex'
+                store=window.ai_manager.store
+                cancelled=staticmethod(lambda:False)
+                def call(self,instructions,body,reference=None):
+                    assert reference['images'][0].startswith('data:image/png;base64,')
+                    return json.dumps(dict(prompt='Add a title'))
+                def draw_pixels(self,prompt,reference,instructions):
+                    assert 'Add a title' in prompt and reference['project'] is True
+                    return image_fixture.getvalue()
+            direct_model=DirectFigureCheck()
+            _,direct_artifacts=build_project(figure_hub.store,figure_id,'qpcr',
+                dict(options=figure_options,style={},history=[]),direct_model,'New title',None,
+                drawing_route='codex',send_preview=True)
+            assert direct_artifacts['png']==image_fixture.getvalue() and b'<image ' in direct_artifacts['svg']
+            assert direct_artifacts['pdf'].startswith(b'%PDF') and b'<text ' in direct_artifacts['original.svg']
+            from codex_bridge import CodexClient
+            from figure_ai_image import configured_route
+            assert configured_route(database,'codex','native')=='codex'
+            assert configured_route(database,'deepseek','ark')=='ark'
+            image_client=CodexClient()
+            def simulated_image_turn(model,instructions,items,workspace=None):
+                assert model=='test-orchestrator' and workspace is not None
+                assert 'image_gen.imagegen' in items[0]['text'] and items[1]['type']=='localImage'
+                assert not (workspace/'Model20250528.pdf').exists()
+                image_client.generated_images.append(image_fixture.getvalue())
+                return '',{},False
+            image_client.turn=simulated_image_turn
+            raw,_,incomplete=image_client.generate_pixels('test-orchestrator','Draw','Render test',
+                dict(project=True,images=['data:image/png;base64,'+base64.b64encode(image_fixture.getvalue()).decode()]))
+            assert raw==image_fixture.getvalue() and not incomplete
+            from PIL import Image
+            from figure_palette import PaletteDialog
+            from figure_render import if_scene,wb_scene
+            from PySide6.QtCore import QRect
+            from PySide6.QtGui import QImage,QPainter
+            from PySide6.QtWidgets import QStyleOptionViewItem
+            palette_check=PaletteDialog(window,dict(mode='gradient',map='spring_r'),[])
+            for name in ('spring','spring_r','tab10'):
+                palette_image=QImage(300,28,QImage.Format.Format_RGB32)
+                painter=QPainter(palette_image)
+                option=QStyleOptionViewItem();option.rect=QRect(0,0,300,28)
+                delegate=palette_check.maps.itemDelegate()
+                try:delegate.paint(painter,option,palette_check.maps.model().index(palette_check.maps.findText(name),0))
+                finally:painter.end()
+                assert name in delegate.strips
+            assert delegate.strips['spring'].toImage().pixelColor(0,0)==delegate.strips['spring_r'].toImage().pixelColor(127,0)
+            palette_check.close()
+            pixels=Image.new('RGB',(35,18),'#ADBC48')
+            original=io.BytesIO();pixels.save(original,'PNG')
+            panel=[dict(uid='A',file=1,rect=[0,0,35,18],label='Band')]
+            montage=wb_scene(panel,{1:original.getvalue()},{})
+            layout_script='from PIL import Image\nimport matplotlib.pyplot as plt\nw = Image.size("crop:panel:A")[0]\nrebuild_canvas([120,80])\nplt.imshow("crop:panel:A",20,20,w)\nplt.text(20,15,"Band A")'
+            layout=read_script(layout_script,'wb',montage.metadata(),lambda key:list(montage.load_source(key)[0].size))
+            montage_output=wb_scene(panel,{1:original.getvalue()},layout).export()
+            encoded=re.search(rb'data:image/png;base64,\s*([A-Za-z0-9+/=]+)',montage_output['svg'])
+            assert encoded and b'>Band A</text>' in montage_output['svg']
+            with Image.open(io.BytesIO(base64.b64decode(encoded.group(1)))) as image:
+                assert image.size==pixels.size and image.convert('RGB').tobytes()==pixels.tobytes()
+            long_label='Long treatment label for the horizontal axis'
+            long_wb=wb_scene([{**panel[0],'lanes':[long_label]}],{1:original.getvalue()},{})
+            long_if=if_scene([{**panel[0],'channels':{'IF':1},'label':long_label}],{1:original.getvalue()},{})
+            channels={'pATM':1,'pNBS1':1,'DAPI':1,'merge':1}
+            if_panels=[{**panel[0],'label':'siNC','channels':channels,'scale_calibration':.5},
+                       {**panel[0],'uid':'B','label':'siU1','channels':channels,'scale_pixels_per_um':3}]
+            if_request='更换pATM和pNBS1的上下位置，并且为每个图片都加上比例尺，都是5μm'
+            if_layout=read_script(direct_if_edit(if_request,if_panels),'if',
+                                  if_scene(if_panels,{1:original.getvalue()},{}).metadata())
+            assert apply_if_scale(if_panels,if_layout.pop('if_scale_all'))==[]
+            scaled=if_scene(if_panels,{1:original.getvalue()},if_layout)
+            anchors={group['id']:group['anchor_pt'] for group in scaled.metadata()['groups']}
+            assert anchors['channel:pNBS1']<anchors['channel:pATM']<anchors['channel:DAPI']
+            assert len(scaled.sources)==8 and all(bar is not None and image.tobytes()==pixels.tobytes()
+                                                 for image,bar in scaled.sources.values())
+            assert [round(bar[2]*image.width) for image,bar in scaled.sources.values()]==[10]*4+[15]*4
+            uncalibrated={**panel[0],'label':'Missing calibration','channels':channels}
+            assert apply_if_scale([uncalibrated],5)==['Missing calibration'] and 'scale_target' not in uncalibrated
+            for long_scene in (long_wb,long_if):
+                svg=long_scene.export()['svg']
+                assert b'rotate(-45 ' in svg and long_label.encode() in svg
+            from wb_density import automatic_bands,image_signature,measure_bands,panel_density
+            from wb_density_ui import DensityDialog
+            lane_labels=['Control','Treatment']
+            band_boxes=[[12,13,20,7],[67,13,20,7]]
+            wb_sources,wb_panels,wb_images,band_settings={},{},[],{}
+            for index,signals in enumerate(((150,120),(100,140)),1):
+                band=Image.new('L',(105,38),180)
+                for (x,y,w,h),value in zip(band_boxes,signals):
+                    band.paste(value,(x,y,x+w,y+h))
+                buffer=io.BytesIO()
+                band.save(buffer,'PNG')
+                wb_sources[index]=buffer.getvalue()
+                wb_panels[index]=dict(uid=str(index),file=index,rect=[0,0,105,38],
+                                      label=f'Target {index}',lanes=lane_labels)
+                wb_images.append(band)
+                band_settings[str(index)]=dict(signature=image_signature(band),labels=lane_labels,rectangles=band_boxes)
+            bands=list(wb_panels.values())
+            auto=automatic_bands(wb_images[0],2,'dark')
+            assert measure_bands(wb_images[0],auto,'dark',0)[0]==[1.,2.]
+            freehand=[dict(rect=[x,y,w,h],points=[(x,y),(x+w-1,y),(x+w-1,y+h-1),(x,y+h-1)])
+                      for x,y,w,h in band_boxes]
+            assert measure_bands(wb_images[1],freehand,'dark',0)[0]==[1.,.5]
+            assert figure_tests(qpcr_points,dict(qpcr_settings,comparison_mode='none'),'qpcr')==[]
+            wb_settings=dict(enabled=True,control='Control',polarity='dark',display='below',panels=band_settings)
+            assert panel_density(bands[0],wb_images[0],lane_labels,wb_settings)[0]==[1.,2.]
+            assert panel_density(bands[1],wb_images[1],lane_labels,wb_settings)[0]==[1.,.5]
+            wb_dialog=DensityDialog(window,bands,wb_images,lane_labels,wb_settings)
+            wb_dialog.finish()
+            assert wb_dialog.result_settings['control']=='Control'
+            from PySide6.QtCore import QPointF
+            mixed=DensityDialog(window,bands,wb_images,lane_labels,dict(wb_settings,selection='auto'))
+            originals=[row[:] for row in mixed.rectangles]
+            mixed.selection_mode.setCurrentIndex(mixed.selection_mode.findData('manual'))
+            assert mixed.rectangles==originals
+            mixed.record_trace([QPointF(x/105,y/38) for x,y in ((11,12),(31,12),(31,20),(11,20))])
+            assert mixed.rectangles[0][0]['points'] and mixed.rectangles[0][1]==originals[0][1]
+            assert mixed.rectangles[1]==originals[1]
+            mixed.selection_mode.setCurrentIndex(mixed.selection_mode.findData('auto'))
+            assert mixed.rectangles==originals
+            mixed.selection_mode.setCurrentIndex(mixed.selection_mode.findData('manual'))
+            assert mixed.rectangles[0][0]['points'] and mixed.rectangles[1]==originals[1]
+            mixed.finish()
+            assert mixed.result_settings['panels']['1']['rectangles'][1]==originals[0][1]
+            wb_under=wb_scene(bands,wb_sources,{},wb_settings).export()['svg']
+            assert wb_under.count(b'>1.00</text>')==2 and b'>2.00</text>' in wb_under and b'>0.50</text>' in wb_under
+            wb_side=wb_scene(bands,wb_sources,{},dict(wb_settings,display='side')).export()['svg']
+            assert wb_side.count(b'<image ')==4 and b'Measurement regions' in wb_side and b'#29A7C7' in wb_side
+            rank_fixture=[dict(target='',group=group,value=value) for group,points in
+                          [('A',[1,2,3]),('B',[4,5,6])] for value in points]
+            assert abs(tests_for(rank_fixture,'ranksum')[0]['p_unadjusted']-0.1)<1e-12
+            selected=tests_for(rank_fixture+[dict(target='',group='C',value=x) for x in (2,3,4)],
+                               'ranksum',[['B','A']])
+            assert len(selected)==1 and (selected[0]['group_a'],selected[0]['group_b'])==('B','A')
+            figure_hub.store.save(figure_id,figure_state,figure_files)
+            figure_store=figure_hub.store
+            figure_window=figure_hub.open_project(figure_id)
+            assert figure_window.svg_ready() and not figure_hub.isVisible()
+            from PySide6.QtWidgets import QPushButton
+            from unittest.mock import patch
+            from figure_grouping import GroupingDialog
+
+            def await_figure_job(dialog):
+                loop=QEventLoop()
+                timer=QTimer(loop)
+                timer.timeout.connect(lambda:loop.quit() if dialog.task is None else None)
+                timer.start(25)
+                QTimer.singleShot(12000,loop,loop.quit)
+                loop.exec()
+                assert dialog.task is None and dialog.local_button.isEnabled()
+
+            grouping_calls=[]
+            def open_test_grouping(dialog):
+                grouping_calls.append(dialog.names)
+                return False
+
+            def click_grouping(dialog):
+                button=next(item for item in dialog.findChildren(QPushButton)
+                            if item.text()=='设置样本分组与归一化')
+                button.click()
+                assert dialog.task is not None
+                await_figure_job(dialog)
+
+            with patch.object(GroupingDialog,'exec',open_test_grouping):
+                click_grouping(figure_window)
+            figure_window.close()
+            figure_store.delete(figure_id)
+            assert not figure_store.exports(figure_id) and not figure_store.files(figure_id)
+            table_id=figure_store.create('Grouping runtime check','table')
+            table_source=directory/'grouping-check.csv'
+            table_source.write_text('Group,Value\nA1,2\nA2,4\n',encoding='utf8')
+            figure_store.attach(table_id,[table_source])
+            table_window=FigureHub(window.ai_manager,window).open_project(table_id)
+            with patch.object(GroupingDialog,'exec',open_test_grouping):
+                click_grouping(table_window)
+            assert grouping_calls==[['Control','Drug'],['A1','A2']]
+            table_window.close()
+            figure_store.delete(table_id)
+            wb_id=figure_store.create('WB local preview runtime check','wb')
+            wb_path=directory/'WB-local-preview.tif'
+            wb_images[0].save(wb_path)
+            figure_store.attach(wb_id,[wb_path])
+            wb_file=figure_store.files(wb_id)[0]['id']
+            figure_store.save(wb_id,dict(history=[],style={},panels=[dict(bands[0],file=wb_file)]))
+            wb_window=FigureHub(window.ai_manager,window).open_project(wb_id)
+            wb_window.local_button.click()
+            assert wb_window.task is not None
+            await_figure_job(wb_window)
+            assert wb_window.svg_ready() and wb_window.artifacts['pdf'].startswith(b'%PDF')
+            wb_window.close()
+            figure_store.delete(wb_id)
+            from protocol_ui import ProtocolHub
+            from protocol_documents import document_sections,export_docx,export_pdf,import_protocols,share_protocols,write_protocol
+            assert list(document_sections({'text':'清洗缓冲液：配方 A；成分 B；Storage buffer：配方 C'}))==[
+                ('body','清洗缓冲液：配方 A；成分 B'),('body','Storage buffer：配方 C')]
+            from model_artifact import validate_figure
+            from figure_render import Figure
+            flow_fixture=Figure(120,48,{})
+            flow_fixture.text(10,20,'Check source image')
+            protocol=dict(title='图像分析 · Protocol',text='试剂：无。\n仪器：显微镜。\n步骤：检查图像信息。',
+                          stages=['核对原图','记录结果'],sources=[],author='QA',
+                          diagram=validate_figure(flow_fixture.export()['pdf']))
+            word_path,pdf_path,zip_path=[directory/name for name in ('protocol.docx','protocol.pdf','protocol.zip')]
+            write_protocol(word_path,protocol,export_docx)
+            write_protocol(pdf_path,protocol,export_pdf)
+            assert word_path.read_bytes().startswith(b'PK') and pdf_path.read_bytes().startswith(b'%PDF')
+            from zipfile import ZipFile
+            with ZipFile(word_path) as archive:
+                assert b'AI Protocol' in archive.read('word/header1.xml') and b'PAGE' in archive.read('word/footer1.xml')
+            import pdfplumber
+            with pdfplumber.open(pdf_path) as exported_protocol:
+                assert 'AI Protocol' in exported_protocol.pages[0].extract_text()
+            from protocol_workflow import draft_protocol
+            photo=directory/'protocol-revision.png'
+            photo.write_bytes(original.getvalue())
+            class RevisionFixture:
+                model='image-fixture'
+                provider='codex'
+                input_budget=8000
+                cancelled=staticmethod(lambda:False)
+                def call(self,instructions,body,reference=None):
+                    if reference:
+                        assert reference['images'][0].startswith('data:image/png;base64,iVBOR')
+                        return '{"allowed":true,"notes":"图像标注说明"}'
+                    assert '补充图像标注' in body
+                    return '{"allowed":true,"queries":[]}'
+                def reduce(self,material,progress,instructions):
+                    assert '补充图像标注' in material and '图像标注说明' in material and '检查图像信息' in material
+                    return '{"allowed":true,"title":"修订稿","body":"已修订的完整正文"}',False
+                def result(self,body,**metadata):
+                    return dict(text=body,**metadata)
+            revision=draft_protocol(RevisionFixture(),database,'图像分析',[str(photo)],[],lambda _:None,
+                                    with_diagram=False,previous=protocol,request='补充图像标注')
+            assert revision['text']=='已修订的完整正文'
+            assert share_protocols(zip_path,[protocol])==1 and import_protocols(database,zip_path)==1
+            protocol_id=window.ai_manager.repository.histories('protocol')[0]['id']
+            protocol_hub=ProtocolHub(window.ai_manager,window)
+            assert protocol_hub.board.count()==1
+            protocol_dialog=protocol_hub.open(protocol_id)
+            assert '检查图像信息' in protocol_dialog.editor.toPlainText()
+            assert 'Protocol · QA' in protocol_dialog.preview.toPlainText()
+            protocol_dialog.set_editor_visible(True)
+            assert protocol_dialog.editor.textCursor().hasSelection()
+            protocol_dialog.editor.insertPlainText('已替换的正文')
+            protocol_dialog.set_editor_visible(False)
+            for size in ((800,440),(1060,820),(820,510)):
+                protocol_dialog.resize(*size)
+                QApplication.processEvents()
+                assert protocol_dialog.preview.toPlainText().count('已替换的正文')==1
+                assert '检查图像信息' not in protocol_dialog.preview.toPlainText()
+            protocol_dialog.splitter.setSizes([0,600])
+            QApplication.processEvents()
+            assert protocol_dialog.splitter.sizes()[0]==0 and protocol_dialog.preview.isVisible()
+            protocol_dialog.toggle_full()
+            assert protocol_dialog.preview.isVisible() and protocol_dialog.upper_panel.isHidden()
+            protocol_dialog.toggle_full()
+            protocol_dialog.save_clicked()
+            assert window.ai_manager.repository.history(protocol_id)['result']['text']=='已替换的正文'
+            protocol_dialog.close()
             finder_id=window.ai_manager.repository.save_history('finder','Runtime scientific chat',dict(messages=[],attachments=[],notes={}),{})
             finder=FinderChat(window.ai_manager,window.ai_manager.repository.history(finder_id),window)
             assert finder.models.count()==0 and not finder.messages
