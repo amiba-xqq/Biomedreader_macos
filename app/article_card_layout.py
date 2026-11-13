@@ -7,14 +7,16 @@ from interface_scale import scaled
 class CardTitle(QLabel):
     def __init__(self,text,card,compact):
         super().__init__(text,card)
-        self.full_text=text;self.card=card;self.compact=compact;self.pending=False
+        self.full_text=text;self.card=card;self.compact=compact
+        self.refresh_timer=QTimer(self)
+        self.refresh_timer.setSingleShot(True)
+        self.refresh_timer.timeout.connect(self.refresh_height)
         self.setWordWrap(True)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
         self.setContentsMargins(0,1,0,5)
         self.setToolTip(text)
 
     def refresh_height(self):
-        self.pending=False
         width=max(40,self.width()-self.contentsMargins().left()-self.contentsMargins().right()-4)
         metrics=self.fontMetrics()
         padding=scaled(7)
@@ -48,10 +50,9 @@ class CardTitle(QLabel):
 
     def event(self,event):
         result=super().event(event)
-        if event.type() in (QEvent.Type.FontChange,QEvent.Type.StyleChange,QEvent.Type.Show) and hasattr(self,'pending'):self.queue_refresh()
+        if event.type() in (QEvent.Type.FontChange,QEvent.Type.StyleChange,QEvent.Type.Show):self.queue_refresh()
         return result
 
     def queue_refresh(self):
-        if self.pending:return
-        self.pending=True
-        QTimer.singleShot(0,self.refresh_height)
+        if hasattr(self,'refresh_timer') and not self.refresh_timer.isActive():
+            self.refresh_timer.start(0)
