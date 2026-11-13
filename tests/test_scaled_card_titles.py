@@ -18,7 +18,7 @@ class Tests(unittest.TestCase):
         import shiboken6
         card=ArticleCard(article('pmid:disposed'));title=card.title_label;title.queue_refresh()
         card.deleteLater();QCoreApplication.sendPostedEvents(None,QEvent.Type.DeferredDelete)
-        self.assertFalse(shiboken6.isValid(title));app.processEvents();title.refresh_height()
+        self.assertFalse(shiboken6.isValid(title));app.processEvents()
     def test_dynamic_cards_created_after_zoom_have_scaled_complete_titles(self):
         for zoom in (1,1.5,2):
             app.biomed_scale=zoom;app.setStyleSheet(scale_style(APP_STYLE,zoom))

@@ -65,12 +65,15 @@ class Tests(unittest.TestCase):
 
     def test_codex_wait_is_interruptible_without_model_calls(self):
         from codex_bridge import RPC
-        rpc=object.__new__(RPC);rpc.events=queue.Queue();token=Cancellation()
+        rpc=object.__new__(RPC);rpc.events=Mock();token=Cancellation()
+        def cancel_during_poll(*,timeout):
+            self.assertLessEqual(timeout,.1)
+            token.cancel()
+            raise queue.Empty
+        rpc.events.get.side_effect=cancel_during_poll
         with scope(token):
-            timer=threading.Timer(.05,token.cancel);timer.start();start=time.monotonic()
             with self.assertRaises(AICancelled):rpc.next(600)
-            self.assertLess(time.monotonic()-start,.4)
-        timer.join()
+        rpc.events.get.assert_called_once()
 
     def test_cancel_article_browser_stops_loading_and_pending_pdf(self):
         from ai_content import ArticleWebReader
