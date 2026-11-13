@@ -23,11 +23,19 @@ def roi_bounds(roi):
     return roi['rect'] if isinstance(roi,dict) else roi
 
 
+def empty_band(x,right,height):
+    width = max(1,min(right-x,round((right-x)*.20)))
+    depth = max(1,min(height,round(height*.14)))
+    return dict(rect=[x+max(0,(right-x-width)//2),(height-depth)//2,width,depth],empty=True)
+
+
 def automatic_bands(image,count,polarity):
     import numpy as np
     from scipy.ndimage import find_objects,label
     data = np.asarray(image.convert('L'))
     h,w = data.shape
+    if count>w:
+        raise ValueError('泳道数超过图像宽度，请扩大选区。')
     result = []
     for index in range(count):
         x,xx = round(index*w/count),round((index+1)*w/count)
@@ -43,7 +51,7 @@ def automatic_bands(image,count,polarity):
         counts = left[valid].astype(float)
         scores[valid] = (first[-1]*counts-first[valid]*float(total))**2/(counts*(total-counts))
         if not scores.any():
-            result.append(None)
+            result.append(empty_band(x,xx,h))
             continue
         threshold = int(scores.argmax())
         components,_ = label(lane>threshold)
@@ -61,7 +69,8 @@ def automatic_bands(image,count,polarity):
             outside = padded[offset_y:offset_y+mask.shape[0],offset_x:offset_x+mask.shape[1]]
             edges.extend([rect[0]+int(ix)+a,rect[1]+int(iy)+b,rect[0]+int(ix)+c,rect[1]+int(iy)+d]
                          for iy,ix in np.argwhere(mask & ~outside))
-        result.append(dict(rect=rect,threshold=threshold,seed=seed,outline=edges) if min(rect[2:])>=2 else None)
+        result.append(dict(rect=rect,threshold=threshold,seed=seed,outline=edges)
+                      if min(rect[2:])>=2 else empty_band(x,xx,h))
     return result
 
 
@@ -70,14 +79,18 @@ def measure_bands(image,rectangles,polarity,control):
     pixels = np.asarray(image.convert('L'),dtype=np.float64)
     height,width = pixels.shape
     intensities,backgrounds = [],[]
-    previous_right = 0
     for roi in rectangles:
         rect = roi_bounds(roi)
         if not rect or len(rect)!=4:
             raise ValueError('请为每个泳道圈选一个目标条带。')
         x,y,w,h = rect
-        if x<previous_right or min(x,y)<0 or min(w,h)<2 or x+w>width or y+h>height:
-            raise ValueError('条带选区须在图内，且按泳道从左到右排列、互不重叠。')
+        empty = isinstance(roi,dict) and roi.get('empty')
+        if min(x,y)<0 or min(w,h)<(1 if empty else 2) or x+w>width or y+h>height:
+            raise ValueError('条带选区须在原图范围内，并包含有效像素。')
+        if empty:
+            intensities.append(0.)
+            backgrounds.append([])
+            continue
         regions = background_regions(rect,height)
         if not regions:
             raise ValueError('条带上下没有留出局部背景。请扩大原选区或缩小条带框。')
@@ -102,10 +115,19 @@ def measure_bands(image,rectangles,polarity,control):
         corrected = (float(sample.sum())-background*sample.size)*(1 if polarity=='light' else -1)
         intensities.append(max(0.,corrected))
         backgrounds.append(regions)
-        previous_right = x+w
     if not 0<=control<len(rectangles) or intensities[control]<=0:
         raise ValueError('对照泳道的背景校正信号为零，无法归一化。请检查对照、条带方向和圈选区域。')
     return [value/intensities[control] for value in intensities],backgrounds
+
+
+def control_lane(panel_id,labels,settings):
+    controls = settings.get('controls',{})
+    value = controls.get(panel_id,settings.get('default_control',settings.get('control')))
+    if type(value) is int and 0<=value<len(labels):
+        return value
+    if isinstance(value,str) and value in labels:
+        return labels.index(value)
+    return None
 
 
 def panel_density(panel,image,labels,settings):
@@ -116,7 +138,9 @@ def panel_density(panel,image,labels,settings):
     if len(rectangles)!=len(labels):
         raise ValueError(f"「{panel['label']}」尚未为每个泳道选取条带。")
     try:
-        control = labels.index(settings['control'])
+        control = control_lane(panel.get('uid'),labels,settings)
+        if control is None:
+            raise ValueError('请选择对照泳道。')
         ratios,backgrounds = measure_bands(image,rectangles,settings['polarity'],control)
     except ValueError as error:
         raise ValueError(f"「{panel['label']}」：{error}") from None

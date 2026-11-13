@@ -115,10 +115,29 @@ class AIStore:
             connection.execute("UPDATE settings SET value='off' WHERE key='ai_image_route' AND value IN ('stability','byteplus','biomni')")
             connection.execute("UPDATE settings SET value='0' WHERE key='ai_incremental_reports' AND EXISTS(SELECT 1 FROM settings WHERE key='ai_report_provider' AND value='biomni')")
             connection.execute("UPDATE settings SET value='deepseek' WHERE key='ai_report_provider' AND value='biomni'")
-    def config(self,provider):
+    def channel_priority(self,provider):
+        lab=self.lab_state()
+        default='lab' if lab and lab['active'] else 'personal'
+        return self.database.get_settings().get('ai_channel_'+provider,default)
+    def save_channel_priority(self,provider,route):
+        if provider=='codex' or route not in ('personal','lab'):raise ValueError('调用通道无效。')
+        self.database.save_settings({'ai_channel_'+provider:route})
+    def config(self,provider,route=None):
+        if route is not None or provider=='codex':
+            return self.channel_config(provider,route or 'personal')
+        preferred=self.channel_priority(provider)
+        first=self.channel_config(provider,preferred)
+        if self.channel_ready(first):return first
+        second=self.channel_config(provider,'lab' if preferred=='personal' else 'personal')
+        if self.channel_ready(second):return second
+        return first if first.get('encrypted_key') or second.get('route')=='lab' else second
+    @staticmethod
+    def channel_ready(config):
+        return bool(config['enabled'] and config['model'] and config['encrypted_key'] and not config.get('blocked_reason'))
+    def channel_config(self,provider,route):
         if provider not in PROVIDERS:raise ValueError('未知 AI 服务。')
-        lab=self.lab_state() if provider!='codex' else None
-        if lab and lab['active']:
+        lab=self.lab_state() if route=='lab' and provider!='codex' else None
+        if lab:
             with self.database.connect() as connection:row=connection.execute('SELECT * FROM ai_lab_models WHERE owner=? AND provider=?',(lab['identity'].get('local_owner',lab['identity']['user_id']),provider)).fetchone()
             config=dict(provider=provider,model=row['model'] if row else '',enabled=row['enabled'] if row else 0,models_json=row['models_json'] if row else '[]',encrypted_key='lab-managed',key_fingerprint=lab['fingerprint'],route='lab',models_updated_at='')
             from lab_local import credentials
@@ -126,27 +145,34 @@ class AIStore:
             config['credential_pending']=lab['identity'].get('role')=='student' and not keys
             if keys:config.update(local_direct=True,key_fingerprint=key_fingerprint(keys[provider]) if provider in keys else '',encrypted_key='local-protected' if provider in keys else '')
             config['usage_owner']=lab['identity'].get('local_owner')
+            config['session_fingerprint']=lab['fingerprint']
             if lab['identity'].get('disabled'):
                 from student_policy import DISABLED_MESSAGE
                 config.update(enabled=0,blocked_reason=DISABLED_MESSAGE)
-            config['reasoning_effort']=self.effort(provider,config['model']);config['gateway_url']=lab['identity'].get('gateway_url','');return text_config(config)
+            config['reasoning_effort']=self.effort(provider,config['model'],'lab');config['gateway_url']=lab['identity'].get('gateway_url','');return text_config(config)
+        if route=='lab' and provider!='codex':
+            return dict(provider=provider,model='',enabled=0,encrypted_key='',key_fingerprint='',models_json='[]',
+                        models_updated_at='',reasoning_effort='default',route='lab',blocked_reason='请先登录 PI 或学生账户。')
         with self.database.connect() as connection:
             row=connection.execute('SELECT * FROM ai_provider_configs WHERE provider=?',(provider,)).fetchone()
         config=dict(row) if row else dict(provider=provider,model='',enabled=0,encrypted_key='',key_fingerprint='',models_json='[]',models_updated_at='')
-        config['reasoning_effort']=self.effort(provider,config['model']);return text_config(config)
-    def effort_owner(self,provider):
-        lab=self.lab_state() if provider!='codex' else None
-        return 'lab:'+lab['identity'].get('local_owner',lab['identity']['user_id']) if lab and lab['active'] else 'personal'
-    def effort(self,provider,model):
-        with self.database.connect() as connection:row=connection.execute('SELECT effort FROM ai_model_efforts WHERE owner=? AND provider=? AND model=?',(self.effort_owner(provider),provider,model)).fetchone()
+        config.update(route='personal',reasoning_effort=self.effort(provider,config['model'],'personal'));return text_config(config)
+    def effort_owner(self,provider,route=None):
+        route=route or ('personal' if provider=='codex' else self.channel_priority(provider))
+        lab=self.lab_state() if route=='lab' else None
+        return 'lab:'+lab['identity'].get('local_owner',lab['identity']['user_id']) if lab else 'personal'
+    def effort(self,provider,model,route=None):
+        with self.database.connect() as connection:row=connection.execute('SELECT effort FROM ai_model_efforts WHERE owner=? AND provider=? AND model=?',(self.effort_owner(provider,route),provider,model)).fetchone()
         return row['effort'] if row else 'default'
-    def save_effort(self,provider,model,effort,metadata=None):
+    def save_effort(self,provider,model,effort,metadata=None,route=None):
         from reasoning import options
         if provider not in PROVIDERS or not model or effort not in options(provider,model,metadata):raise ValueError('请选择当前模型支持的推理强度。')
-        with self.database.connect() as connection:connection.execute('INSERT INTO ai_model_efforts VALUES(?,?,?,?) ON CONFLICT(owner,provider,model) DO UPDATE SET effort=excluded.effort',(self.effort_owner(provider),provider,model,effort))
-    def key(self,provider):
-        lab=self.lab_state() if provider!='codex' else None
-        if lab and lab['active']:
+        with self.database.connect() as connection:connection.execute('INSERT INTO ai_model_efforts VALUES(?,?,?,?) ON CONFLICT(owner,provider,model) DO UPDATE SET effort=excluded.effort',(self.effort_owner(provider,route),provider,model,effort))
+    def key(self,provider,route=None):
+        route=route or self.config(provider).get('route','personal')
+        lab=self.lab_state() if route=='lab' and provider!='codex' else None
+        if route=='lab' and not lab:raise ValueError('请先登录 PI 或学生账户。')
+        if lab:
             # Server checks the current grant on every request. A PI may bind a
             # new provider after the student signed in; do not deny stale lists.
             if lab['identity'].get('disabled'):
@@ -158,16 +184,18 @@ class AIStore:
                 if provider not in keys:raise ValueError('当前登录账户未缓存此服务商的Key，请由PI绑定后重新登录。')
                 return keys[provider]
             return decrypt_key(lab['encrypted_token'])
-        config=self.config(provider)
+        config=self.channel_config(provider,'personal')
         if not config['encrypted_key']:raise ValueError('请先在 AI 部署中配置 API Key。')
         return decrypt_key(config['encrypted_key'])
-    def save(self,provider,key,model,models):
+    def save(self,provider,key,model,models,route=None):
         if not is_text_model(model):raise ValueError('此模型仅用于绘图，请在模型图设置中配置。')
         models=[row for row in models if is_text_model(row.get('id'))]
         self.config(provider);key=validated_key(key)
         if not model or model not in {row['id'] for row in models}:raise ValueError('请先联网刷新模型列表，再选择一个模型。')
-        lab=self.lab_state() if provider!='codex' else None
-        if lab and lab['active']:
+        route=route or self.config(provider).get('route','personal')
+        lab=self.lab_state() if route=='lab' else None
+        if route=='lab' and not lab:raise ValueError('请先登录 PI 或学生账户。')
+        if lab:
             with self.database.connect() as connection:connection.execute('INSERT INTO ai_lab_models VALUES(?,?,?,0,?) ON CONFLICT(owner,provider) DO UPDATE SET model=excluded.model,models_json=excluded.models_json',(lab['identity'].get('local_owner',lab['identity']['user_id']),provider,model,json.dumps(models,ensure_ascii=False)))
             return
         encrypted=encrypt_key(key);fingerprint=key_fingerprint(key)
@@ -177,19 +205,22 @@ class AIStore:
                 encrypted_key=excluded.encrypted_key,key_fingerprint=excluded.key_fingerprint,
                 models_json=excluded.models_json,models_updated_at=excluded.models_updated_at''',
                 (provider,model,encrypted,fingerprint,json.dumps(models,ensure_ascii=False),datetime.now(timezone.utc).isoformat()))
-    def toggle(self,provider):
-        config=self.config(provider)
+    def toggle(self,provider,route=None):
+        config=self.config(provider,route)
+        route=config.get('route','personal')
         if not config['enabled']:
-            self.key(provider)
+            self.key(provider,route)
             if not config['model']:raise ValueError('请先设置并选择模型。')
-        lab=self.lab_state() if provider!='codex' else None
+        lab=self.lab_state() if route=='lab' else None
         with self.database.connect() as connection:
-            if lab and lab['active']:connection.execute('UPDATE ai_lab_models SET enabled=? WHERE owner=? AND provider=?',(not config['enabled'],lab['identity'].get('local_owner',lab['identity']['user_id']),provider))
+            if lab:connection.execute('UPDATE ai_lab_models SET enabled=? WHERE owner=? AND provider=?',(not config['enabled'],lab['identity'].get('local_owner',lab['identity']['user_id']),provider))
             else:connection.execute('UPDATE ai_provider_configs SET enabled=? WHERE provider=?',(not config['enabled'],provider))
-    def forget(self,provider):
-        lab=self.lab_state() if provider!='codex' else None
+    def forget(self,provider,route=None):
+        route=route or self.config(provider).get('route','personal')
+        lab=self.lab_state() if route=='lab' else None
+        if route=='lab' and not lab:return
         with self.database.connect() as connection:
-            if lab and lab['active']:connection.execute('DELETE FROM ai_lab_models WHERE owner=? AND provider=?',(lab['identity'].get('local_owner',lab['identity']['user_id']),provider))
+            if lab:connection.execute('DELETE FROM ai_lab_models WHERE owner=? AND provider=?',(lab['identity'].get('local_owner',lab['identity']['user_id']),provider))
             else:connection.execute('DELETE FROM ai_provider_configs WHERE provider=?',(provider,))
     def lab_state(self):
         with self.database.connect() as connection:row=connection.execute('SELECT * FROM ai_lab_session WHERE id=1').fetchone()
@@ -207,7 +238,7 @@ class AIStore:
     def logout_lab(self):
         with self.database.connect() as connection:connection.execute('DELETE FROM ai_lab_session')
     def client(self,provider,key=None):
-        config=self.config(provider);key=key or self.key(provider)
+        config=self.config(provider);key=key or self.key(provider,config.get('route'))
         if key_fingerprint(key)!=config['key_fingerprint']:raise ValueError('账户或调用通道已变化，请重新发起操作。')
         return self.client_factory(provider,config)(provider,key)
     def client_factory(self,provider,config=None):
@@ -236,9 +267,9 @@ class AIStore:
             actual=snapshot;actual_factory=factory
             if snapshot.get('credential_pending'):
                 state=self.lab_state()
-                if not state or not state['active'] or state['fingerprint']!=snapshot['key_fingerprint'] or state['identity'].get('local_owner')!=snapshot.get('usage_owner'):raise InterruptedError('账户已变化，已停止请求。')
+                if not state or state['fingerprint']!=snapshot.get('session_fingerprint',snapshot['key_fingerprint']) or state['identity'].get('local_owner')!=snapshot.get('usage_owner'):raise InterruptedError('账户已变化，已停止请求。')
                 from student_keys import ensure
-                ensure(self);actual=self.config(p);k=self.key(p)
+                ensure(self,force=True);actual=self.config(p,'lab');k=self.key(p,'lab')
                 from ai_service import AIClient
                 actual_factory=AIClient
             client=configured_client(actual_factory,p,k,actual)
@@ -246,15 +277,16 @@ class AIStore:
                 client.lab_store=self;client.lab_owner=snapshot.get('usage_owner')
             return client
         return create
-    def usage(self,provider):
-        config=self.config(provider)
+    def usage(self,provider,route=None):
+        config=self.config(provider,route)
         owner=config.get('usage_owner')
         with self.database.connect() as connection:
             row=connection.execute('''SELECT COUNT(*) AS calls,COALESCE(SUM(input_tokens),0) AS input_tokens,
                 COALESCE(SUM(output_tokens),0) AS output_tokens,COALESCE(SUM(cached_tokens),0) AS cached_tokens,
                 COALESCE(SUM(total_tokens),0) AS total_tokens,COALESCE(SUM(usage_known=0),0) AS unknown_calls,
                 MAX(called_at) AS last_call FROM ai_call_usage WHERE provider=? AND key_fingerprint=?
-                AND (? IS NULL OR id IN (SELECT call_id FROM ai_lab_call_owners WHERE owner=?))''',
+                AND ((? IS NULL AND id NOT IN (SELECT call_id FROM ai_lab_call_owners))
+                  OR id IN (SELECT call_id FROM ai_lab_call_owners WHERE owner=?))''',
                 (provider,config['key_fingerprint'],owner,owner)).fetchone()
         return dict(row)
     def record(self,provider,fingerprint,model,usage=None,outcome='completed',owner=None):

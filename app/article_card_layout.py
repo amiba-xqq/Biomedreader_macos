@@ -1,7 +1,6 @@
 """Reserve real wrapped-title height before the abstract gets remaining space."""
 from PySide6.QtCore import Qt,QRect,QEvent,QTimer
 from PySide6.QtWidgets import QLabel
-import shiboken6
 from interface_scale import scaled
 
 
@@ -9,17 +8,12 @@ class CardTitle(QLabel):
     def __init__(self,text,card,compact):
         super().__init__(text,card)
         self.full_text=text;self.card=card;self.compact=compact;self.pending=False
-        self.height_timer=QTimer(self)
-        self.height_timer.setSingleShot(True)
-        self.height_timer.timeout.connect(self.refresh_height)
         self.setWordWrap(True)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
         self.setContentsMargins(0,1,0,5)
         self.setToolTip(text)
 
     def refresh_height(self):
-        if not shiboken6.isValid(self) or not shiboken6.isValid(self.card):
-            return
         self.pending=False
         width=max(40,self.width()-self.contentsMargins().left()-self.contentsMargins().right()-4)
         metrics=self.fontMetrics()
@@ -60,4 +54,4 @@ class CardTitle(QLabel):
     def queue_refresh(self):
         if self.pending:return
         self.pending=True
-        self.height_timer.start(0)
+        QTimer.singleShot(0,self.refresh_height)

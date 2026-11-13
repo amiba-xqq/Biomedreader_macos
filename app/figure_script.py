@@ -13,6 +13,12 @@ COMMANDS = {
     'set_title': ('title',str),
     'set_xlabel': ('xlabel',str),
     'set_ylabel': ('ylabel',str),
+    'set_x_time_axis': ('x_time_axis',bool),
+    'set_x_color_strip': ('x_color_strip',bool),
+    'set_x_strip_gradient': ('x_strip_gradient',bool),
+    'set_x_category_order': ('x_category_order','names'),
+    'set_bar_outline_width': ('bar_outline_width',(.25,8)),
+    'set_bar_outline_open_base': ('bar_outline_open',bool),
     'set_font_size': ('font_size',(6,8)),
     'set_stroke': ('stroke',(.5,1.5)),
     'set_spacing': ('gap',(2,10)),
@@ -23,7 +29,9 @@ COMMANDS = {
     'set_chart_type': ('chart_kind',tuple(CHART_TYPES)),
     'set_statistical_test': ('statistical_test',tuple(STAT_TESTS)),
 }
-STAT_ONLY = {'set_xlabel','set_ylabel','set_palette','set_gridlines','set_plot_height'}
+STAT_ONLY = {'set_xlabel','set_ylabel','set_palette','set_gridlines','set_plot_height',
+             'set_x_time_axis','set_x_color_strip','set_x_strip_gradient','set_x_category_order',
+             'set_bar_outline_width','set_bar_outline_open_base'}
 TABLE_ONLY = {'set_chart_type','set_statistical_test'}
 GUIDANCE = """根据用户要求修改软件当前的科研绘图脚本。只输出 JSON，字段 script（Python 绘图脚本字符串）和 note（简述修改）。
 软件在本地运行受限 Python 绘图脚本，生成可编辑 PDF／SVG。支持局部变量、列表、索引、数值运算、简单 if、for 循环、range、enumerate、len。
@@ -47,6 +55,15 @@ from PIL import Image 后可用 Image.size("素材ID") 取得 [像素宽,像素�
 统计图（qPCR、Excel／CSV）还可调用 use_backend("matplotlib") 或 use_backend("reportlab"),
 set_xlabel("X axis"), set_ylabel("Y axis"), set_palette(["#1AB3BC", "#FF7743"]), set_gridlines(True),
 set_plot_height(110)。Matplotlib 是软件内置库，优先用它生成统计图。
+分组折线图可调用 set_x_time_axis(True)，直接用分组中的数值时间作横轴，按实际间隔定位并去掉刻度的基因名前缀。
+再调用 set_x_color_strip(True)，在刻度下绘制与每个时间点对齐的分段色条。
+对已启用的横轴色条，调用 set_x_strip_gradient(True) 直接换成无分界的矢量渐变。
+横轴类别重排调用 set_x_category_order(["ATM","BRCA1","BRCA2","PALB2"])。重排整组数据、重复点及统计标注。
+柱体描边直接调用 set_bar_outline_width(2) 和 set_bar_outline_open_base(True) 去掉零基线一侧描边，保留已有填色和原边框颜色。
+使用当前图上的类别原名。可仅指定一部分，其余类别按原顺序排在后面。数值时间轴始终按时间排序。
+通用画布可以用 add_gradient([x,y,width,height,"#D8E8F5","#263F71"]) 放置横向矢量渐变，可添加多个色标。
+例如 set_x_time_axis(True)、set_x_color_strip(True)、set_xlabel("G0 release time (h)")、
+set_ylabel("Relative BRCA1-FL mRNA level")（每个调用单独一行）。这组命令保留系列、重复点、误差线及统计数值。
 统计作图还可调用 set_chart_type("box")、set_statistical_test("ranksum")。
 图类型可用：bar（柱形）、line（分类折线）、scatter（分组散点）、box（Tukey 箱线）、
 violin（小提琴）、histogram（直方图）、ecdf（累积分布）、xy（数值 X 散点）、xyline（数值 X 折线）、
@@ -77,12 +94,13 @@ IF 可调用 set_if_scale(["all",5])，按各处理组已保存的像素／μm �
 要求既交换通道又加比例尺时，同时输出 swap_groups 和 set_if_scale。缺少标定时不要猜测像素尺寸。
 resize_canvas([width,height]) 可扩大画布，add_text([x,y,"文字"])、add_line([x1,y1,x2,y2,"#222222"])、
 add_rectangle([x,y,w,h,"#222222"]) 可添加可编辑图元。实验图像保持完整，不能重叠或被新标注覆盖。
-prior_revisions 按时间顺序提供历史需求和结果，近期记录包含已执行脚本。figure.scene 是当前已应用修改的画布，
+prior_revisions 按时间顺序提供历史需求和结果，最后一次可继续使用的记录包含已执行脚本。figure.scene 是当前画布，
 随附 previous-ai-figure.pdf 时可对照上次保存的 AI 图。根据上下文理解「继续」「刚才」等指代，只输出本轮增量。
 默认保留之前的脚本排版，需要从默认布局重新设计时先调用 reset_layout()。
 如果用户要求交换 IF 的两个通道，即使没有视觉输入，也可根据 figure.scene 中的名称直接调用 swap_groups。
 如果可以用这些命令完成修改，请返回实际脚本，不要只给手工操作建议。
 区域标记是用户当前所见预览的相对坐标，视觉附件中带橙色虚线框的那张标出了所选区域。
+Excel／CSV 散点图中，用户明确要求排除框选点时，由软件按散点位置识别原始观测行列并重新计算。
 需要变更数据或原始选区时在 note 建议用户进行操作。"""
 
 
@@ -132,6 +150,10 @@ def read_script(script,mode,scene=None,source_size=None):
                 isinstance(v,str) and re.fullmatch('#[0-9a-fA-F]{6}',v) for v in value)
         elif rule is bool:
             valid = type(value) is bool
+        elif rule=='names':
+            valid = (isinstance(value,list) and 1<=len(value)<=60 and all(
+                isinstance(name,str) and 0<len(name.strip())<=160 for name in value)
+                and len(set(value))==len(value))
         elif isinstance(rule[0],str):
             valid = value in rule
         else:

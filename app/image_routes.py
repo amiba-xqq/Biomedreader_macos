@@ -55,22 +55,33 @@ def discover(provider,key,region='cn',session=None):
         if own:session.close()
 class ImageUnavailable(ValueError):pass
 
-def config(db,provider):
-    from ai_store import migrate_bailian_settings
+def config(db,provider,route=None):
+    from ai_store import AIStore,migrate_bailian_settings
     migrate_bailian_settings(db)
+    store=AIStore(db)
+    preferred=store.channel_priority('image_'+provider)
+    first=channel_config(store,provider,route or preferred)
+    if route or (first['enabled'] and first['key']):return first
+    second=channel_config(store,provider,'personal' if preferred=='lab' else 'lab')
+    return second if second['enabled'] and second['key'] else first
+
+def channel_config(store,provider,route):
+    db=store.database
     settings=db.get_settings();prefix='image_'+provider+'_'
-    from ai_store import AIStore
-    lab=AIStore(db).lab_state()
-    if lab and lab['active']:
+    lab=store.lab_state() if route=='lab' else None
+    if lab:
         prefix='image_lab_'+lab['identity'].get('local_owner',lab['identity']['user_id'])+'_'+provider+'_'
         value=dict(model=settings.get(prefix+'model',MODELS[provider][0]),enabled=settings.get(prefix+'enabled','1' if (provider in lab['identity'].get('providers',[]) or (provider=='bailian' and set(lab['identity'].get('providers',[]))&{'qwen','wan','zimage'})) else '0')=='1',key=lab['encrypted_token'],region=settings.get(prefix+'region','cn'),route='lab',prefix=prefix,gateway=lab['identity'].get('gateway_url'))
         from lab_local import credentials
-        keys=credentials(AIStore(db));value['usage_owner']=lab['identity'].get('local_owner')
+        keys=credentials(store);value['usage_owner']=lab['identity'].get('local_owner')
+        value.update(credential_pending=lab['identity'].get('role')=='student' and not keys,session_fingerprint=lab['fingerprint'])
         if keys:value.update(local_direct=True,key=encrypt_key(keys[provider]) if provider in keys else '')
         if lab['identity'].get('disabled'):
             from student_policy import DISABLED_MESSAGE
             value.update(enabled=False,key='',blocked_reason=DISABLED_MESSAGE)
         return value
+    if route=='lab':
+        return dict(model=MODELS[provider][0],enabled=False,key='',region='cn',route='lab',prefix='',blocked_reason='请先登录 PI 或学生账户。')
     key=settings.get(prefix+'key','')
     if provider=='glm' and not key:
         with db.connect() as c:
@@ -101,12 +112,29 @@ def pdf_from_pixels(raw):
 def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None,*,pixels=False):
     from ai_cancel import check_cancelled
     check_cancelled(cancelled)
-    from ai_store import AIStore
-    from student_keys import ensure
-    ensure(AIStore(db))
     cfg=config(db,provider)
+    alternate='personal' if cfg['route']=='lab' else 'lab'
+    try:
+        return generate_on_channel(db,provider,prompt,reference,cancelled,session,pixels,cfg)
+    except ImageUnavailable:
+        fallback=config(db,provider,alternate)
+        if not fallback['enabled'] or not fallback['key'] or fallback['model']!=cfg['model']:raise
+        return generate_on_channel(db,provider,prompt,reference,cancelled,session,pixels,fallback)
+
+def generate_on_channel(db,provider,prompt,reference,cancelled,session,pixels,cfg):
+    from ai_cancel import check_cancelled
     if cfg.get('blocked_reason'):raise ValueError(cfg['blocked_reason'])
     if not cfg['enabled'] or not cfg['key']:raise ImageUnavailable('所选绘图通道尚未配置并开启，已跳过模型图。')
+    if cfg.get('credential_pending'):
+        from ai_store import AIStore
+        from ai_service import AIAPIError,AITransportError
+        from student_keys import ensure
+        try:ensure(AIStore(db),force=True)
+        except (ValueError,AIAPIError,AITransportError) as error:raise ImageUnavailable(str(error)) from error
+        current=config(db,provider,'lab')
+        if current.get('session_fingerprint')!=cfg['session_fingerprint']:raise InterruptedError('课题组账户已变化。')
+        if not current['enabled'] or not current['key']:raise ImageUnavailable('当前课题组未提供此绘图服务。')
+        cfg=current
     if provider=='glm' and len(prompt)>1000:raise ValueError('GLM-Image提示超过官方1000字符限制，未发送请求。')
     if cancelled():raise InterruptedError('已取消绘图。')
     if cfg.get('route')=='lab' and not cfg.get('local_direct'):
@@ -136,7 +164,9 @@ def generate(db,provider,prompt,reference,cancelled=lambda:False,session=None,*,
             url=ali_base(cfg['region'])+'/api/v1/services/aigc/text2image/image-synthesis';headers['X-DashScope-Async']='enable'
         response=session.post(url,headers=headers,json=payload,timeout=(15,300),allow_redirects=False)
         try:
-            if response.status_code not in (200,202):raise ValueError('绘图接口返回HTTP '+str(response.status_code)+'；未自动重试或切换通道，请核对权限、额度与模型名称。')
+            if response.status_code not in (200,202):
+                error=ImageUnavailable if response.status_code in (401,402,403,404,429) else ValueError
+                raise error(f'绘图接口返回 HTTP {response.status_code}，请核对权限、额度与模型名称。')
             data=response.json()
             check_cancelled(cancelled)
             if provider in ALI and legacy_wan(cfg['model']):
@@ -215,24 +245,40 @@ from PySide6.QtCore import Signal
 class ImageSettingsDialog(QDialog):
     models_ready=Signal(object)
     def __init__(self,db,provider,parent=None):
-        super().__init__(parent);self.db=db;self.provider=provider;self.setWindowTitle(ROUTES[provider]+' · 绘图设置');self.resize(640,380);root=QVBoxLayout(self);form=QFormLayout();cfg=config(db,provider);self.cfg=cfg
+        from ai_store import AIStore
+        super().__init__(parent);self.db=db;self.provider=provider;self.setWindowTitle(ROUTES[provider]+' · 绘图设置');self.resize(640,380);root=QVBoxLayout(self);form=QFormLayout()
         note=QLabel('绘图API按图片计费；课题组通道由PI承担费用，个人通道使用自己的Key。模型目录为官方预置项，权限以实际请求为准。\nArk使用国内火山方舟Key；阿里云平台请选择Key对应的北京／新加坡区域。Z-Image-Turbo与GLM-Image仅支持文字，其它通道发送参考PDF的页面图。');note.setWordWrap(True);root.addWidget(note)
-        self.enabled=QCheckBox('开启此绘图通道');self.enabled.setChecked(cfg['enabled']);root.addWidget(self.enabled)
-        self.key=QLineEdit();self.key.setEchoMode(QLineEdit.EchoMode.Password);self.key.setPlaceholderText('已保存，留空保留' if cfg['key'] else '输入此平台的API Key');form.addRow('API Key',self.key) if cfg.get('route')!='lab' else self.key.hide()
-        self.model=QComboBox();self.model.setEditable(True);self.model.addItems(MODELS[provider]);self.model.setCurrentText(cfg['model']);form.addRow('图像模型 / endpoint ID',self.model)
-        self.region=QComboBox();self.region.addItem('华北2（北京）','cn');self.region.addItem('新加坡','sg');self.region.setCurrentIndex(max(0,self.region.findData(cfg['region'])));form.addRow('百炼API区域',self.region) if provider in ALI else self.region.hide()
+        self.channel=QComboBox();self.channel.addItem('优先个人 API Key 直连','personal');self.channel.addItem('优先课题组授权','lab');self.channel.setCurrentIndex(self.channel.findData(AIStore(db).channel_priority('image_'+provider)));form.addRow('调用通道',self.channel)
+        self.enabled=QCheckBox('开启此绘图通道');form.addRow(self.enabled)
+        self.key=QLineEdit();self.key.setEchoMode(QLineEdit.EchoMode.Password);form.addRow('API Key',self.key);self.form=form
+        self.model=QComboBox();self.model.setEditable(True);self.model.addItems(MODELS[provider]);form.addRow('图像模型 / endpoint ID',self.model)
+        self.region=QComboBox();self.region.addItem('华北2（北京）','cn');self.region.addItem('新加坡','sg');form.addRow('百炼API区域',self.region) if provider in ALI else self.region.hide()
         self.refresh_button=QPushButton('联网刷新图像模型目录');self.refresh_button.clicked.connect(self.refresh_models);form.addRow(self.refresh_button) if provider!='glm' else self.refresh_button.hide()
         self.models_ready.connect(self.models_loaded);self.loading=False
         effort=QComboBox();effort.addItem('服务商默认（接口无推理强度参数）');form.addRow('推理强度',effort);root.addLayout(form)
-        hint=QLabel('保留原生像素，按300 dpi物理尺寸嵌入PDF。生成失败时保留文字，不自动重试或调用其它平台。');hint.setWordWrap(True);root.addWidget(hint)
+        hint=QLabel('保留原生像素，按300 dpi物理尺寸嵌入PDF。请求结果不明时保留文字。');hint.setWordWrap(True);root.addWidget(hint)
         from settings_wheel import ClickOnlyComboGuard
-        self.guards=[ClickOnlyComboGuard(self.model),ClickOnlyComboGuard(effort),ClickOnlyComboGuard(self.region)]
+        self.guards=[ClickOnlyComboGuard(box) for box in (self.channel,self.model,effort,self.region)]
         save=QPushButton('保存设置');save.clicked.connect(self.save);root.addWidget(save)
+        self.channel.currentIndexChanged.connect(self.load_channel);self.load_channel()
+    def load_channel(self):
+        self.cfg=cfg=config(self.db,self.provider,self.channel.currentData())
+        self.form.setRowVisible(self.key,cfg['route']=='personal')
+        self.key.clear();self.key.setPlaceholderText('已保存，留空保留' if cfg['key'] else '输入此平台的 API Key')
+        self.enabled.setChecked(cfg['enabled']);self.enabled.setEnabled(bool(cfg['prefix']))
+        self.model.clear();self.model.addItems(MODELS[self.provider]);self.model.setCurrentText(cfg['model'])
+        self.region.setCurrentIndex(max(0,self.region.findData(cfg['region'])))
     def save(self):
+        if self.loading:return
+        current=config(self.db,self.provider,self.channel.currentData())
+        if current['prefix']!=self.cfg['prefix'] or current.get('session_fingerprint')!=self.cfg.get('session_fingerprint'):
+            QMessageBox.warning(self,'设置未保存','课题组账户已变化，请重新打开设置。');return
         prefix=self.cfg['prefix'];values={prefix+'model':self.model.currentText().strip(),prefix+'enabled':'1' if self.enabled.isChecked() else '0',prefix+'region':self.region.currentData()}
         if not values[prefix+'model']:return
         try:
             if self.cfg.get('route')!='lab' and self.key.text().strip():values[prefix+'key']=encrypt_key(self.key.text())
+            if not prefix:values={}
+            values['ai_channel_image_'+self.provider]=self.channel.currentData()
             self.db.save_settings(values);self.accept()
         except ValueError as error:QMessageBox.warning(self,'设置未保存',str(error))
     def refresh_models(self):
@@ -240,7 +286,7 @@ class ImageSettingsDialog(QDialog):
         cfg=self.cfg;region=self.region.currentData();key=self.key.text().strip()
         try:key=key or decrypt_key(cfg['key'])
         except ValueError as e:QMessageBox.information(self,'请先配置Key',str(e));return
-        self.loading=True;self.refresh_button.setEnabled(False)
+        self.loading=True;self.refresh_button.setEnabled(False);self.channel.setEnabled(False)
         import threading
         def work():
             try:
@@ -254,7 +300,7 @@ class ImageSettingsDialog(QDialog):
             except RuntimeError:pass
         threading.Thread(target=work,daemon=True).start()
     def models_loaded(self,value):
-        self.loading=False;self.refresh_button.setEnabled(True);rows,error=value
+        self.loading=False;self.refresh_button.setEnabled(True);self.channel.setEnabled(True);rows,error=value
         if error:QMessageBox.information(self,'保留现有模型目录',error);return
         selected=self.model.currentText();self.model.clear();self.model.addItems(rows);self.model.setCurrentText(selected)
     def reject(self):
@@ -280,7 +326,10 @@ class ImageModelCard(QFrame):
         QDesktopServices.openUrl(QUrl('https://bailian.console.aliyun.com/' if self.provider=='bailian' else 'https://console.volcengine.com/ark/'))
     def refresh(self):
         cfg=config(self.manager.store.database,self.provider);enabled=cfg['enabled'];self.heading.setText(ROUTES[self.provider]);self.heading.setStyleSheet('font-size:12pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
-        self.model_name.setText('当前模型：'+cfg['model']);self.state.setText(('● 已开启 · ' if enabled else '○ 未开启 · ')+'仅用于模型图');self.toggle.setText('关闭模型' if enabled else '开启模型')
+        labels={'personal':'个人 API Key 直连','lab':'课题组授权'}
+        priority=self.manager.store.channel_priority('image_'+self.provider)
+        self.model_name.setText('当前模型：'+cfg['model']);self.state.setWordWrap(True)
+        self.state.setText(('● 已开启 · ' if enabled else '○ 未开启 · ')+'仅用于模型图\n优先：'+labels[priority]+' · 当前：'+labels[cfg['route']]);self.toggle.setText('关闭模型' if enabled else '开启模型')
         self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
         self.usage.setText('课题组本机直连：使用当前账户的加密缓存Key；用量在本机记录。' if cfg.get('local_direct') else '课题组云端转发：PI Key 保留在服务端；本机用量请在“我的用量”查看。' if cfg.get('route')=='lab' else '个人 API Key 直连。图像按服务商规则计费；完整调用量与费用请在官方账单查看。')
     def settings(self):ImageSettingsDialog(self.manager.store.database,self.provider,self).exec();self.refresh()

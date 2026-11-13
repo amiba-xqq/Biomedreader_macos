@@ -3,6 +3,7 @@ import base64
 import io
 import math
 import os
+import re
 import statistics
 import threading
 from collections import defaultdict
@@ -60,6 +61,133 @@ def arial_paths():
 
 def arial():
     if 'BRArial' not in pdfmetrics.getRegisteredFontNames():
+        regular,bold = arial_paths()
+        pdfmetrics.registerFont(TTFont('BRArial',str(regular)))
+        pdfmetrics.registerFont(TTFont('BRArialBold',str(bold)))
+
+
+class Figure:
+    def __init__(self, width, height, style):
+        arial()
+        self.width, self.height = width, height
+        self.size = style.get('font_size', 7)
+        self.stroke = style.get('stroke', 0.7)
+        self.buffer = io.BytesIO()
+        self.pdf = canvas.Canvas(self.buffer, pagesize=(width, height), pageCompression=1, initialFontName='BRArial')
+        self.svg = [f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}pt" height="{height}pt" viewBox="0 0 {width} {height}">']
+        self.rect(0, 0, width, height, '#FFFFFF')
+
+    def line(self, x, y, xx, yy, color='#171717', width=None):
+        stroke = self.stroke if width is None else width
+        self.pdf.setStrokeColor(HexColor(color))
+        self.pdf.setLineWidth(stroke)
+        self.pdf.line(x, self.height-y, xx, self.height-yy)
+        self.svg.append(f'<line x1="{x}" y1="{y}" x2="{xx}" y2="{yy}" stroke="{color}" stroke-width="{stroke}"/>')
+
+    def rect(self, x, y, w, h, fill=None, border=None):
+        if fill:
+            self.pdf.setFillColor(HexColor(fill))
+        if border:
+            self.pdf.setStrokeColor(HexColor(border))
+            self.pdf.setLineWidth(self.stroke)
+        self.pdf.rect(x, self.height-y-h, w, h, stroke=bool(border), fill=bool(fill))
+        self.svg.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill or "none"}" stroke="{border or "none"}" stroke-width="{self.stroke}"/>')
+
+    def bar_outline(self,x,y,w,h,color,stroke,positive,open_base):
+        if h<=0:
+            return
+        points = outline_points(x,y,w,h,positive,open_base)
+        self.pdf.saveState()
+        self.pdf.setStrokeColor(HexColor(color))
+        self.pdf.setLineWidth(stroke)
+        path = self.pdf.beginPath()
+        path.moveTo(points[0][0],self.height-points[0][1])
+        for px,py in points[1:]:
+            path.lineTo(px,self.height-py)
+        self.pdf.drawPath(path,stroke=1,fill=0)
+        self.pdf.restoreState()
+        coords = ' '.join(f'{px},{py}' for px,py in points)
+        self.svg.append(f'<polyline points="{coords}" stroke="{color}" stroke-width="{stroke}" fill="none"/>')
+
+    def gradient(self,x,y,w,h,colors,positions=None):
+        bottom = self.height-y-h
+        if positions is None:
+            positions = [i/(len(colors)-1) for i in range(len(colors))]
+        self.pdf.saveState()
+        bounds = self.pdf.beginPath()
+        bounds.rect(x,bottom,w,h)
+        self.pdf.clipPath(bounds,stroke=0,fill=0)
+        self.pdf.linearGradient(x,bottom,x+w,bottom,list(map(HexColor,colors)),positions=positions,extend=False)
+        self.pdf.restoreState()
+        name = f'gradient-{len(self.svg)}'
+        stops = ''.join(f'<stop offset="{p}" stop-color="{color}"/>' for p,color in zip(positions,colors))
+        self.svg.append(f'<defs><linearGradient id="{name}">{stops}</linearGradient></defs>')
+        self.svg.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="url(#{name})"/>')
+
+    def text(self, x, y, value, anchor='start', bold=False, angle=0, color='#171717', size=None):
+        value = str(value)
+        size = self.size if size is None else size
+        font = 'BRArialBold' if bold else 'BRArial'
+        self.pdf.saveState()
+        self.pdf.translate(x, self.height-y)
+        self.pdf.rotate(-angle)
+        self.pdf.setFont(font, size)
+        self.pdf.setFillColor(HexColor(color))
+        method = {'start':self.pdf.drawString, 'middle':self.pdf.drawCentredString, 'end':self.pdf.drawRightString}
+        method[anchor](0, 0, value)
+        self.pdf.restoreState()
+        self.svg.append(f'<text x="{x}" y="{y}" transform="rotate({angle} {x} {y})" text-anchor="{anchor}" font-family="Arial" font-size="{size}" font-weight="{700 if bold else 400}" fill="{color}">{escape(value)}</text>')
+
+    def dot(self, x, y, color, r=1.5, hollow=False, alpha=1):
+        if hollow:
+            self.pdf.saveState()
+            self.pdf.setStrokeColor(HexColor(color))
+            self.pdf.setStrokeAlpha(alpha)
+            self.pdf.setLineWidth(.5)
+            self.pdf.circle(x,self.height-y,r,stroke=1,fill=0)
+            self.pdf.restoreState()
+            self.svg.append(f'<circle cx="{x}" cy="{y}" r="{r}" fill="none" stroke="{color}" stroke-width=".5" opacity="{alpha}"/>')
+            return
+        self.pdf.setFillColor(HexColor(color))
+        self.pdf.circle(x, self.height-y, r, stroke=0, fill=1)
+        self.svg.append(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{color}"/>')
+
+    def polygon(self,points,fill,border=None):
+        p = self.pdf.beginPath()
+        p.moveTo(points[0][0],self.height-points[0][1])
+        for x,y in points[1:]:
+            p.lineTo(x,self.height-y)
+        p.close()
+        self.pdf.setFillColor(HexColor(fill))
+        if border:
+            self.pdf.setStrokeColor(HexColor(border))
+            self.pdf.setLineWidth(self.stroke)
+        self.pdf.drawPath(p,fill=1,stroke=bool(border))
+        coords = ' '.join(f'{x},{y}' for x,y in points)
+        self.svg.append(f'<polygon points="{coords}" fill="{fill}" stroke="{border or "none"}" stroke-width="{self.stroke}"/>')
+
+    def image(self, x, y, w, h, image):
+        buffer = io.BytesIO()
+        image.save(buffer, 'PNG')
+        raw = buffer.getvalue()
+        self.pdf.drawImage(ImageReader(io.BytesIO(raw)), x, self.height-y-h, w, h, mask='auto')
+        encoded = base64.b64encode(raw).decode('ascii')
+        self.svg.append(f'<image x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="none" xlink:href="data:image/png;base64,{encoded}"/>')
+
+    def export(self):
+        self.pdf.showPage()
+        self.pdf.save()
+        return {'pdf':self.buffer.getvalue(), 'svg':(''.join(self.svg)+'</svg>').encode('utf-8')}
+
+
+class MatplotlibFigure:
+    """The same verified chart geometry rendered using embedded Matplotlib."""
+    def __init__(self,width,height,style):
+        from matplotlib.figure import Figure as MplFigure
+        from matplotlib.font_manager import FontProperties
+        from matplotlib.patches import Circle,Polygon,Rectangle
+        self.width,self.height = width,height
+        self.size,self.stroke = style.get('font_size',7),style.get('stroke',0.7)
         regular,bold = arial_paths()
         pdfmetrics.registerFont(TTFont('BRArial',str(regular)))
         pdfmetrics.registerFont(TTFont('BRArialBold',str(bold)))
@@ -175,6 +303,11 @@ class MatplotlibFigure:
         self.axes.add_patch(self.rectangle((x,y),w,h,facecolor=fill or 'none',edgecolor=border or 'none',
                                            linewidth=self.stroke))
 
+    def bar_outline(self,x,y,w,h,color,stroke,positive,open_base):
+        if h>0:
+            xs,ys = zip(*outline_points(x,y,w,h,positive,open_base))
+            self.axes.plot(xs,ys,color=color,linewidth=stroke,solid_capstyle='butt',solid_joinstyle='miter',zorder=1.5)
+
     def text(self,x,y,value,anchor='start',bold=False,angle=0,color='#171717',size=None):
         font = self.bold if bold else self.font
         if size is not None:
@@ -206,6 +339,17 @@ class MatplotlibFigure:
             FigureCanvasPdf(self.fig).print_pdf(pdf)
             FigureCanvasSVG(self.fig).print_svg(svg)
         return {'pdf':pdf.getvalue(),'svg':svg.getvalue()}
+
+
+def outline_points(x,y,w,h,positive,open_base):
+    base,top = (y+h,y) if positive else (y,y+h)
+    points = [(x,base),(x,top),(x+w,top),(x+w,base)]
+    return points if open_base else [*points,points[0]]
+
+
+def scene_renderer(style,continuous_gradient=False):
+    needs_gradient = continuous_gradient or any(op=='add_gradient' for op,_ in style.get('layout_commands',[]))
+    return MatplotlibFigure if style.get('backend')=='matplotlib' and not needs_gradient else Figure
 
 
 def width(value, size=7):
@@ -278,7 +422,7 @@ def wb_scene(panels, files, style, density=None):
                              +max(17,label_extent/math.sqrt(2)+2)+10)
             side_row_heights = [max(h,53+label_extent/math.sqrt(2)) for h in heights]
             side_height = sum(side_row_heights)+gap*(len(panels)-1)
-    renderer = MatplotlibFigure if style.get('backend')=='matplotlib' else Figure
+    renderer = scene_renderer(style)
     canvas_width = max(left+shared_width+right+side_width,label_right+4,width(title,8)+16)
     figure = LayoutScene(canvas_width,header+max(side_height,sum(row_heights)+gap*(len(panels)-1))+8,style,renderer)
     if title:
@@ -396,7 +540,7 @@ def if_scene(panels, files, style):
     tilted,rise,label_right,offsets = top_axis(headings,left+column/2,column+gap,column-2,style.get('font_size',7))
     title = style.get('title','')
     top = 17+rise+(13 if title else 0)
-    renderer = MatplotlibFigure if style.get('backend')=='matplotlib' else Figure
+    renderer = scene_renderer(style)
     canvas_width = max(left+(column+gap)*len(panels)-gap+8,label_right+4,width(title,8)+16)
     figure = LayoutScene(canvas_width,top+(tile_h+gap)*len(channels)-gap+8,style,renderer)
     if title:
@@ -527,10 +671,20 @@ def chart(values, style, options, tests, *, scene_only=False):
     kind = options['kind']
     grouped_kind = kind
     factors = any(row.get('treatment') for row in values)
+    enrichment_bars = (options.get('geometry')=='qpcr' and options.get('analysis')=='enrichment'
+                       and GROUPED_CHARTS.get(kind,('',kind))[1]=='bar' and kind!='grouped_separate')
+    if enrichment_bars and (len({row['sample_group'] for row in values})<=1
+                            or all(row['sample_group']==row['treatment'] for row in values)):
+        factors = False
+    series_labels = ({row['group']:row['treatment'] or row['sample_group'] or row['group'] for row in values}
+                     if enrichment_bars and not factors else {})
     if kind in GROUPED_CHARTS:
-        if not factors:
+        if not factors and not options.get('matrix_grouped') and not enrichment_bars:
             raise ValueError('请先为每个样本设置分组和处理条件。')
         kind = GROUPED_CHARTS[kind][1]
+    transposed_matrix = options.get('matrix_grouped') and grouped_kind=='grouped_separate'
+    if transposed_matrix:
+        values = [{**row,'target':row['group'],'group':row['target']} for row in values]
     if kind in ('histogram','ecdf','xy','xyline','heatmap'):
         from figure_table_charts import numeric_chart,heatmap
         render = heatmap if kind=='heatmap' else numeric_chart
@@ -556,21 +710,58 @@ def chart(values, style, options, tests, *, scene_only=False):
             chart_rows.append({**row,'target':block,'group':minor})
         values = sorted(chart_rows,key=lambda row:(target_order[row['target'][0]],category_order[row['target'][1]]))
     grouped = defaultdict(lambda: defaultdict(list))
+    observations = defaultdict(list)
     order = []
     for row in values:
         grouped[row['target']][row['group']].append(row['value'])
+        if kind=='scatter' and options.get('geometry')=='table' and 'file_index' in row:
+            observations[row['target'],row['group']].append(row)
         if row['group'] not in order:
             order.append(row['group'])
+    irradiation = {re.sub(r'\s+','',label.casefold()):name for name,label in series_labels.items()}
+    if enrichment_bars and not factors and len(order)==2 and irradiation.keys()=={'noir','ir'}:
+        order = [irradiation['noir'],irradiation['ir']]
     if options['control'] in order:
         order.remove(options['control'])
         order.insert(0, options['control'])
+    time_points = {}
+    if style.get('x_time_axis'):
+        if kind!='line':
+            raise ValueError('数值时间轴适用于折线图。')
+        try:
+            time_points = {key:float(key[1] if factors else key or next(iter(series)))
+                           for key,series in grouped.items()}
+        except (ValueError,TypeError):
+            raise ValueError('时间轴需要分组名称为数值小时，请核对样本分组。') from None
+        if not all(map(math.isfinite,time_points.values())):
+            raise ValueError('时间轴需要有限数值。')
+        grouped = dict(sorted(grouped.items(),key=lambda item:time_points[item[0]]))
     # A table with no series column displays group labels on the axis.
     if list(grouped) == ['']:
         grouped = {key:{key: vals} for key, vals in grouped[''].items()}
+        observations = {(group,group):rows for (_,group),rows in observations.items()}
+        if time_points:
+            try:
+                time_points = {key:float(key) for key in grouped}
+            except ValueError:
+                raise ValueError('时间轴需要各组名称为数值小时。') from None
+            if not all(map(math.isfinite,time_points.values())):
+                raise ValueError('时间轴需要有限数值。')
+            grouped = dict(sorted(grouped.items(),key=lambda item:time_points[item[0]]))
         single = True
     else:
         single = False
-    colors = style.get('colors') or COLORS
+    categories = style.get('x_category_order')
+    if categories and not time_points:
+        rank = {name:index for index,name in enumerate(categories)}
+        present = {block_targets.get(key,key) for key in grouped}
+        missing = set(rank)-present
+        if missing:
+            raise ValueError('横轴找不到以下类别：'+'、'.join(sorted(missing))+'。请核对图上的名称。')
+        grouped = dict(sorted(grouped.items(),key=lambda entry:rank.get(block_targets.get(entry[0],entry[0]),len(rank))))
+    reference_colors = ({irradiation['noir']:'#227E9B',irradiation['ir']:'#B73E24'}
+                        if len(order)==2 and irradiation.keys()=={'noir','ir'} else {})
+    colors = style.get('colors') or ([reference_colors[name] for name in order] if reference_colors else COLORS)
     error_mode = options.get('error', 'sem')
     if kind in ('box','violin','stacked','range'):
         error_mode = 'none'
@@ -591,24 +782,31 @@ def chart(values, style, options, tests, *, scene_only=False):
         vmin -= span*0.06
     left, plot_height = 45, style.get('plot_height',102)
     manual = options.get('comparison_mode')=='manual'
-    annotate_pairs = manual or ((factors or options.get('geometry')=='qpcr') and options.get('comparison_mode')=='all')
-    shared_center = single or kind=='stacked' or (kind=='line' and not annotate_pairs)
+    annotate_pairs = manual or ((factors or options.get('geometry')=='qpcr' or options.get('matrix_grouped'))
+                                and options.get('comparison_mode')=='all')
+    shared_center = single or kind=='stacked' or (kind=='line' and (time_points or not annotate_pairs))
     count = 1 if shared_center else len(order)
-    compact = not factors and options.get('geometry')=='qpcr' and kind=='bar'
-    title = style.get('title',options['title'] or (next(iter(grouped)) if compact and len(grouped)==1 else ''))
-    target_width = max(width(block_targets.get(target,target),8) for target in grouped)
+    compact = not factors and not options.get('matrix_grouped') and (
+        options.get('geometry')=='qpcr' and kind=='bar' and not enrichment_bars
+        or single and kind in ('bar','scatter') and options.get('geometry')=='table')
+    show_targets = not compact or (not single and len(grouped)>1)
+    title = style.get('title',options['title'] or (next(iter(grouped)) if compact and not single and len(grouped)==1 else ''))
+    target_labels = {key:(f'{time_points[key]:g}' if time_points else block_targets.get(key,key)) for key in grouped}
+    target_width = max(width(label,8) for label in target_labels.values())
     ticks_depth = 12
     angled = False
     # Match the qPCR reference for all categorical plots. A treatment slot is
     # 1.63 bar widths; the outer margins are 0.32 and target separation 1.5.
     target_room = (1.63 if single else 1.63*count+1)*11
-    target_tilt = target_width+6>target_room and (not compact or len(grouped)>1)
+    target_tilt = target_width+6>target_room and show_targets
     target_rise = math.ceil(target_width/math.sqrt(2))+4 if target_tilt else 0
-    bar = 11. if target_tilt or (compact and len(grouped)==1) else max(11.,(target_width+6)/(target_room/11))
-    slot = 1.63*bar
+    bar = 11. if target_tilt or compact and (single or len(grouped)==1) else max(11.,(target_width+6)/(target_room/11))
+    slot = (1.45 if enrichment_bars and not factors else 1.63)*bar
     group_width = bar+(count-1)*slot
     gap = style.get('gap',1.5*bar) if kind!='bar' else 1.5*bar
     step = slot if single else group_width+gap
+    if enrichment_bars and not factors:
+        step = max(step,target_width+5)
     chart_width = .64*bar+group_width+(len(grouped)-1)*step
     first_center = .32*bar+group_width/2
     if target_tilt:
@@ -619,7 +817,22 @@ def chart(values, style, options, tests, *, scene_only=False):
         if angled:
             ticks_depth = math.ceil(12+label_width/math.sqrt(2))
             left = max(left,math.ceil(label_width/math.sqrt(2)+9))
-    entries = [] if single or compact else [(g, colors[i%len(colors)]) for i,g in enumerate(order)]
+    centers = {key:left+first_center+step*i for i,key in enumerate(grouped)}
+    if time_points:
+        per_series = defaultdict(list)
+        for key in grouped:
+            per_series[key[0] if factors else ''].append(key)
+        origin = left+first_center
+        for keys in per_series.values():
+            times = sorted({time_points[key] for key in keys})
+            interval = min((b-a for a,b in zip(times,times[1:])),default=1)
+            scale = step*(len(times)-1)/(times[-1]-times[0]) if len(times)>1 else step
+            scale = max(scale,min(step,12.)/interval)
+            for key in keys:
+                centers[key] = origin+(time_points[key]-times[0])*scale
+            origin = centers[keys[-1]]+step
+        chart_width = max(centers.values())-left+first_center
+    entries = [] if single or compact else [(series_labels.get(g,g),colors[i%len(colors)]) for i,g in enumerate(order)]
     legend_w = max((width(g,8)+15 for g,_ in entries), default=0)
     legend_columns = max(1,int(chart_width/max(1,legend_w)))
     top = 19+12*math.ceil(len(entries)/legend_columns)
@@ -627,12 +840,14 @@ def chart(values, style, options, tests, *, scene_only=False):
     pairwise = [row for row in tests if row.get('comparison')!='omnibus']
     positions = {}
     for i,(target,groups) in enumerate(grouped.items()):
-        center = left+first_center+step*i
+        center = centers[target]
         for j,group in enumerate([target] if single else order):
             if group in groups:
                 x = center if shared_center else center+(j-(count-1)/2)*slot
                 positions[('' if single else target),group] = x
     test_positions = {key:positions[cell] for key,cell in cell_positions.items()} if factors else positions
+    if transposed_matrix:
+        test_positions = {(group,target):x for (target,group),x in positions.items()}
     brackets,levels = bracket_layout(pairwise,test_positions,style.get('font_size',7)) if annotate_pairs and kind!='stacked' else ([],0)
     mark_tests = []
     if not factors and not annotate_pairs and not single and kind in ('bar','line','scatter'):
@@ -651,9 +866,15 @@ def chart(values, style, options, tests, *, scene_only=False):
                        16+max((width(line,8) for line in notes),default=0))
     xlabel = style.get('xlabel',options.get('xlabel',''))
     target_offset = ticks_depth+11 if compact else 11
-    xlabel_offset = ((target_offset if len(grouped)>1 else ticks_depth)+13 if compact else 28)+target_rise
+    xlabel_offset = ((target_offset if show_targets else ticks_depth)+13 if compact else 28)+target_rise
+    color_strip = style.get('x_color_strip',False)
+    continuous_strip = color_strip and style.get('x_strip_gradient',False)
+    strip = ('#d8e8f5','#b5d5ee','#86bce5','#619ed1','#467fb8','#375f96','#263f71')
+    strip_edges = list(centers.values()) if color_strip else []
+    if color_strip:
+        xlabel_offset += 14
     note_offset = (xlabel_offset if xlabel else xlabel_offset-9)+11
-    renderer = MatplotlibFigure if style.get('backend')=='matplotlib' else Figure
+    renderer = scene_renderer(style,continuous_strip)
     bracket_space = (levels*13+2) if levels else 0
     if levels:
         vmax -= span*.185
@@ -681,21 +902,32 @@ def chart(values, style, options, tests, *, scene_only=False):
         f.text(left-5,y+2,f'{value:.3g}','end')
     y_label_x = left-9-max((width(f'{i*tick_step:.3g}',8) for i in
                           range(math.ceil(vmin/tick_step),math.floor(vmax/tick_step)+1)),default=0)
-    f.text(max(8,y_label_x),(plot_top+base)/2,style.get('ylabel',options['ylabel']),'middle',angle=-90)
+    ylabel = style.get('ylabel',options['ylabel'])
+    if options.get('matrix_percent') and not ylabel.endswith(('%','%)','％','％）')):
+        ylabel = ylabel.rstrip()+' (%)' if ylabel.strip() else '%'
+    f.text(max(8,y_label_x),(plot_top+base)/2,ylabel,'middle',angle=-90)
     if xlabel:
         f.text(left+chart_width/2,base+xlabel_offset,xlabel,'middle')
     for i,note_line in enumerate(notes):
         f.text(8,base+note_offset+10*i,note_line)
+    strip_y = ticks_depth+3 if compact and len(grouped)==1 else target_offset+target_rise+3
     previous = {}
     previous_target = None
     for i,(target,groups) in enumerate(grouped.items()):
         if factors and target[0]!=previous_target:
             previous.clear()
             previous_target = target[0]
-        center = left+first_center+step*i
+        center = centers[target]
         stack = 0
-        if not compact or len(grouped)>1:
-            f.text(center,base+target_offset,block_targets.get(target,target),'end' if target_tilt else 'middle',angle=-45 if target_tilt else 0)
+        if show_targets:
+            if enrichment_bars and not factors:
+                f.line(center,base,center,base+3)
+            f.text(center,base+target_offset,target_labels[target],'end' if target_tilt else 'middle',angle=-45 if target_tilt else 0)
+        if color_strip:
+            color = strip[round(i*(len(strip)-1)/max(1,len(grouped)-1))]
+            before = (strip_edges[i-1]+center)/2 if i else left
+            after = (center+strip_edges[i+1])/2 if i+1<len(strip_edges) else left+chart_width
+            f.strip_segment(before+.4,base+strip_y,max(.1,after-before-.8),4,color)
         for j, group in enumerate([target] if single else order):
             if group not in groups:
                 previous.pop(group,None)
@@ -708,7 +940,7 @@ def chart(values, style, options, tests, *, scene_only=False):
             mean,err = stats[target,group]
             y = ycoord(mean)
             if kind=='bar':
-                f.rect(x-bar/2,min(y,ycoord(0)),bar,abs(y-ycoord(0)),color)
+                f.bar(x-bar/2,min(y,ycoord(0)),bar,abs(y-ycoord(0)),color,mean>=0)
             elif kind=='range':
                 low,high = min(groups[group]),max(groups[group])
                 if low==high:
@@ -731,11 +963,15 @@ def chart(values, style, options, tests, *, scene_only=False):
                 previous[series] = (x,y)
                 f.dot(x,y,color)
             else:
+                sources = observations.get((target,group))
                 for k,v in enumerate(groups[group]):
                     hollow = options.get('geometry')=='qpcr' and options.get('show_replicates',False)
                     jitter = 0 if grouped_kind=='grouped_aligned' else ((k%7)-3)*0.8
-                    f.dot(x+jitter,ycoord(v),'#000000' if hollow else color,1.25,
-                          hollow,.7 if hollow else 1)
+                    point = (x+jitter,ycoord(v),'#000000' if hollow else color,1.25,hollow,.7 if hollow else 1)
+                    if sources:
+                        f.observation(sources[k],*point)
+                    else:
+                        f.dot(*point)
             if err:
                 high,low = ycoord(mean+err),ycoord(mean-err)
                 f.line(x,high,x,low,color)
@@ -748,6 +984,8 @@ def chart(values, style, options, tests, *, scene_only=False):
                 for point,value in enumerate(groups[group]):
                     offset = spread*(point/max(1,count_points-1)-.5)
                     f.dot(x+offset,ycoord(value),'#000000',1.3,True,.7)
+            if kind=='scatter' and options.get('geometry')=='table':
+                f.line(x-bar*.39,y,x+bar*.39,y,'#000000',1)
     for x,xx,symbol,level in brackets:
         draw_bracket(f,x,xx,plot_top-4-level*13,symbol)
     for row,p in mark_tests:

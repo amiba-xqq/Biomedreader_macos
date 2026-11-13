@@ -1,11 +1,12 @@
 """Select and review a band ROI for each labeled WB/gel lane."""
-from PySide6.QtCore import QPointF,QRectF,Qt,Signal
+from figure_status import FigureStatus
+from PySide6.QtCore import QPointF,QRectF,QSignalBlocker,Qt,Signal
 from PySide6.QtGui import QColor,QPainter,QPen,QPolygonF
 from PySide6.QtWidgets import (QCheckBox,QDialog,QDialogButtonBox,QFormLayout,QHBoxLayout,QLabel,
-                               QMessageBox,QPushButton,QVBoxLayout)
+                               QPushButton,QVBoxLayout)
 
 from figure_ui import CropArea,QComboBox,viewport_tools
-from wb_density import automatic_bands,background_regions,image_signature,panel_density,roi_bounds
+from wb_density import automatic_bands,background_regions,control_lane,image_signature,panel_density,roi_bounds
 
 
 class BandArea(CropArea):
@@ -62,7 +63,8 @@ class BandArea(CropArea):
                 regions = []
             else:
                 regions = [(roi_bounds(box),color)]
-            regions.extend((region,'#339DB8') for region in background_regions(box,h))
+            if not (isinstance(box,dict) and box.get('empty')):
+                regions.extend((region,'#339DB8') for region in background_regions(box,h))
             for (x,y,width,height),color in regions:
                 painter.setPen(QPen(QColor(color),2))
                 painter.drawRect(QRectF(self.point(QPointF(x/w,y/h)),self.point(QPointF((x+width)/w,(y+height)/h))))
@@ -78,6 +80,12 @@ class DensityDialog(QDialog):
         self.setWindowTitle('WB／gel · 条带相对灰度')
         self.resize(880,640)
         self.panels,self.images,self.labels = panels,images,labels
+        self.first_panel = panels[0]['uid']
+        self.default_control = control_lane(self.first_panel,labels,previous)
+        self.controls = {panel['uid']:previous['controls'][panel['uid']] for panel in panels[1:]
+                         if type(previous.get('controls',{}).get(panel['uid'])) is int
+                         and 0<=previous['controls'][panel['uid']]<len(labels)}
+        self.lane_names = [f'{index+1} · {label}' for index,label in enumerate(labels)]
         self.result_settings = None
         self.signatures = [image_signature(image) for image in images]
         self.rectangles = []
@@ -95,20 +103,19 @@ class DensityDialog(QDialog):
         self.enable = QCheckBox('计算并展示条带相对灰度')
         self.enable.setChecked(previous.get('enabled',True))
         layout.addWidget(self.enable)
-        explanation = QLabel('手绘从自动选区开始。选择要修改的蛋白／核酸及泳道，沿条带轮廓拖动一圈即可替换该选区。蓝色矩形为局部背景。每行独立按对照归一化。')
+        explanation = QLabel('同名泳道按从左到右的编号区分。每条可独立选对照，默认沿用首条的设置。'
+                             '手绘从自动选区开始，蓝色矩形为局部背景。自动选不到条带时，小矩形代表零信号。')
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
         form = QFormLayout()
         self.panel = QComboBox()
         self.lane = QComboBox()
         self.control = QComboBox()
-        self.control.addItem('请选择对照泳道','')
         for item in panels:
             self.panel.addItem(item['label'])
-        for label in labels:
+        for label in self.lane_names:
             self.lane.addItem(label)
-            self.control.addItem(label,label)
-        self.control.setCurrentIndex(max(0,self.control.findData(previous.get('control',''))))
+        self.populate_controls()
         self.polarity = QComboBox()
         self.polarity.addItem('浅背景上的深色条带','dark')
         self.polarity.addItem('深背景上的亮色条带','light')
@@ -123,8 +130,8 @@ class DensityDialog(QDialog):
         default = 'manual' if previous.get('panels') else 'auto'
         self.selection_mode.setCurrentIndex(max(0,self.selection_mode.findData(previous.get('selection',default))))
         form.addRow('选区方式',self.selection_mode)
-        for caption,control in (('对照泳道',self.control),('条带类型',self.polarity),('展示方式',self.display_mode),
-                                ('蛋白／核酸',self.panel),('圈选泳道',self.lane)):
+        for caption,control in (('蛋白／核酸',self.panel),('对照泳道',self.control),('条带类型',self.polarity),
+                                ('展示方式',self.display_mode),('圈选泳道',self.lane)):
             form.addRow(caption,control)
         layout.addLayout(form)
         self.area = BandArea()
@@ -136,7 +143,7 @@ class DensityDialog(QDialog):
         clear.clicked.connect(self.clear_roi)
         tools.addWidget(clear)
         layout.addLayout(tools)
-        self.status = QLabel()
+        self.status = FigureStatus()
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok|QDialogButtonBox.StandardButton.Cancel)
@@ -145,7 +152,7 @@ class DensityDialog(QDialog):
         layout.addWidget(buttons)
         self.panel.currentIndexChanged.connect(self.change_panel)
         self.lane.currentIndexChanged.connect(self.refresh_overlay)
-        self.control.currentIndexChanged.connect(self.refresh_overlay)
+        self.control.currentIndexChanged.connect(self.change_control)
         self.polarity.currentIndexChanged.connect(self.update_selection_mode)
         self.selection_mode.currentIndexChanged.connect(self.update_selection_mode)
         self.update_selection_mode()
@@ -161,7 +168,7 @@ class DensityDialog(QDialog):
         if self.area.manual:
             for manual,automatic in zip(self.manual_rectangles,self.automatic_rectangles):
                 for lane,current in enumerate(manual):
-                    if current is None or isinstance(current,dict) and 'threshold' in current:
+                    if current is None or isinstance(current,dict) and ('threshold' in current or current.get('empty')):
                         manual[lane] = automatic[lane]
             self.rectangles = self.manual_rectangles
         else:
@@ -173,12 +180,37 @@ class DensityDialog(QDialog):
         self.area.size_px = image.size
         self.area.set_image(image)
         self.area.fit_image()
+        self.populate_controls()
+        self.refresh_overlay()
+
+    def populate_controls(self):
+        index = self.panel.currentIndex()
+        uid = self.panels[index]['uid']
+        with QSignalBlocker(self.control):
+            self.control.clear()
+            default = self.lane_names[self.default_control] if self.default_control is not None else '未设置'
+            self.control.addItem('请选择对照泳道' if index==0 else f'沿用首条（{default}）',None)
+            for lane,name in enumerate(self.lane_names):
+                self.control.addItem(name,lane)
+            selected = self.default_control if index==0 else self.controls.get(uid)
+            self.control.setCurrentIndex(max(0,self.control.findData(selected)))
+
+    def change_control(self,*_):
+        index = self.panel.currentIndex()
+        uid = self.panels[index]['uid']
+        selected = self.control.currentData()
+        if index==0:
+            self.default_control = selected
+        elif selected is None:
+            self.controls.pop(uid,None)
+        else:
+            self.controls[uid] = selected
         self.refresh_overlay()
 
     def settings(self):
         panels = {panel['uid']:dict(signature=signature,labels=self.labels,rectangles=rectangles)
                   for panel,signature,rectangles in zip(self.panels,self.signatures,self.rectangles)}
-        return dict(enabled=self.enable.isChecked(),control=self.control.currentData(),
+        return dict(enabled=self.enable.isChecked(),default_control=self.default_control,controls=dict(self.controls),
                     polarity=self.polarity.currentData(),display=self.display_mode.currentData(),
                     selection=self.selection_mode.currentData(),panels=panels)
 
@@ -193,9 +225,9 @@ class DensityDialog(QDialog):
         try:
             ratios,_,_ = panel_density(self.panels[index],self.images[index],self.labels,self.settings())
         except ValueError as error:
-            self.status.setText(str(error))
+            self.status.error(str(error))
             return
-        self.status.setText('　'.join(f'{name} {value:.2f}' for name,value in zip(self.labels,ratios)))
+        self.status.setText('　'.join(f'{name}  {value:.2f}' for name,value in zip(self.lane_names,ratios)))
 
     def record_trace(self,trace):
         w,h = self.area.size_px
@@ -216,15 +248,16 @@ class DensityDialog(QDialog):
     def finish(self):
         settings = self.settings()
         if settings['enabled']:
-            if not settings['control']:
-                self.status.setText('请先选择对照泳道。')
+            if self.default_control is None:
+                self.panel.setCurrentIndex(0)
+                self.status.error('请先为首条蛋白／核酸选择对照泳道。')
                 return
             try:
                 for index,(panel,image) in enumerate(zip(self.panels,self.images)):
                     panel_density(panel,image,self.labels,settings)
             except ValueError as error:
                 self.panel.setCurrentIndex(index)
-                QMessageBox.warning(self,'请检查条带圈选',str(error))
+                self.status.error(str(error))
                 return
         self.result_settings = settings
         self.accept()

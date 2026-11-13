@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject,QRunnable,Signal,Slot,QThreadPool,Qt,QUrl,QEv
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QWidget,QDialog,QFrame,QLabel,QPushButton,QToolButton,QLineEdit,
     QComboBox,QPlainTextEdit,QVBoxLayout,QHBoxLayout,QFormLayout,QScrollArea,QMessageBox,
-    QApplication,QDialogButtonBox,QGridLayout,QProgressBar,QSizePolicy,QSpinBox,QTabWidget)
+    QApplication,QDialogButtonBox,QGridLayout,QProgressBar,QSizePolicy,QSpinBox,QTabWidget,QCheckBox)
 from ai_store import AIStore,PROVIDERS,key_fingerprint
 from ai_service import AIClient,generate_recommendations
 
@@ -117,16 +117,19 @@ class AISettingsDialog(QDialog):
     def __init__(self,manager,provider,parent=None):
         super().__init__(parent);self.manager=manager;self.provider=provider;self.task=None
         self.setWindowTitle(PROVIDERS[provider]+' · 模型设置');self.resize(680,430)
-        self.config=manager.store.config(provider);self.models=json.loads(self.config['models_json']);self.models_key=self.config['key_fingerprint']
-        self.lab=self.config.get('route')=='lab'
-        outer=QVBoxLayout(self);outer.addWidget(plain_label('当前使用课题组授权通道。只选择模型，无需输入 PI 的 API Key。' if self.lab else '使用您自己的 API Key，直接访问服务商官方接口。密钥使用 Windows 当前用户加密保存；复制资料库到其他电脑后需重新输入。'))
+        self.config=manager.store.config(provider,manager.store.channel_priority(provider));self.models=[];self.models_key=''
+        outer=QVBoxLayout(self);self.channel_note=plain_label();outer.addWidget(self.channel_note)
         if provider=='openai':outer.addWidget(plain_label('这里接入 OpenAI API；ChatGPT 网页订阅与 API 额度分别管理，请使用 API 平台创建的密钥。',True))
-        form=QFormLayout();self.key_edit=QLineEdit();self.key_edit.setEchoMode(QLineEdit.EchoMode.Password);self.key_edit.setMaxLength(2048)
+        form=QFormLayout();self.form=form
+        self.channel=QComboBox();self.channel.addItem('优先个人 API Key 直连','personal');self.channel.addItem('优先课题组授权','lab')
+        self.channel.setCurrentIndex(max(0,self.channel.findData(self.config['route'])));form.addRow('调用通道',self.channel)
+        self.enabled_channel=QCheckBox('启用所选通道');form.addRow(self.enabled_channel)
+        self.key_edit=QLineEdit();self.key_edit.setEchoMode(QLineEdit.EchoMode.Password);self.key_edit.setMaxLength(2048)
         self.key_edit.setPlaceholderText('已加密保存，留空可保留原密钥' if self.config['encrypted_key'] else '粘贴您的 API Key')
         key_row=QHBoxLayout();key_row.addWidget(self.key_edit,1)
         reveal=QPushButton('显示');reveal.setCheckable(True);reveal.toggled.connect(lambda checked:(self.key_edit.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password),reveal.setText('隐藏' if checked else '显示')));key_row.addWidget(reveal)
-        if not self.lab:form.addRow('API Key',key_row)
-        else:self.key_edit.hide();reveal.hide()
+        self.key_widget=QWidget();key_row.setContentsMargins(0,0,0,0);self.key_widget.setLayout(key_row)
+        form.addRow('API Key',self.key_widget)
         self.model=QComboBox();self.model.setEditable(True);self.model.setInsertPolicy(QComboBox.InsertPolicy.NoInsert);self.model.setMinimumContentsLength(24)
         model_row=QHBoxLayout();model_row.addWidget(self.model,1);self.refresh_button=QPushButton('联网刷新模型');self.refresh_button.clicked.connect(self.refresh_models);model_row.addWidget(self.refresh_button)
         from reasoning import ReasoningPicker
@@ -142,9 +145,22 @@ class AISettingsDialog(QDialog):
         buttons=QHBoxLayout();self.forget_button=QPushButton('删除已保存密钥');self.forget_button.setProperty('secondary',True);self.forget_button.clicked.connect(self.forget);buttons.addWidget(self.forget_button);buttons.addStretch()
         self.save_button=QPushButton('保存设置');self.save_button.clicked.connect(self.save);buttons.addWidget(self.save_button)
         close=QPushButton('关闭');close.setProperty('secondary',True);close.clicked.connect(self.reject);buttons.addWidget(close);outer.addLayout(buttons)
+        self.channel.currentIndexChanged.connect(self.load_channel)
+        self.load_channel()
+    def load_channel(self,*_):
+        self.route=self.channel.currentData()
+        self.config=self.manager.store.config(self.provider,self.route);self.lab=self.route=='lab'
+        self.models=json.loads(self.config['models_json']);self.models_key=self.config['key_fingerprint']
+        self.reasoning.route=self.route
+        self.enabled_channel.setChecked(bool(self.config['enabled']))
+        self.enabled_channel.setEnabled(not bool(self.config.get('blocked_reason')))
+        self.key_edit.clear()
+        self.key_edit.setPlaceholderText('已加密保存，留空可保留原密钥' if self.config['encrypted_key'] else '粘贴您的 API Key')
+        self.form.setRowVisible(self.key_widget,not self.lab)
+        self.forget_button.setText('清除当前模型选择' if self.lab else '删除已保存密钥')
+        self.channel_note.setText('此页配置课题组模型。' if self.lab else '此页配置个人 API Key 和模型。')
+        self.status.setText(self.config.get('blocked_reason',''))
         self.populate(self.models,self.config['model'])
-        if self.lab:self.forget_button.setText('清除当前模型选择')
-        if self.config['encrypted_key']:self.refresh_models()
     def populate(self,models,selected):
         self.model.clear()
         for row in models:self.model.addItem(row['id'] if row['name']==row['id'] else row['name']+' · '+row['id'],row['id'])
@@ -153,9 +169,9 @@ class AISettingsDialog(QDialog):
         self.update_reasoning()
         self.model.completer().setFilterMode(Qt.MatchFlag.MatchContains);self.model.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
     def update_reasoning(self):self.reasoning.load(self.model.currentData() or '',self.models)
-    def current_key(self):return self.manager.store.key(self.provider) if self.lab else self.key_edit.text().strip() or self.manager.store.key(self.provider)
+    def current_key(self):return self.manager.store.key(self.provider,self.route) if self.lab else self.key_edit.text().strip() or self.manager.store.key(self.provider,self.route)
     def busy(self,active):
-        self.refresh_button.setEnabled(not active);self.save_button.setEnabled(not active);self.forget_button.setEnabled(not active);self.progress.setVisible(active)
+        self.channel.setEnabled(not active);self.refresh_button.setEnabled(not active);self.save_button.setEnabled(not active);self.forget_button.setEnabled(not active);self.progress.setVisible(active)
     def refresh_models(self):
         if self.task:return
         try:
@@ -168,22 +184,27 @@ class AISettingsDialog(QDialog):
             self.task=self.manager.submit(self,fetch,'models_loaded','failed')
         except ValueError as error:self.failed(str(error))
     def models_loaded(self,models):
-        if self.lab:self.config=self.manager.store.config(self.provider);self.request_fingerprint=self.config['key_fingerprint']
+        if self.lab:self.config=self.manager.store.config(self.provider,self.route);self.request_fingerprint=self.config['key_fingerprint']
         selected=self.model.currentData() or self.config['model'];self.models=models;self.models_key=self.request_fingerprint
         self.populate(models,selected);self.task=None;self.busy(False);self.status.setText('已联网验证Biomni Lab API凭据；档位来自官方API规范，实际权限以执行结果为准。' if self.provider=='biomni' else f'已联网获取 {len(models)} 个文本模型；选择后点击保存。')
     def failed(self,message):self.task=None;self.busy(False);self.status.setText(message)
     def forget(self):
-        self.manager.store.forget(self.provider);self.config=self.manager.store.config(self.provider);self.key_edit.clear();self.key_edit.setPlaceholderText('粘贴您的 API Key');self.models=[];self.models_key='';self.model.clear();self.status.setText('已清除模型选择。课题组账户未退出。' if self.lab else '已删除密钥并关闭此服务。本机调用统计保留。');self.manager.changed.emit()
+        self.manager.store.forget(self.provider,self.route);self.load_channel();self.status.setText('已清除当前通道配置。');self.manager.changed.emit()
     def save(self):
         if self.task:return
         try:
-            current=self.manager.store.config(self.provider)
+            current=self.manager.store.config(self.provider,self.route)
+            if not self.key_edit.text().strip() and (not self.model.currentData() or not current['encrypted_key']):
+                self.manager.store.save_channel_priority(self.provider,self.route);self.manager.changed.emit();self.accept();return
             if (current.get('route')=='lab')!=self.lab or (self.lab and current['key_fingerprint']!=self.config['key_fingerprint']):raise ValueError('调用通道或课题组账户已变化，请关闭并重新打开设置。')
             key=self.current_key()
             if key_fingerprint(key)!=self.models_key:raise ValueError('密钥已更改，请先点击“联网刷新模型”。')
             model=self.model.currentData()
             if self.model.currentIndex()<0 or self.model.currentText()!=self.model.itemText(self.model.currentIndex()):raise ValueError('请选择下拉列表中的实际模型。')
-            self.manager.store.save(self.provider,key,model,self.models);self.reasoning.save();self.manager.changed.emit();self.accept()
+            self.manager.store.save(self.provider,key,model,self.models,self.route);self.reasoning.save()
+            if bool(current['enabled'])!=self.enabled_channel.isChecked():
+                self.manager.store.toggle(self.provider,self.route)
+            self.manager.store.save_channel_priority(self.provider,self.route);self.manager.changed.emit();self.accept()
         except ValueError as error:QMessageBox.warning(self,'无法保存',str(error))
 
 class ModelCard(QFrame):
@@ -217,11 +238,15 @@ class ModelCard(QFrame):
             if hasattr(self,'balance_button'):self.refresh_balance()
     def reload(self):
         config=self.manager.store.config(self.provider);enabled=bool(config['enabled']);usage=self.manager.store.usage(self.provider)
-        if hasattr(self,'balance_fingerprint') and config['key_fingerprint']!=self.balance_fingerprint:
-            self.balance.setText('密钥已更改，原账户余额已隐藏，请重新刷新。')
+        identity=(config.get('route'),config['key_fingerprint'],config.get('usage_owner'))
+        if getattr(self,'balance_context',identity)!=identity:
+            self.balance.setText('调用通道或账户已更改。请刷新当前通道的余额。')
         self.heading.setText(PROVIDERS[self.provider]);self.heading.setStyleSheet('font-size:12pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
         self.model_name.setText('当前模型：'+(config['model'] or '尚未设置')+' · 推理强度：'+__import__('reasoning').description(config.get('reasoning_effort')))
-        self.state.setText(('● 已开启 · 可用于 AI 功能' if enabled else '○ 未开启')+'\n'+('课题组授权通道 · 当前账户Key已本机加密，直接调用官方API' if config.get('local_direct') else '课题组授权通道 · PI 密钥保留在服务端' if config.get('route')=='lab' else 'API Key 已在本机加密保存' if config['encrypted_key'] else '请先设置您自己的 API Key'))
+        priority=self.manager.store.channel_priority(self.provider)
+        names={'personal':'个人 API Key 直连','lab':'课题组授权'}
+        self.state.setText(('● 已开启 · 可用于 AI 功能' if enabled else '○ 未开启')+
+                           '\n当前：'+names[config.get('route','personal')]+' · 优先：'+names[priority])
         if config.get('blocked_reason'):self.state.setText(config['blocked_reason'])
         self.toggle_button.setText('关闭模型' if enabled else '开启模型')
         self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
@@ -241,7 +266,8 @@ class ModelCard(QFrame):
             lab=self.manager.store.lab_state()
             if config.get('route')=='lab' and lab and lab['identity']['role']!='pi':
                 self.balance.setText('课题组余额由 PI 管理。您的累计用量请在学生卡片中查看。');return
-            key=self.manager.store.key(self.provider);self.balance_fingerprint=key_fingerprint(key)
+            key=self.manager.store.key(self.provider,config.get('route'));self.balance_fingerprint=key_fingerprint(key)
+            self.balance_context=(config.get('route'),config['key_fingerprint'],config.get('usage_owner'))
             if self.balance_fingerprint!=config['key_fingerprint']:raise ValueError('账户已变化，请重新查询。')
             self.balance_button.setEnabled(False);self.balance.setText('正在查询账户余额……');factory=self.manager.store.client_factory(self.provider,config)
             def fetch():
@@ -250,7 +276,8 @@ class ModelCard(QFrame):
         except ValueError as error:self.balance_failed(str(error))
     def balance_loaded(self,result):
         self.balance_task=None;self.balance_button.setEnabled(True)
-        if self.manager.store.config(self.provider)['key_fingerprint']!=self.balance_fingerprint:self.balance.setText('密钥已更改，请重新刷新余额。');return
+        config=self.manager.store.config(self.provider)
+        if (config.get('route'),config['key_fingerprint'],config.get('usage_owner'))!=self.balance_context:self.balance.setText('调用通道或账户已更改，请重新刷新余额。');return
         lines=['账户额度状态：'+('可调用' if result.get('is_available') else '不可调用／余额不足')]
         for row in result['balance_infos']:
             lines.append(f"{row.get('currency','')} 可用余额：{row.get('total_balance','未返回')}　赠送：{row.get('granted_balance','未返回')}　充值余额：{row.get('topped_up_balance','未返回')}")

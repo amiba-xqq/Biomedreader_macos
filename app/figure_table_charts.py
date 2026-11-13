@@ -5,7 +5,7 @@ from bisect import bisect_right
 from collections import Counter,defaultdict
 
 from figure_data import number
-from figure_render import COLORS, Figure, MatplotlibFigure, top_axis, width
+from figure_render import COLORS, scene_renderer, top_axis, width
 from figure_canvas import LayoutScene
 
 
@@ -28,7 +28,7 @@ def plot_frame(style,options,series,x_range,y_range,x_label,y_label):
     top = 23+12*math.ceil(len(series)/columns)
     bottom = top+plot_height
     title = style.get('title',options['title'])
-    figure_type = MatplotlibFigure if style.get('backend')=='matplotlib' else Figure
+    figure_type = scene_renderer(style)
     f = LayoutScene(max(left+width_pt+13,left+legend_width+8,width(title,8)+16),bottom+38,style,figure_type)
     colors = style.get('colors') or COLORS
     palette = {group:colors[i%len(colors)] for i,group in enumerate(series)}
@@ -162,7 +162,7 @@ def heatmap(values,style,options,*,scene_only=False):
     cell_h,top = 13,31+rise
     grid_w,grid_h = len(columns)*cell_w,len(rows)*cell_h
     title = style.get('title',options['title'])
-    figure_type = MatplotlibFigure if style.get('backend')=='matplotlib' else Figure
+    figure_type = scene_renderer(style)
     f = LayoutScene(max(left+grid_w+12,label_right+4,width(title,8)+16),top+grid_h+38,style,figure_type)
     f.text(left+grid_w/2,11,title,'middle',True)
     if y_title:

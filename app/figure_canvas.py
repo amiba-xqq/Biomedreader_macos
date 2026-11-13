@@ -4,7 +4,8 @@ import re
 from collections import defaultdict
 
 LAYOUT = {'swap_groups','order_groups','move_group','add_text','add_line','add_rectangle','resize_canvas',
-          'add_label','add_box','add_polyline','add_points','add_arrow','rebuild_canvas','place_image','edit_element'}
+          'add_label','add_box','add_polyline','add_points','add_arrow','rebuild_canvas','place_image','edit_element',
+          'add_gradient'}
 
 
 def layout_command(command,values):
@@ -36,6 +37,9 @@ def layout_command(command,values):
         valid = len(values)==5 and numeric(values[:4]) and color(values[-1])
     elif command=='add_rectangle':
         valid = len(values)==5 and numeric(values[:4]) and min(values[2:4])>0 and color(values[-1])
+    elif command=='add_gradient':
+        valid = (6<=len(values)<=20 and numeric(values[:4]) and min(values[2:4])>0
+                 and all(color(item) for item in values[4:]))
     elif command=='add_label':
         valid = (len(values)==6 and numeric([*values[:2],values[5]]) and text(values[2])
                  and color(values[3]) and values[4] in ('start','middle','end') and 4<=values[5]<=48)
@@ -58,6 +62,9 @@ class LayoutScene:
     def __init__(self,width,height,style,renderer):
         self.width,self.height,self.style,self.renderer = width,height,style,renderer
         self.items = []
+        self.bars = {}
+        self.observations = {}
+        self.strip_segments = set()
         self.members = ()
         self.groups = {}
         self.sources = {}
@@ -85,10 +92,21 @@ class LayoutScene:
     def line(self,*args):
         self.add('line',args)
 
+    def gradient(self,*args):
+        self.add('gradient',args)
+
     def rect(self,*args,**kwargs):
         if kwargs:
             args = (*args[:4],kwargs.get('fill'),kwargs.get('border'))
         self.add('rect',args)
+
+    def strip_segment(self,*args):
+        self.strip_segments.add(len(self.items)+1)
+        self.rect(*args)
+
+    def bar(self,x,y,w,h,color,positive):
+        self.bars[len(self.items)+1] = color,positive
+        self.rect(x,y,w,h,color)
 
     def image(self,*args,source_id=None,scale_bar=None):
         self.add('image',args,source_id)
@@ -97,6 +115,26 @@ class LayoutScene:
 
     def dot(self,*args):
         self.add('dot',args)
+
+    def observation(self,row,*args):
+        from figure_data import observation_key
+        self.observations[len(self.items)+1] = [observation_key(row),row['source'],row['row'],
+                                               row.get('column',1),row['group'],row['target'],row['value'],
+                                               row.get('raw_value',row['value'])]
+        self.dot(*args)
+
+    def observation_positions(self):
+        width,height,offsets,annotations,custom = self.resolve_layout()
+        if custom:
+            return []
+        edits = self.element_edits(annotations)
+        result = []
+        for index,source in self.observations.items():
+            kind,args,members,_ = self.items[index-1]
+            x,y,*_ = self.edit_element(kind,args,edits.get(index,[]))
+            dx,dy = self.translation(members,offsets)
+            result.append([*source,(x+dx)/width,(y+dy)/height])
+        return result
 
     def polygon(self,*args):
         self.add('polygon',args)
@@ -193,7 +231,7 @@ class LayoutScene:
             args += ['#171717',self.style.get('font_size',7)][len(args)-6:]
         fields = {'text':{'text':2,'angle':5,'color':6,'size':7},'image':{'width':2,'height':3},
                   'line':{'x2':2,'y2':3,'color':4},'rect':{'width':2,'height':3,'color':4},
-                  'dot':{'color':2,'radius':3}}.get(kind)
+                  'gradient':{'width':2,'height':3},'dot':{'color':2,'radius':3}}.get(kind)
         if fields is None:
             raise ValueError('该图元类型不支持直接编辑。')
         for name,value in edits:
@@ -214,8 +252,18 @@ class LayoutScene:
     def export(self):
         width,height,offsets,annotations,custom = self.resolve_layout()
         moved = []
+        strip = []
+        strip_index = None
         images = []
         edits = self.element_edits(annotations)
+        bar_width = self.style.get('bar_outline_width')
+        legacy_outlines = {}
+        if bar_width and self.bars and not custom:
+            for position,(op,values) in enumerate(annotations):
+                if op=='add_rectangle' and len(values)==5:
+                    key = tuple(round(n,2) for n in values[:4])
+                    legacy_outlines[key] = position,values[4]
+        replaced = set()
         for index,(kind,args,members,_) in enumerate(() if custom else self.items,1):
             args = self.edit_element(kind,args,edits.get(index,[]))
             dx,dy = self.translation(members,offsets)
@@ -225,6 +273,11 @@ class LayoutScene:
                 args = (args[0]+dx,args[1]+dy,args[2]+dx,args[3]+dy,*args[4:])
             else:
                 args = (args[0]+dx,args[1]+dy,*args[2:])
+            if index in self.strip_segments and self.style.get('x_strip_gradient'):
+                if strip_index is None:
+                    strip_index = len(moved)
+                strip.append(args)
+                continue
             if kind=='image':
                 x,y,w,h = args[:4]
                 bounds = (x,y,x+w,y+h)
@@ -233,6 +286,16 @@ class LayoutScene:
                     raise ValueError('新排版会重叠或裁掉实验图片。请扩大画布或调整对象位置。')
                 images.append(bounds)
             moved.append((kind,args))
+            if bar_width and index in self.bars:
+                x,y,w,h,*fill = args
+                color,positive = self.bars[index]
+                legacy = legacy_outlines.get(tuple(round(n,2) for n in (x,y,w,h)))
+                if legacy:
+                    position,color = legacy
+                    replaced.add(position)
+                moved.append(('bar_outline',(x,y,w,h,color,bar_width,positive,self.style.get('bar_outline_open',False))))
+        if strip:
+            moved[strip_index:strip_index] = strip_gradients(strip)
         for op,values in annotations:
             if op!='place_image':
                 continue
@@ -249,8 +312,8 @@ class LayoutScene:
                 moved.append(('rect',(x+left*w,y+top*h,length*w,thickness*h,'#FFFFFF')))
         if custom and not images:
             raise ValueError('新图像画布至少需要放置一个本地原图或选区。')
-        for op,values in annotations:
-            if op in ('place_image','edit_element'):
+        for position,(op,values) in enumerate(annotations):
+            if position in replaced or op in ('place_image','edit_element'):
                 continue
             for kind,args,bounds in annotation_items(op,values,self.style.get('font_size',7)):
                 if min(bounds[:2])<0 or bounds[2]>width or bounds[3]>height:
@@ -260,6 +323,20 @@ class LayoutScene:
         for kind,args in moved:
             getattr(figure,kind)(*args)
         return figure.export()
+
+
+def strip_gradients(segments):
+    # Existing element edits can position the original rectangles individually.
+    rows = defaultdict(list)
+    for x,y,w,h,color,*_ in segments:
+        rows[y,h].append((x,w,color))
+    for (y,h),row in rows.items():
+        row.sort(key=lambda segment:segment[0]+segment[1]/2)
+        left = min(x for x,_,_ in row)
+        width = max(x+w for x,w,_ in row)-left
+        colors = [color for _,_,color in row]
+        stops = [(x+w/2-left)/width for x,w,_ in row]
+        yield 'gradient',(left,y,width,h,[colors[0],*colors,colors[-1]],[0.,*stops,1.])
 
 
 def annotation_items(operation,values,font_size):
@@ -274,6 +351,9 @@ def annotation_items(operation,values,font_size):
     elif operation in ('add_rectangle','add_box'):
         _,_,w,h,color,*fill = values
         yield 'rect',(x,y,w,h,color if fill and fill[0] else None,color),(x-.5,y-.5,x+w+.5,y+h+.5)
+    elif operation=='add_gradient':
+        _,_,w,h,*colors = values
+        yield 'gradient',(x,y,w,h,colors),(x,y,x+w,y+h)
     elif operation=='add_points':
         color,radius = values[-2:]
         for px,py in zip(values[:-2:2],values[1:-2:2]):

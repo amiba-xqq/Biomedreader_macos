@@ -67,13 +67,13 @@ from PySide6.QtWidgets import QWidget,QVBoxLayout,QComboBox,QLabel
 class ReasoningPicker(QWidget):
     """Reload capabilities on selection; never carry an effort to another model."""
     def __init__(self,store,provider,parent=None):
-        super().__init__(parent);self.store=store;self.provider=provider;self.model='';self.metadata={}
+        super().__init__(parent);self.store=store;self.provider=provider;self.model='';self.metadata={};self.route=None
         layout=QVBoxLayout(self);layout.setContentsMargins(0,0,0,0);self.combo=QComboBox();layout.addWidget(self.combo)
         self.note=QLabel('');self.note.setWordWrap(True);self.note.setStyleSheet('color:#81776E;font-size:9pt;');layout.addWidget(self.note)
     def load(self,model,models):
         self.model=model;self.metadata=next((r for r in models if r.get('id')==model),{})
-        available=options(self.provider,model,self.metadata);selected=self.store.effort(self.provider,model);self.combo.clear()
+        available=options(self.provider,model,self.metadata);selected=self.store.effort(self.provider,model,self.route);self.combo.clear()
         for value in available:self.combo.addItem(description(value),value)
         self.combo.setCurrentIndex(max(0,self.combo.findData(selected)))
         self.note.setText('服务商默认不发送推理参数；实际默认档位以服务商为准。'+(' 未核实此模型可调档位，仅保留默认。' if len(available)==1 else ' 档位来自模型能力信息或官方文档。')+(' 原档位已不可用，本次恢复默认。' if selected not in available else ''))
-    def save(self):self.store.save_effort(self.provider,self.model,self.combo.currentData() or 'default',self.metadata)
+    def save(self):self.store.save_effort(self.provider,self.model,self.combo.currentData() or 'default',self.metadata,self.route)

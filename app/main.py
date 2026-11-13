@@ -49,6 +49,9 @@ def install_exception_handler(log_path: Path) -> None:
 
 
 def main() -> int:
+    if '--service-self-test' in sys.argv:
+        from service_smoke import run
+        return run(sys.argv[sys.argv.index('--service-self-test')+1])
     if '--feedback-self-test' in sys.argv:
         from feedback import run_feedback_self_test
         return run_feedback_self_test(sys.argv[sys.argv.index('--feedback-self-test')+1])
@@ -254,13 +257,25 @@ def main() -> int:
             deployment=AIDeploymentPage(window.ai_manager,window)
             assert deployment.model_grid.itemAtPosition(0,2) and deployment.model_grid.itemAtPosition(1,2)
             deployment.deleteLater()
-            from figure_ui import FigureHub,apply_if_scale,build_project,direct_if_edit,figure_tests
+            from figure_ui import FigureHub,apply_if_scale,build_project,direct_figure_edit,direct_if_edit,direct_time_axis_edit,figure_tests
             from figure_script import read_script,renderer_source
-            from figure_data import GROUPED_CHARTS,csv_bytes,ordinary_values,qpcr_export_csv,qpcr_file_names,qpcr_values,tests_for
+            from figure_data import GROUPED_CHARTS,csv_bytes,matrix_values,ordinary_values,qpcr_export_csv,qpcr_file_names,qpcr_values,tests_for
             import xlrd,openpyxl
             assert xlrd.__version__ and openpyxl.__version__
             figure_hub=FigureHub(window.ai_manager,window)
             figure_id=figure_hub.store.create('Figure runtime check','qpcr')
+            from figure_ui import ProjectDialog
+            default_qpcr=ProjectDialog(window.ai_manager,figure_hub.store,figure_hub.store.project(figure_id),window)
+            assert default_qpcr.error.currentData()=='sd'
+            assert default_qpcr.options['ylabel'].text()=='Relative RNA level'
+            assert default_qpcr.comparison_mode.currentData()=='none'
+            assert not hasattr(default_qpcr,'header') and not hasattr(default_qpcr,'reset_layout_button')
+            default_qpcr.qpcr_analysis.setCurrentIndex(1)
+            assert default_qpcr.table_options()['analysis']=='enrichment'
+            assert default_qpcr.options['ylabel'].text()=='IP / Input enrichment'
+            default_qpcr.enrichment_control.setCurrentIndex(1)
+            assert default_qpcr.options['ylabel'].text()=='IP / IgG enrichment'
+            default_qpcr.deleteLater()
             figure_source=directory/'qpcr-check.csv'
             figure_source.write_text('Sample Name,Target Name,Ct Mean\nControl,GAPDH,20\nControl,X,25\nDrug,GAPDH,20\nDrug,X,24\n',encoding='utf8')
             figure_hub.store.attach(figure_id,[figure_source])
@@ -318,6 +333,103 @@ def main() -> int:
                 'Keep that title and add a label',None,drawing_route='vector',send_preview=True,previous_figure=script_outputs)
             assert b'>Edited plot</text>' in continued['svg'] and b'>Second revision</text>' in continued['svg']
             from figure_render import chart
+            time_request='这里3-24是G0 release time (h)，需要更正，3-24下面添加一个颜色条用来显示不同的G0 release time，去掉BRCA1-FL，y轴标题改为Relative BRCA1-FL mRNA level'
+            time_style=read_script(direct_time_axis_edit(time_request),'qpcr')
+            assert time_style==dict(x_time_axis=True,x_color_strip=True,xlabel='G0 release time (h)',
+                                    ylabel='Relative BRCA1-FL mRNA level')
+            time_rows=[dict(target='BRCA1-FL',sample_group=time,treatment=series,
+                            group=f'{time} / {series}',value=value)
+                       for time,mean in [('12',2),('3',.3),('9',1)]
+                       for series,factor in [('siNC',1),('siRBM10',.6)]
+                       for value in (mean*factor,mean*factor*1.1)]
+            time_options=dict(figure_options,kind='line',error='sd',show_replicates=True,comparison_mode='none',geometry='qpcr')
+            time_scene=chart(time_rows,time_style,time_options,[],scene_only=True)
+            elements=time_scene.metadata()['elements']
+            x_positions={item['args'][2]:item['args'][0] for item in elements
+                         if item['kind']=='text' and item['args'][2] in ('3','9','12')}
+            assert abs((x_positions['9']-x_positions['3'])/(x_positions['12']-x_positions['9'])-2)<.001
+            time_svg=time_scene.export()['svg']
+            assert b'>Mean \xc2\xb1 SD</text>' in time_svg and b'>BRCA1-FL \xc2\xb7' not in time_svg
+            assert b'>G0 release time (h)</text>' in time_svg and b'>Relative BRCA1-FL mRNA level</text>' in time_svg
+            assert time_svg.count(b'<circle ')==18 and all(color in time_svg.lower() for color in (b'#d8e8f5',b'#619ed1',b'#263f71'))
+            gradient_script,_ = direct_figure_edit('qpcr',dict(options=time_options,style=time_style),
+                                                    '颜色条改为渐变，目前有较明显的分界')
+            gradient = chart(time_rows,{**time_style,**read_script(gradient_script,'qpcr')},time_options,[])
+            assert gradient['svg'].count(b'<linearGradient')==1 and b'/ShadingType 2' in gradient['pdf']
+            repeat_id=figure_hub.store.create('Independent repeats','qpcr')
+            repeat_path=directory/'rip-check.csv'
+            repeat_path.write_text('Instrument preamble\nSample Name,Target Name,Ct,Repeat\n'+
+                ''.join(f'{sample},X,{ct},{repeat}\n' for repeat in (1,2,3)
+                        for sample,ct in [('5IP',25),('5i',24),('6IP',25-repeat),('6i',24),
+                                          ('5IgG',26),('6IgG',27)]),encoding='utf8')
+            figure_hub.store.attach(repeat_id,[repeat_path]*3)
+            from figure_ui import table_files,figure_settings,default_if_channels
+            from figure_data import qpcr_repeat_sources,qpcr_repeat_inventory
+            copies=table_files(figure_hub.store,repeat_id)
+            assert len(copies)==1
+            attachment=str(copies[0]['id'])
+            inventory=qpcr_repeat_inventory(copies,figure_options)
+            from qpcr_repeats import RepeatDialog
+            repeat_dialog=RepeatDialog(window,inventory,{})
+            repeat_dialog.finish()
+            assert repeat_dialog.result_settings=={} and repeat_dialog.result_sources=={}
+            assignments={key:{sample:[f'重复 {index}',''] for sample in names}
+                         for index,(key,(_,names)) in enumerate(inventory[0][2].items(),1)}
+            rip_options=dict(figure_options,analysis='enrichment',control='',
+                qpcr_sample_repeats={attachment:assignments},
+                test='paired',comparison_mode='all',sample_grouping={
+                    '5IP':['Untreated','Control','5IP'],'6IP':['Treated','Drug','5IP']})
+            assert len(qpcr_repeat_sources(copies,figure_options))==1
+            rip_values=qpcr_values(copies,rip_options)
+            assert [row['value'] for row in rip_values]==[1,2,1,4,1,8]
+            assert len({row['pair'] for row in rip_values})==3 and figure_tests(rip_values,rip_options,'qpcr')[0]['df']==2
+            selected=qpcr_repeat_sources(copies,rip_options)
+            manual={'IgG':{row[1]:{'5IP':'5IgG','6IP':'6IgG'} for row in selected}}
+            igg=qpcr_values(copies,dict(rip_options,enrichment_control='IgG',enrichment_pairs=manual,sample_grouping={}))
+            assert igg[0]['value']==2 and igg[1]['value']==8 and igg[1]['ip_control']=='6IgG'
+            assert len({row[1] for row in selected})==3
+            in_block=directory/'repeat-in-block.csv'
+            in_block.write_text('Sample Name,Target Name,Ct\n'+''.join(
+                f'{sample},{gene},{ct}\n' for sample,number in [('IR1',24),('noIR1',25),('IR2',23),('noIR2',25)]
+                for gene,ct in [('GAPDH',20),('X',number)]),encoding='utf8')
+            single=[dict(id=99,name=in_block.name,data=in_block.read_bytes())]
+            key=next(iter(qpcr_repeat_inventory(single,figure_options)[0][2]))
+            split_options=dict(figure_options,control='noIR',qpcr_sample_repeats={'99':{key:{
+                'IR1':['重复 1','IR'],'noIR1':['重复 1','noIR'],'IR2':['重复 2','IR'],'noIR2':['重复 2','noIR']}}})
+            split_values=qpcr_values(single,split_options)
+            assert [row['value'] for row in split_values]==[2,1,4,1]
+            assert split_values[0]['pair']==split_values[1]['pair']!=split_values[2]['pair']==split_values[3]['pair']
+            first_if=[dict(file=1,channels={'pATM':1,'pNBS1':3,'DAPI':2})]
+            if_files=[dict(id=index,name=f'{index}.tif') for index in range(1,10)]
+            assert list(default_if_channels(first_if,if_files,6).items())==[('pATM',4),('pNBS1',6),('DAPI',5)]
+            base=dict(options=figure_options,style={},history=[])
+            base['ai_revision']=figure_settings(edited_state)
+            base['history']=edited_state['history']
+            base['ai_history_index']=0
+            figure_hub.store.save(figure_id,base,script_outputs)
+            revision_dialog=ProjectDialog(window.ai_manager,figure_hub.store,figure_hub.store.project(figure_id),window)
+            assert revision_dialog.undo_button.isEnabled()
+            revision_dialog.swap_ai_revision()
+            assert revision_dialog.variant.currentData()=='original' and revision_dialog.redo_button.isEnabled()
+            reopened=ProjectDialog(window.ai_manager,figure_hub.store,figure_hub.store.project(figure_id),window)
+            assert reopened.variant.currentData()=='original' and reopened.redo_button.isEnabled()
+            reopened.deleteLater()
+            revision_dialog.swap_ai_revision()
+            assert revision_dialog.variant.currentData()=='ai' and b'>Edited plot</text>' in revision_dialog.active_artifact('svg')
+            next_revision=dict(base,ai_history_index=1,history=[*base['history'],dict(request='Next',model='fixture',note='Next')])
+            revision_dialog.completed((True,next_revision,continued))
+            revision_dialog.swap_ai_revision()
+            assert revision_dialog.redo_button.isEnabled() and b'>Second revision</text>' not in revision_dialog.active_artifact('svg')
+            revision_dialog.swap_ai_revision()
+            assert revision_dialog.undo_button.isEnabled() and b'>Second revision</text>' in revision_dialog.active_artifact('svg')
+            original_options=dict(base['options'],title='New software original')
+            local_state,local_artifacts=build_project(figure_hub.store,figure_id,'qpcr',
+                dict(revision_dialog.state,options=original_options),None,'',None)
+            revision_dialog.completed((False,local_state,local_artifacts))
+            assert b'>New software original</text>' in revision_dialog.active_artifact('svg')
+            revision_dialog.variant.setCurrentIndex(1)
+            assert b'>Second revision</text>' in revision_dialog.active_artifact('svg')
+            revision_dialog.close()
             samples={'A1':['siNC','Vehicle','A1'],'A2':['siNC','Drug','A1'],
                      'A3':['siU1','Vehicle','A3'],'A4':['siU1','Drug','A3']}
             long_table='Sample,Value\nA1,10\nA2,20\nA3,4\nA4,12\nA1,10\nA2,22\nA3,4\nA4,14\n'
@@ -352,10 +464,30 @@ def main() -> int:
             grouping.table.setRangeSelected(QTableWidgetSelectionRange(1,2,3,2),True)
             grouping.batch_value.setEditText('Shared')
             grouping.fill_selection()
+            grouping.batch_reference.setCurrentIndex(grouping.batch_reference.findData('A3'))
+            grouping.fill_references()
+            assert all(grouping.table.cellWidget(row,3).currentData()=='A3' for row in (1,2,3))
+            grouping.batch_reference.setCurrentIndex(0)
+            grouping.fill_references()
+            assert all(grouping.table.cellWidget(row,3).currentData()=='' for row in (1,2,3))
             grouping.table.cellWidget(0,3).setCurrentIndex(0)
             grouping.finish()
             assert grouping.result_settings['A1']==['New condition','siNC','']
-            assert grouping.result_settings['A4']==['Drug','Shared','A3']
+            assert grouping.result_settings['A4']==['Drug','Shared','']
+            raw_ct_only='Sample Name,Target Name,Ct\nA1,GAPDH,20\nA1,X,23\nA1,X,23.2\nA1,X,27\n'
+            raw_ct=qpcr_values([dict(name='raw.csv',data=raw_ct_only.encode())],
+                               dict(figure_options,control='A1',raw_ct='',ct=''))
+            assert abs(raw_ct[0]['ct']-23.1)<1e-10 and raw_ct[0]['technical_wells_removed']==1
+            matrix=dict(name='matrix.csv',data=b',Control,Control,Drug,Drug,,Later\nA,1,2,3,5,,90\nB,2,3,3,6,,90\n\n9,9,9,9')
+            matrix_options=dict(orientation='matrix_columns',matrix_control='Control',matrix_percent=True)
+            matrix_rows=matrix_values([matrix],matrix_options)
+            assert len(matrix_rows)==8 and all(row['matrix_grouped'] for row in matrix_rows)
+            assert [row['pair'] for row in matrix_rows[:4]]==['1:1','1:2','1:1','1:2']
+            assert abs(sum(row['value'] for row in matrix_rows[:2])/2-100)<1e-9
+            unnamed=matrix_values([dict(name='column.csv',data='１,2\n3,４\n'.encode())],
+                                  dict(orientation='matrix_rows'))
+            assert [row['group'] for row in unnamed]==['row1','row2','row1','row2']
+            assert [row['value'] for row in unnamed]==[1,3,2,4]
             for kind in GROUPED_CHARTS:
                 grouped_svg=chart(cells,{},dict(grouped_table_options,kind=kind,geometry='table'),[])['svg']
                 assert all(label in grouped_svg for label in (b'>siNC</text>',b'>siU1</text>',b'>Vehicle</text>',b'>Drug</text>'))
@@ -522,7 +654,27 @@ def main() -> int:
             assert panel_density(bands[1],wb_images[1],lane_labels,wb_settings)[0]==[1.,.5]
             wb_dialog=DensityDialog(window,bands,wb_images,lane_labels,wb_settings)
             wb_dialog.finish()
-            assert wb_dialog.result_settings['control']=='Control'
+            assert wb_dialog.result_settings['default_control']==0
+            assert wb_dialog.result_settings['controls']=={}
+            duplicate_labels=['Sample','Sample']
+            duplicate_panels=[dict(panel,lanes=duplicate_labels) for panel in bands]
+            duplicate_regions={uid:dict(entry,labels=duplicate_labels) for uid,entry in band_settings.items()}
+            duplicates=DensityDialog(window,duplicate_panels,wb_images,duplicate_labels,
+                                     dict(wb_settings,control='Sample',panels=duplicate_regions))
+            assert duplicates.control.currentData()==0
+            duplicates.panel.setCurrentIndex(1)
+            duplicates.control.setCurrentIndex(duplicates.control.findData(1))
+            duplicates.finish()
+            assert duplicates.result_settings['controls']=={'2':1}
+            assert panel_density(duplicate_panels[1],wb_images[1],duplicate_labels,
+                                 duplicates.result_settings)[0]==[2.,1.]
+            no_band=wb_images[0].copy()
+            no_band.paste(180,(52,0,105,38))
+            auto_blank=automatic_bands(no_band,2,'dark')
+            assert auto_blank[1]['empty'] and measure_bands(no_band,auto_blank,'dark',0)[0]==[1.,0.]
+            overlap=[dict(rect=[11,12,52,9],points=[(11,12),(62,12),(62,20),(11,20)]),
+                     dict(rect=[43,12,46,9],points=[(43,12),(88,12),(88,20),(43,20)])]
+            assert measure_bands(wb_images[0],overlap,'dark',0)[0]==[1.,2.]
             from PySide6.QtCore import QPointF
             mixed=DensityDialog(window,bands,wb_images,lane_labels,dict(wb_settings,selection='auto'))
             originals=[row[:] for row in mixed.rectangles]
@@ -573,8 +725,9 @@ def main() -> int:
                 button=next(item for item in dialog.findChildren(QPushButton)
                             if item.text()=='设置样本分组与归一化')
                 button.click()
-                assert dialog.task is not None
-                await_figure_job(dialog)
+                if dialog.mode=='qpcr':
+                    assert dialog.task is not None
+                    await_figure_job(dialog)
 
             with patch.object(GroupingDialog,'exec',open_test_grouping):
                 click_grouping(figure_window)
@@ -583,7 +736,7 @@ def main() -> int:
             assert not figure_store.exports(figure_id) and not figure_store.files(figure_id)
             table_id=figure_store.create('Grouping runtime check','table')
             table_source=directory/'grouping-check.csv'
-            table_source.write_text('Group,Value\nA1,2\nA2,4\n',encoding='utf8')
+            table_source.write_text('A1,A2\n2,4\n3,5\n',encoding='utf8')
             figure_store.attach(table_id,[table_source])
             table_window=FigureHub(window.ai_manager,window).open_project(table_id)
             with patch.object(GroupingDialog,'exec',open_test_grouping):

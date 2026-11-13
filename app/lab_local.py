@@ -85,5 +85,6 @@ def activity(database,identity):
     return dict(days=year_days(),daily=rows)
 
 def credentials(store):
-    value=active_account(store)
+    state=store.lab_state()
+    value=account(store.database,state['identity'].get('local_owner','')) if state else None
     return value.get('keys',{}) if value else {}

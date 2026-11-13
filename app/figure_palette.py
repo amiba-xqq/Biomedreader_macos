@@ -1,4 +1,5 @@
 """Palette controls for statistical figures."""
+from figure_status import FigureStatus
 import re
 
 from PySide6.QtCore import QRect,QRectF,Qt
@@ -117,7 +118,7 @@ class PaletteDialog(QDialog):
         self.strip = ColorStrip()
         form.addRow('当前色条',self.strip)
         layout.addLayout(form)
-        self.note = QLabel('颜色数可与组数不同。图表从头循环使用色向量。')
+        self.note = FigureStatus('颜色数可与组数不同。图表从头循环使用色向量。')
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
         standard = QDialogButtonBox.StandardButton
@@ -164,7 +165,7 @@ class PaletteDialog(QDialog):
             _,colors = self.selected()
         except ValueError as error:
             self.strip.set_colors([])
-            self.note.setText(str(error))
+            self.note.error(str(error))
             self.buttons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
             return
         self.strip.set_colors(colors)

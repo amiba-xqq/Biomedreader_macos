@@ -1,4 +1,5 @@
 """Sample aliases and normalization references for figure projects."""
+from figure_status import FigureStatus
 from PySide6.QtCore import QSignalBlocker,Qt
 from PySide6.QtWidgets import (QAbstractItemView,QCheckBox,QDialog,QDialogButtonBox,QHeaderView,QHBoxLayout,QLabel,
                                QPushButton,QStyledItemDelegate,QTableWidget,QTableWidgetItem,QVBoxLayout)
@@ -34,7 +35,7 @@ class GroupingDialog(QDialog):
         from figure_ui import QComboBox
         super().__init__(parent)
         self.setWindowTitle('样本分组与归一化')
-        self.resize(920,550)
+        self.resize(980,550)
         self.result_settings = None
         layout = QVBoxLayout(self)
         self.enabled = QCheckBox('按样本设置分组与归一化')
@@ -65,6 +66,9 @@ class GroupingDialog(QDialog):
             for sample in names:
                 chooser.addItem(sample,sample)
             chooser.setCurrentIndex(max(0,chooser.findData(reference)))
+            reference_item = QTableWidgetItem()
+            reference_item.setFlags(reference_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(index,3,reference_item)
             self.table.setCellWidget(index,3,chooser)
         tools = QHBoxLayout()
         swap = QPushButton('互换分组名称与处理条件')
@@ -80,15 +84,27 @@ class GroupingDialog(QDialog):
         apply.clicked.connect(self.fill_selection)
         tools.addWidget(apply)
         layout.addLayout(tools)
+        references = QHBoxLayout()
+        self.batch_reference = QComboBox()
+        self.batch_reference.addItem('不归一化','')
+        for name in names:
+            self.batch_reference.addItem(name,name)
+        apply_reference = QPushButton('应用到所选行')
+        apply_reference.clicked.connect(self.fill_references)
+        references.addWidget(QLabel('批量归一化参考'))
+        references.addWidget(self.batch_reference)
+        references.addWidget(apply_reference)
+        references.addStretch()
+        layout.addLayout(references)
         layout.addWidget(self.table,1)
-        for widget in (swap,self.batch_value,apply):
+        for widget in (swap,self.batch_value,apply,self.batch_reference,apply_reference):
             self.enabled.toggled.connect(widget.setEnabled)
             widget.setEnabled(self.enabled.isChecked())
         self.enabled.toggled.connect(self.table.setEnabled)
         self.table.setEnabled(self.enabled.isChecked())
         self.table.itemChanged.connect(self.refresh_batch_choices)
         self.refresh_batch_choices()
-        self.message = QLabel()
+        self.message = FigureStatus()
         layout.addWidget(self.message)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok|QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.finish)
@@ -114,13 +130,14 @@ class GroupingDialog(QDialog):
         value = self.batch_value.currentText().strip()
         cells = [item for item in self.table.selectedItems() if item.column() in (1,2)]
         if not value or not cells:
-            self.message.setText('请选择分组名称或处理条件格子，并输入填写值。')
+            self.message.error('请选择分组名称或处理条件格子，并输入填写值。')
             return
         with QSignalBlocker(self.table):
             for cell in cells:
                 cell.setText(value)
         self.refresh_batch_choices()
         self.message.clear()
+
 
     def finish(self):
         settings = {}
@@ -130,8 +147,42 @@ class GroupingDialog(QDialog):
                 treatment = self.table.item(index,2).text().strip()
                 reference = self.table.cellWidget(index,3).currentData()
                 if not group or not treatment or ' / ' in group or ' / ' in treatment:
-                    self.message.setText('请填写分组和处理条件，名称中请避免使用「 / 」。')
+                    self.message.error('请填写分组和处理条件，名称中请避免使用「 / 」。')
                     return
                 settings[name] = [group,treatment,reference]
         self.result_settings = settings
         self.accept()
+
+    def fill_references(self):
+        rows = {index.row() for index in self.table.selectedIndexes()}
+        if not rows:
+            self.message.error('请先拖选单元格或按住 Ctrl 选择多个样本行。')
+            return
+        for row in rows:
+            self.table.cellWidget(row,3).setCurrentIndex(self.batch_reference.currentIndex())
+        self.message.clear()
+
+
+class ReferenceDialog(QDialog):
+    def __init__(self,parent,names,current):
+        from figure_ui import QComboBox
+        super().__init__(parent)
+        self.setWindowTitle('Grouped 矩阵归一化')
+        layout = QVBoxLayout(self)
+        label = QLabel('每个类别分别除以所选对照组的均值。')
+        layout.addWidget(label)
+        self.chooser = QComboBox()
+        self.chooser.setAccessibleName('归一化参考组')
+        self.chooser.addItem('不归一化','')
+        for name in names:
+            self.chooser.addItem(name,name)
+        self.chooser.setCurrentIndex(max(0,self.chooser.findData(current)))
+        layout.addWidget(self.chooser)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok|QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    @property
+    def reference(self):
+        return self.chooser.currentData()

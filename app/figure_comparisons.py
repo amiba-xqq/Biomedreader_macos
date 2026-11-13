@@ -1,4 +1,5 @@
 """Selection and inspection of named statistical comparisons."""
+from figure_status import FigureStatus
 import csv
 import io
 
@@ -33,7 +34,7 @@ class ComparisonDialog(QDialog):
         remove = QPushButton('移除所选组对')
         remove.clicked.connect(self.remove)
         layout.addWidget(remove,0,Qt.AlignmentFlag.AlignLeft)
-        self.status = QLabel('组名来自当前表头或已映射的组别列。')
+        self.status = FigureStatus('组名来自当前表头或已映射的组别列。')
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         standard = QDialogButtonBox.StandardButton
@@ -46,10 +47,10 @@ class ComparisonDialog(QDialog):
     def add(self):
         a,b = self.first.currentText(),self.second.currentText()
         if not a or not b or a==b:
-            self.status.setText('请选择两个不同的组。')
+            self.status.error('请选择两个不同的组。')
             return
         if any({a,b}==set(pair) for pair in self.pairs):
-            self.status.setText('此组对已添加。')
+            self.status.error('此组对已添加。')
             return
         self.pairs.append([a,b])
         self.status.setText('可以继续添加其它组对。')

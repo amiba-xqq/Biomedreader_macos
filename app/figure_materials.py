@@ -1,6 +1,7 @@
 """Prepare project files for the selected model without exposing local paths."""
 import base64
 import io
+import os
 from pathlib import Path
 
 from ai_cancel import check_cancelled
@@ -8,11 +9,13 @@ from ai_cancel import check_cancelled
 REFERENCE_FILES = {'.pdf','.docx','.md','.log','.json','.rtf'}
 
 
-def material_context(store,identifier,provider,visual,original,previous=None):
+def material_context(store,identifier,provider,visual,original,previous=None,*,read=None):
     from figure_data import IMAGES,TABLES,sheet_rows
     from figure_ui import image_reference,svg_reference
     from PIL import Image
     entries,images,local = [],[],[]
+    read = read or (lambda file_id:store.file(identifier,file_id))
+    seen = {}
     documents = [('preview.pdf',original['pdf'])]
     if previous and 'pdf' in previous and previous['pdf']!=original['pdf']:
         documents.append(('previous-ai-figure.pdf',previous['pdf']))
@@ -28,8 +31,13 @@ def material_context(store,identifier,provider,visual,original,previous=None):
         check_cancelled()
         name = file['name']
         suffix = Path(name).suffix.lower()
-        raw = store.file(identifier,file['id'])
+        source = os.path.normcase(file['path']) if file['path'] else file['id']
+        if source in seen:
+            entries.append(dict(id='file:'+str(file['id']),name=name,same_file_as=seen[source]))
+            continue
+        raw = read(file['id'])
         entry = dict(id='file:'+str(file['id']),name=name,bytes=len(raw))
+        seen[source] = entry['id']
         if provider=='codex':
             local.append((f'material-{index}{suffix}',raw))
             entry['attachment'] = local[-1][0]

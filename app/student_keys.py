@@ -42,14 +42,14 @@ def expire_on_startup(store,now=None):
     return removed
 
 _locks={};_guard=threading.Lock()
-def ensure(store):
+def ensure(store,*,force=False):
     """Called in an AI worker, never in a GUI config getter."""
     from lab_local import account,save_account
     from lab_service import LabAPI,StudentDisabledError
     from student_policy import disable_cached,DISABLED_MESSAGE
     from ai_cancel import check_cancelled
     state=store.lab_state()
-    if not state or not state['active'] or state['identity'].get('role')!='student':return
+    if not state or not (state['active'] or force) or state['identity'].get('role')!='student':return
     identity=state['identity'];owner=identity.get('local_owner')
     if identity.get('disabled'):raise ValueError(DISABLED_MESSAGE)
     if not owner:raise ValueError('请重新登录学生ID以同步账户。')
@@ -65,7 +65,7 @@ def ensure(store):
         except StudentDisabledError as error:
             disable_cached(store.database,owner,error.identity);raise
         check_cancelled();current=store.lab_state()
-        if not current or not current['active'] or current['fingerprint']!=state['fingerprint'] or current['identity'].get('local_owner')!=owner or current['identity'].get('gateway_url')!=gateway:raise InterruptedError('账户或入口已变化，未保存迟到的密钥。')
+        if not current or not (current['active'] or force) or current['fingerprint']!=state['fingerprint'] or current['identity'].get('local_owner')!=owner or current['identity'].get('gateway_url')!=gateway:raise InterruptedError('账户或入口已变化，未保存迟到的密钥。')
         if not data.get('keys'):raise ValueError('课题组暂未返回可用Key，请联系PI检查配置。')
         updated=dict(identity);updated.update(data['identity']);updated.update(gateway_url=gateway)
         updated=save_account(store.database,updated,data['keys'],access,owner=owner,members=cached.get('members',[]))

@@ -73,12 +73,11 @@ jobs:
           python packaging/pdf_smoke.py
           python packaging/mac_plugin_smoke.py
           python packaging/codex_smoke.py
-      - name: Report live feedback service availability
-        continue-on-error: true
+      - name: Verify PI login, student login and feedback transport
         run: |
           result=0
-          'dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --feedback-self-test "$PWD/build/smoke/feedback-transport.json" || result=$?
-          cat build/smoke/feedback-transport.json
+          'dist/Biomed Reader.app/Contents/MacOS/BiomedReader' --service-self-test "$PWD/build/smoke/service-transport.json" || result=$?
+          cat build/smoke/service-transport.json
           exit "$result"
       - name: Collect macOS crash diagnostics
         if: failure()

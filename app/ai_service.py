@@ -32,6 +32,7 @@ class Bearer(requests.auth.AuthBase):
 
 class AIAPIError(ValueError):pass
 class AITransportError(AIAPIError):pass
+class AIChannelRejected(AIAPIError):pass
 
 class AIClient:
     def __init__(self,provider,key,session=None):
@@ -62,7 +63,8 @@ class AIClient:
                               402:'账户余额不足，请前往服务商平台检查。',429:'调用受限、额度不足或请求过于频繁，请稍后重试并检查平台额度。',
                               400:'服务拒绝请求：请检查所选模型是否支持当前内容类型，以及材料是否超过服务商的上下文容量。软件未设置Token上限。',
                               404:'模型或接口不可用，请刷新模型列表后重新选择。'}
-                    raise AIAPIError(messages.get(code,f'AI 服务暂时不可用（HTTP {code}），请稍后重试。'))
+                    error_type=AIChannelRejected if code in (401,402,403,404,429) else AIAPIError
+                    raise error_type(messages.get(code,f'AI 服务暂时不可用（HTTP {code}），请稍后重试。'))
                 data=response.json()
                 check_cancelled(getattr(self,'cancelled',None))
                 if not isinstance(data,dict):raise AIAPIError('AI 服务响应格式无法识别。')
@@ -260,23 +262,24 @@ def effective_output_limit(config,requested):
     return min(requested,model.get('max_output_tokens') or requested)
 
 def generate_recommendations(store,provider,topic,client_factory=None,max_output_tokens=None):
-    if provider!='codex':
-        from student_keys import ensure
-        ensure(store)
-    config=store.config(provider)
-    if config.get('blocked_reason'):raise ValueError(config['blocked_reason'])
-    if not config['enabled']:raise ValueError('所选模型尚未开启，请先在 AI 部署中开启。')
-    key=store.key(provider);model=config['model'];fingerprint=key_fingerprint(key)
-    if fingerprint!=config['key_fingerprint']:raise ValueError('账户或调用通道已变化，请重新发起生成。')
-    # Validation precedes the attempted-call ledger and any billable network I/O.
     if len(topic.strip())<3:raise ValueError('请完整描述课题，至少输入3个字符。')
+    from ai_analysis import AnalysisEngine
+    engine=AnalysisEngine(store,provider,client_factory=client_factory)
+    engine.prepare()
+    engine.verify_channel()
     try:
-        with (client_factory or store.client_factory(provider,config))(provider,key) as client:text,usage,incomplete=client.recommend(model,topic,None)
+        def recommend():
+            with engine.factory(provider,engine.key) as client:return client.recommend(engine.model,topic,None)
+        try:text,usage,incomplete=recommend()
+        except AIChannelRejected:
+            if not engine.switch_channel():raise
+            engine.prepare();engine.verify_channel()
+            text,usage,incomplete=recommend()
     except Exception:
-        store.record(provider,fingerprint,model,owner=config.get('usage_owner'),outcome='unconfirmed');raise
-    store.record(provider,fingerprint,model,usage,owner=config.get('usage_owner'),outcome='incomplete' if incomplete else 'completed')
+        store.record(provider,engine.fingerprint,engine.model,owner=engine.config.get('usage_owner'),outcome='unconfirmed');raise
+    store.record(provider,engine.fingerprint,engine.model,usage,owner=engine.config.get('usage_owner'),outcome='incomplete' if incomplete else 'completed')
     result=parse_suggestions(text)
     if incomplete:result['notes']='本次响应达到输出上限，内容可能不完整。'+result['notes']
-    result.update(provider=provider,model=model,usage=usage,topic=topic);result.update(__import__('reasoning').record(config))
+    result.update(provider=provider,model=engine.model,usage=usage,topic=topic,channel=engine.config.get('route'));result.update(__import__('reasoning').record(engine.config))
     result.update(requested_output_limit=None,effective_output_limit=None)
     return result
