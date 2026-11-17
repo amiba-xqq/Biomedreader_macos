@@ -1,14 +1,19 @@
 """Explicit image-only routes, independent of text/lab credentials."""
-import base64,io,json
+import base64,io,json,re,time
+import requests
+from urllib3.exceptions import ReadTimeoutError
+from urllib3.util.retry import Retry
 from PIL import Image
 from ai_store import encrypt_key,decrypt_key
 from software_update import session_for_updates
 ROUTES={'ark':'火山引擎方舟 · Ark','bailian':'阿里云百炼','glm':'GLM-Image'}
-MODELS={'ark':['doubao-seedream-5-0-260128','doubao-seedream-4-5-251128','doubao-seedream-4-0-250828'],'qwen':['qwen-image-2.0-pro','qwen-image-2.0-pro-2026-06-22','qwen-image-2.0','qwen-image-max','qwen-image-plus'],'wan':['wan2.7-image-pro','wan2.7-image'],'zimage':['z-image-turbo'],'glm':['glm-image']}
+SEEDREAM_55 = 'doubao-seedream-5-5-261028'
+MODELS={'ark':['doubao-seedream-5-0-260128',SEEDREAM_55,'doubao-seedream-4-5-251128','doubao-seedream-4-0-250828'],'qwen':['qwen-image-2.0-pro','qwen-image-2.0-pro-2026-06-22','qwen-image-2.0','qwen-image-max','qwen-image-plus'],'wan':['wan2.7-image-pro','wan2.7-image'],'zimage':['z-image-turbo'],'glm':['glm-image']}
 ENDPOINTS={'ark':'https://ark.cn-beijing.volces.com/api/v3/images/generations','glm':'https://open.bigmodel.cn/api/paas/v4/images/generations'}
 MODELS['bailian']=MODELS.pop('qwen')+MODELS.pop('wan')+MODELS.pop('zimage')
 MODELS['bailian']=['qwen-image-3.0-pro','qwen-image-3.0']+MODELS['bailian']+['qwen-image-2.0-pro-2026-04-22','qwen-image-2.0-pro-2026-03-03','qwen-image-2.0-2026-03-03','wan2.6-t2i','wan2.6-image','wan2.5-t2i-preview','wan2.2-t2i-plus','wan2.2-t2i-flash','wanx2.1-t2i-plus','wanx2.1-t2i-turbo','wanx2.0-t2i-turbo']
 ALI=('bailian',)
+QWEN_ASYNC_MODELS={'qwen-image-3.0-pro','qwen-image-3.0'}
 
 def accepts_reference(model):
     return model.startswith(('qwen-image-2.','qwen-image-3.','wan2.7-')) or model=='wan2.6-image'
@@ -21,7 +26,13 @@ def ali_base(region):
     return 'https://'+('dashscope.aliyuncs.com' if region=='cn' else 'dashscope-intl.aliyuncs.com')
 def image_payload(provider,model,prompt,images=None):
     images=images or []
-    if provider=='ark':return dict(model=model,prompt=prompt,size='2K',response_format='b64_json',watermark=True,**(dict(image=images) if images else {}))
+    if provider=='ark':
+        payload = dict(model=model,prompt=prompt,size='2K',watermark=True,response_format='b64_json')
+        if model==SEEDREAM_55:
+            payload.update(response_format='url',output_format='png',stream=False)
+        if images:
+            payload['image'] = images[0] if len(images)==1 and model==SEEDREAM_55 else images
+        return payload
     if provider=='glm':return dict(model=model,prompt=prompt,size='1568x1056')
     if legacy_wan(model):return dict(model=model,input=dict(prompt=prompt),parameters=dict(n=1,size='1280*1280',watermark=True))
     content=([dict(image=v) for v in images] if accepts_reference(model) else [])+[dict(text=prompt)]
@@ -54,6 +65,139 @@ def discover(provider,key,region='cn',session=None):
     finally:
         if own:session.close()
 class ImageUnavailable(ValueError):pass
+
+
+def ark_request_error(response):
+    """Keep the provider's diagnostic code and request ID without leaking messages."""
+    try:
+        body = response.json()
+        error = body.get('error') if isinstance(body,dict) else None
+    except ValueError:
+        error = None
+    if not isinstance(error,dict):
+        error = {}
+    code = error.get('code')
+    if not isinstance(code,str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_.-]{0,95}',code):
+        code = ''
+    request_id = response.headers.get('x-tt-logid') or response.headers.get('x-request-id') or error.get('request_id')
+    if not isinstance(request_id,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,120}',request_id):
+        request_id = ''
+    status = response.status_code
+    if status==429:
+        if code=='SetLimitExceeded':
+            detail = '该模型或接入点达到设置的用量上限，服务已暂停。请在方舟「开通管理」核对模型用量上限和安心体验模式。使用接入点时，也请核对其用量上限。'
+        elif code.startswith('QuotaExceeded') or code in ('AccountQuotaExceeded','EndpointUsageLimitExceeded'):
+            detail = '方舟返回额度或队列上限，请在控制台检查所选模型的试用额度、接入点用量和队列。'
+        elif code in ('ServerOverloaded','RequestBurstTooFast'):
+            detail = '方舟服务繁忙或触发突发流量保护，请稍后再试。'
+        elif 'RateLimit' in code or 'ConcurrentRequestsLimit' in code:
+            detail = '方舟限制了调用频率或并发量，请等待当前请求完成，再检查模型的限流设置。'
+        else:
+            detail = '方舟返回请求限制，请稍后重试，并在控制台核对模型额度和限流状态。'
+        retry_after = response.headers.get('Retry-After','')
+        if re.fullmatch(r'\d{1,8}',retry_after):
+            detail += f'服务建议至少等待 {int(retry_after)} 秒。'
+    elif status in (401,403,404):
+        detail = '请在方舟控制台核对 API Key、模型开通状态和推理接入点。'
+    elif status==400:
+        detail = '方舟拒绝了请求参数，请核对模型、推理接入点及参考图格式。'
+    else:
+        detail = '方舟未完成生成，请在控制台核对请求和用量。'
+    metadata = f'HTTP {status}'
+    if code:
+        metadata += f' · {code}'
+    if request_id:
+        metadata += f' · 请求 ID {request_id}'
+    return f'火山方舟（{metadata}）。{detail}'
+
+
+def post_ark_image(session,url,headers,payload):
+    return post_image(session,'ark',url,headers,payload,600)
+
+
+def post_image(session,provider,url,headers,payload,read_timeout):
+    """Submit a potentially billable request once, even when the response is lost."""
+    adapter = session.get_adapter(url)
+    retries = adapter.max_retries
+    route = ROUTES[provider]
+    waiting = f'{route}没有及时返回结果。请在控制台核对原任务或用量，软件未自动重复提交。'
+    try:
+        adapter.max_retries = Retry(total=0)
+        return session.post(url,headers=headers,json=payload,timeout=(15,read_timeout),allow_redirects=False)
+    except requests.exceptions.ProxyError:
+        raise ValueError(f'{route}的代理连接失败，请检查系统代理。') from None
+    except requests.exceptions.SSLError:
+        raise ValueError(f'{route}的 HTTPS 证书验证失败，请检查代理和系统证书。') from None
+    except requests.exceptions.ConnectTimeout:
+        raise ValueError(f'{route}的接口连接超时，请检查网络和代理。') from None
+    except requests.exceptions.ReadTimeout:
+        raise ValueError(waiting) from None
+    except (requests.exceptions.Timeout,requests.exceptions.ConnectionError) as error:
+        if any(isinstance(getattr(arg,'reason',None),ReadTimeoutError) for arg in error.args):
+            raise ValueError(waiting) from None
+        raise ValueError(f'未能确认{route}绘图请求结果，请核对网络和服务商用量后再试。') from None
+    finally:
+        adapter.max_retries = retries
+
+def bailian_task(session,base,data,cancelled):
+    from ai_cancel import check_cancelled
+    task = (data.get('output') or {}).get('task_id','')
+    if not isinstance(task,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,120}',task):
+        raise ValueError('百炼未返回有效任务 ID。请在控制台核对请求。')
+    deadline = time.monotonic()+480
+    while time.monotonic()<deadline:
+        check_cancelled(cancelled)
+        time.sleep(3)
+        check_cancelled(cancelled)
+        try:
+            with session.get(base+'/api/v1/tasks/'+task,timeout=(10,20),allow_redirects=False) as response:
+                if response.status_code in (429,500,502,503,504):
+                    continue
+                if response.status_code!=200:
+                    raise ValueError(f'百炼任务 {task} 查询失败（HTTP {response.status_code}），请在控制台查看原任务。')
+                data = response.json()
+        except (requests.Timeout,requests.ConnectionError):
+            # Resume polling the existing task after a transient failure.
+            continue
+        output = data.get('output') or {}
+        state = output.get('task_status')
+        if state=='SUCCEEDED':
+            return data
+        if state in ('FAILED','CANCELED','UNKNOWN'):
+            code = output.get('code') or ''
+            detail = f' · {code}' if isinstance(code,str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_.-]{0,95}',code) else ''
+            raise ValueError(f'百炼任务 {task} 未完成（{state}{detail}）。')
+    raise ValueError(f'百炼任务 {task} 仍未返回图片，请在控制台查看原任务。')
+
+
+def image_bytes(data):
+    item = result_item(data)
+    if item.get('b64_json'):
+        return base64.b64decode(item['b64_json'],validate=True)
+    if item.get('url'):
+        from ai_content import download
+        try:
+            # This independent download session never carries the generation API Key.
+            return download(item['url'])[0]
+        except (requests.RequestException,ValueError):
+            raise ValueError('图片已生成，但下载链接读取失败。请检查网络或在服务商控制台查看原任务。') from None
+    raise ValueError('绘图接口没有返回图片。')
+
+
+def bailian_request_error(response):
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    code = body.get('code','') if isinstance(body,dict) else ''
+    request_id = body.get('request_id','') if isinstance(body,dict) else ''
+    detail = f'HTTP {response.status_code}'
+    if isinstance(code,str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_.-]{0,95}',code):
+        detail += f' · {code}'
+    if isinstance(request_id,str) and re.fullmatch(r'[A-Za-z0-9_-]{1,120}',request_id):
+        detail += f' · 请求 ID {request_id}'
+    return f'百炼未接受绘图请求（{detail}）。请核对 API Key 的区域及模型权限。'
+
 
 def config(db,provider,route=None):
     from ai_store import AIStore,migrate_bailian_settings
@@ -125,6 +269,10 @@ def generate_on_channel(db,provider,prompt,reference,cancelled,session,pixels,cf
     from ai_cancel import check_cancelled
     if cfg.get('blocked_reason'):raise ValueError(cfg['blocked_reason'])
     if not cfg['enabled'] or not cfg['key']:raise ImageUnavailable('所选绘图通道尚未配置并开启，已跳过模型图。')
+    if cfg['route']=='lab':
+        from ai_store import AIStore
+        from student_keys import verify_session
+        verify_session(AIStore(db))
     if cfg.get('credential_pending'):
         from ai_store import AIStore
         from ai_service import AIAPIError,AITransportError
@@ -146,12 +294,7 @@ def generate_on_channel(db,provider,prompt,reference,cancelled,session,pixels,cf
             from lab_local import record
             from ai_service import normal_usage
             record(db,cfg['usage_owner'],normal_usage(data.get('usage')),'completed',provider=provider)
-        item=result_item(data)
-        if item.get('b64_json'):raw=base64.b64decode(item['b64_json'],validate=True)
-        elif item.get('url'):
-            from ai_content import download
-            raw=download(item['url'])[0]
-        else:raise ValueError('课题组绘图接口没有返回图片。')
+        raw=image_bytes(data)
         return raw if pixels else pdf_from_pixels(raw)
     own=session is None;session=session or session_for_updates()
     try:
@@ -159,45 +302,43 @@ def generate_on_channel(db,provider,prompt,reference,cancelled,session,pixels,cf
         session.auth=Bearer(decrypt_key(cfg['key']));headers={}
         images=reference.get('images') or []
         payload=image_payload(provider,cfg['model'],prompt,images)
-        url=ali_base(cfg['region'])+'/api/v1/services/aigc/multimodal-generation/generation' if provider in ALI else ENDPOINTS[provider]
-        if provider in ALI and legacy_wan(cfg['model']):
-            url=ali_base(cfg['region'])+'/api/v1/services/aigc/text2image/image-synthesis';headers['X-DashScope-Async']='enable'
-        response=session.post(url,headers=headers,json=payload,timeout=(15,300),allow_redirects=False)
+        base = ali_base(cfg['region']) if provider in ALI else None
+        async_job = False
+        if base:
+            path = '/api/v1/services/aigc/multimodal-generation/generation'
+            if cfg['model'] in QWEN_ASYNC_MODELS:
+                path = '/api/v1/services/aigc/image-generation/generation'
+                async_job = True
+            elif legacy_wan(cfg['model']):
+                path = '/api/v1/services/aigc/text2image/image-synthesis'
+                async_job = True
+            if async_job:
+                headers['X-DashScope-Async'] = 'enable'
+            url = base+path
+        else:
+            url = ENDPOINTS[provider]
+        if provider=='ark':
+            response=post_ark_image(session,url,headers,payload)
+        else:
+            response=post_image(session,provider,url,headers,payload,45 if async_job else 600)
         try:
             if response.status_code not in (200,202):
                 error=ImageUnavailable if response.status_code in (401,402,403,404,429) else ValueError
+                if provider=='ark':
+                    raise error(ark_request_error(response))
+                if base:
+                    raise error(bailian_request_error(response))
                 raise error(f'绘图接口返回 HTTP {response.status_code}，请核对权限、额度与模型名称。')
             data=response.json()
-            check_cancelled(cancelled)
-            if provider in ALI and legacy_wan(cfg['model']):
-                import time,re
-                task=(data.get('output') or {}).get('task_id','')
-                if not re.fullmatch(r'[A-Za-z0-9-]{1,120}',task):raise ValueError('绘图接口未返回有效任务ID。')
-                deadline=time.monotonic()+480
-                while time.monotonic()<deadline:
-                    if cancelled():raise InterruptedError('已停止等待；云端任务可能继续计费，请在百炼控制台核对。')
-                    time.sleep(3)
-                    polled=session.get(ali_base(cfg['region'])+'/api/v1/tasks/'+task,timeout=(15,30),allow_redirects=False)
-                    try:
-                        if polled.status_code!=200:raise ValueError('绘图任务查询失败，未重新生成；请在百炼控制台查看原任务。')
-                        data=polled.json()
-                    finally:polled.close()
-                    state=(data.get('output') or {}).get('task_status')
-                    if state=='SUCCEEDED':break
-                    if state in ('FAILED','CANCELED','UNKNOWN'):raise ValueError('百炼绘图任务未完成：'+state)
-                else:raise ValueError('绘图任务仍未完成，未重新生成；请到百炼控制台查看。')
-            if cfg.get('usage_owner'):
-                from lab_local import record
-                from ai_service import normal_usage
-                record(db,cfg['usage_owner'],normal_usage(data.get('usage')),'completed',provider=provider)
-            item=result_item(data)
-            if item.get('b64_json'):raw=base64.b64decode(item['b64_json'],validate=True)
-            elif item.get('url'):
-                # Independent download client: never send the API Key to image/CDN URLs.
-                from ai_content import download
-                raw=download(item['url'])[0]
-            else:raise ValueError('图像服务未返回图片。')
         finally:response.close()
+        check_cancelled(cancelled)
+        if async_job:
+            data = bailian_task(session,base,data,cancelled)
+        if cfg.get('usage_owner'):
+            from lab_local import record
+            from ai_service import normal_usage
+            record(db,cfg['usage_owner'],normal_usage(data.get('usage')),'completed',provider=provider)
+        raw = image_bytes(data)
         if cancelled():raise InterruptedError('已取消绘图。')
         result=raw if pixels else pdf_from_pixels(raw)
         with db.connect() as c:

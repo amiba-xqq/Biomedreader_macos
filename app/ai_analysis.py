@@ -48,6 +48,9 @@ class AnalysisEngine:
         self.initial_route=self.config.get('route')
         self.routes_used=[]
     def prepare(self):
+        if self.config.get('route')=='lab':
+            from student_keys import verify_session
+            verify_session(self.store)
         if not self.config.get('credential_pending'):return
         state=self.store.lab_state()
         if not state or state['fingerprint']!=self.config.get('session_fingerprint',self.config['key_fingerprint']) or state['identity'].get('local_owner')!=self.config.get('usage_owner'):raise InterruptedError('账户已变化，已停止分析。')
@@ -70,7 +73,7 @@ class AnalysisEngine:
         current=self.store.config(self.provider,self.config.get('route'))
         if self.cancelled() or not current['enabled'] or current.get('usage_owner')!=self.config.get('usage_owner') or current.get('session_fingerprint')!=self.config.get('session_fingerprint') or current['key_fingerprint']!=self.fingerprint:
             raise InterruptedError('已停止后续 AI 调用；已发送的请求仍可能完成并计费。')
-    def call(self,instructions,text,limit=None,reference=None):
+    def call(self,instructions,text,limit=None,reference=None,*,output_schema=None):
         from ai_cancel import check_cancelled
         check_cancelled(getattr(self,'cancelled',None))
         from ai_service import AIChannelRejected, AITransportError
@@ -83,7 +86,10 @@ class AnalysisEngine:
         def complete():
             with self.factory(self.provider,self.key) as client:
                 client.cancelled=self.cancelled
-                return client.complete(self.model,instructions,text,**(dict(reference=reference) if reference is not None else {}))
+                options = {'reference':reference} if reference is not None else {}
+                if output_schema is not None and self.provider=='codex':
+                    options['output_schema'] = output_schema
+                return client.complete(self.model,instructions,text,**options)
         try:
             try:answer,usage,incomplete=complete()
             except AIChannelRejected:
@@ -98,7 +104,7 @@ class AnalysisEngine:
         check_cancelled(getattr(self,'cancelled',None))
         if not answer.strip():raise ValueError('模型没有返回可用文字；已记录接口返回的用量，未自动重试。')
         return answer
-    def reduce(self,material,progress,final_instructions):
+    def reduce(self,material,progress,final_instructions,*,output_schema=None):
         chunks=byte_chunks(material,self.input_budget)
         level=0
         while len(chunks)>1:
@@ -112,7 +118,8 @@ class AnalysisEngine:
                 raise ValueError('分段笔记未能收敛；已停止继续调用，请缩小输入范围。')
             chunks=byte_chunks(combined,self.input_budget)
         progress('正在整合中文分析……')
-        return self.call(final_instructions,chunks[0]),level>0
+        options = {'output_schema':output_schema} if output_schema is not None else {}
+        return self.call(final_instructions,chunks[0],**options),level>0
     def result(self,text,**metadata):
         from ai_cancel import check_cancelled
         check_cancelled(getattr(self,'cancelled',None))
@@ -146,7 +153,9 @@ class AnalysisEngine:
         from ai_cancel import check_cancelled
         check_cancelled(getattr(self,'cancelled',None))
         initial_calls,initial_tokens=self.calls,self.tokens
-        document=(previous or {}).get('report_source') or read_article(database,article,web_fetch=web_fetch,progress=progress)
+        document = (previous or {}).get('report_source')
+        if not document or (web_fetch and not document.get('fulltext')):
+            document = read_article(database,article,web_fetch=web_fetch,progress=progress)
         material='文章标题：'+str(article.get('title') or '')+'\n作者元数据：'+str(article.get('authors') or '未提供')+'\nDOI：'+str(article.get('doi') or '')+'\n读取范围：'+document['coverage']+'\n来源：'+document['url']+'\n\n摘要（优先结合开头1至2句定位研究前的未知问题；后文发现属于答案，不能泄露到问题中）：\n'+str(article.get('abstract') or '未提供摘要')+'\n\n已读取的论文材料：\n'+document['text']
         from ai_editorial import EDITORIAL_INSTRUCTIONS,parse_editorial,readable_text
         from scientific_skills import enhance,receipt

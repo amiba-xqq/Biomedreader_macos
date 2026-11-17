@@ -43,7 +43,7 @@ def submit_feedback(session,data):
             messages={
                 400:'反馈内容未通过服务校验，请检查标题、正文和联系方式。',
                 403:'反馈请求被服务或网络访问规则拒绝，请检查网络或代理。',
-                404:'反馈服务入口暂时不可用，请稍后重试或使用 GitHub Issue。',
+                404:'biomedreader.cn 的私密反馈路由未响应。请稍后重试，或手动选择 GitHub Issue。',
                 409:'反馈编号发生冲突，请修改内容后重新提交。',
                 413:'反馈内容传输后过长，请精简内容后重试。',
                 429:'提交过于频繁，请稍后再试。',
@@ -146,7 +146,12 @@ class FeedbackPage(QWidget):
     def done(self,result):
         self.task=None;self.submit.setEnabled(True);self.channel.setEnabled(True)
         text='反馈已保存。编号：'+result['id']
-        text+='。邮件通知已提交。' if result.get('notified') else '。邮件通知正在重试，反馈已安全保存。'
+        if result.get('notified'):
+            text+='。邮件通知已提交。'
+        elif result.get('mail_status')=='unavailable':
+            text+='。邮件服务暂不可用，暂未发送通知；无需重复提交。'
+        else:
+            text+='。邮件通知尚未确认，服务会重试；无需重复提交。'
         self.status.setText(text);QMessageBox.information(self,'反馈已保存',text)
         self.draft=None;self.title.clear();self.body.clear();self.consent.setChecked(False)
     def failed(self,message):

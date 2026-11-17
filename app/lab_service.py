@@ -33,6 +33,7 @@ ERRORS={'session_expired_or_disabled':'课题组登录已过期或账户已被�
 ERRORS.update(provider_metadata_transport='课题组服务器暂未连接到服务商的模型列表接口。此步骤不调用生成模型，不产生模型Token费用；请稍后重试。',provider_redirect_rejected='服务商接口返回了意外跳转，已停止转发凭证。请联系开发者检查服务地址。')
 ERRORS.update(invalid_key='API Key格式不正确，请只粘贴服务商提供的密钥，不含Bearer前缀或空格。',session_required='请重新登录课题组。',registration_failed='课题组登记暂未完成，请稍后重新登录。')
 ERRORS['daily_login_limit']='该账户今日已登录20次，请在本地日期进入下一天后再登录。已有登录仍可继续使用。'
+ERRORS.update(student_device_limit='该学生 ID 已登录两台电脑。请先在其中一台电脑联网退出，再重试。',student_device_required='无法登记本机网卡。请检查网卡或更新 Biomed Reader 后重试。')
 class StudentDisabledError(AIAPIError):
     def __init__(self,identity=None):
         from student_policy import DISABLED_MESSAGE
@@ -54,7 +55,7 @@ class LabAPI:
         global _preferred_gateway
         # Authentication/read-only metadata may reconnect; never replay mutations
         # such as creating/resetting students, or any billable generation request.
-        reconnect=path in ('/pi/login','/student/login','/student/credentials','/usage/activity') or method=='GET'
+        reconnect=path in ('/pi/login','/student/login','/student/credentials','/usage/activity','/logout') or method=='GET'
         initial_endpoint=self.gateway or _preferred_gateway
         for attempt in range(3 if reconnect else 1):
             from ai_cancel import check_cancelled
@@ -85,7 +86,11 @@ class LabAPI:
         from datetime import datetime
         return dict(login_nonce=str(uuid.uuid4()),timezone_offset=int(datetime.now().astimezone().utcoffset().total_seconds()/60))
     def login_pi(self,provider,key):return self.request('POST','/pi/login',dict(provider=provider,api_key=key,**self.login_metadata()))
-    def login_student(self,access):return self.request('POST','/student/login',dict(user_id=access.strip(),**self.login_metadata()))
+    def login_student(self,access):
+        from lab_device import device_mac
+        result=self.request('POST','/student/login',dict(user_id=access.strip(),device_mac=device_mac(),**self.login_metadata()))
+        if result.get('identity',{}).get('device_bound') is not True:raise AIAPIError('课题组入口尚未支持学生设备绑定，请联系开发者。')
+        return result
     def renew_student(self,access):return self.request('POST','/student/credentials',dict(user_id=access.strip()))
     def credentials(self):return self.request('GET','/credentials')
     def members(self):return self.request('GET','/members')['members']
@@ -103,7 +108,11 @@ class LabAPI:
     def save_key(self,provider,key):return self.request('POST','/keys',dict(provider=provider,api_key=key))
     def image(self,provider,payload):return self.request('POST','/image',dict(provider=provider,payload=payload,request_id=str(uuid.uuid4())))
     def biomni(self,method,path,payload=None):return self.request('POST','/biomni',dict(method=method,path=path,payload=payload,request_id=str(uuid.uuid4())))
-    def logout(self):return self.request('POST','/logout',{})
+    def logout(self):
+        result = self.request('POST','/logout',{})
+        if result.get('ok') is not True:
+            raise AIAPIError('服务未确认退出。请联网后重试。')
+        return result
 
 class LabClient(AIClient):
     def generate_pdf(self,*args,**kwargs):return super().generate_pdf(*args,**kwargs)

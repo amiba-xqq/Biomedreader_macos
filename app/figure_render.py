@@ -16,7 +16,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from figure_canvas import LayoutScene
+from figure_canvas import LayoutScene, horizontal_slots
 
 # Nature Publishing Group-inspired palette from ggsci pal_npg("nrc").
 COLORS = ['#E64B35','#4DBBD5','#00A087','#3C5488','#F39B7F',
@@ -37,12 +37,21 @@ def rotate(image, angle):
     return image.rotate(angle, resample=Image.Resampling.NEAREST, expand=True) if angle else image
 
 
+def crop_raster_size(w,h):
+    return max(1,round(w)),max(1,round(h))
+
+
 def crop_image(data, rect, angle=0):
     image = rotate(source_image(data), angle)
     x, y, w, h = rect
-    if min(x, y) < 0 or min(w, h) < 1 or x+w > image.width or y+h > image.height:
+    if (not all(math.isfinite(n) for n in rect) or min(x, y) < 0 or min(w, h) <= 0
+            or x+w > image.width+1e-8 or y+h > image.height+1e-8):
         raise ValueError('选区超出了图片。请重新选择。')
-    return image.crop((x, y, x+w, y+h))
+    # Keep decimal geometry in the project but extract whole source pixels.
+    # Two equal crop sizes produce equal raster sizes, even at different offsets.
+    w,h = crop_raster_size(w,h)
+    left,top = min(round(x),image.width-w),min(round(y),image.height-h)
+    return image.crop((left,top,left+w,top+h))
 
 
 def arial_paths():
@@ -61,6 +70,133 @@ def arial_paths():
 
 def arial():
     if 'BRArial' not in pdfmetrics.getRegisteredFontNames():
+        regular,bold = arial_paths()
+        pdfmetrics.registerFont(TTFont('BRArial',str(regular)))
+        pdfmetrics.registerFont(TTFont('BRArialBold',str(bold)))
+
+
+class Figure:
+    def __init__(self, width, height, style):
+        arial()
+        self.width, self.height = width, height
+        self.size = style.get('font_size', 7)
+        self.stroke = style.get('stroke', 0.7)
+        self.buffer = io.BytesIO()
+        self.pdf = canvas.Canvas(self.buffer, pagesize=(width, height), pageCompression=1, initialFontName='BRArial')
+        self.svg = [f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}pt" height="{height}pt" viewBox="0 0 {width} {height}">']
+        self.rect(0, 0, width, height, '#FFFFFF')
+
+    def line(self, x, y, xx, yy, color='#171717', width=None):
+        stroke = self.stroke if width is None else width
+        self.pdf.setStrokeColor(HexColor(color))
+        self.pdf.setLineWidth(stroke)
+        self.pdf.line(x, self.height-y, xx, self.height-yy)
+        self.svg.append(f'<line x1="{x}" y1="{y}" x2="{xx}" y2="{yy}" stroke="{color}" stroke-width="{stroke}"/>')
+
+    def rect(self, x, y, w, h, fill=None, border=None):
+        if fill:
+            self.pdf.setFillColor(HexColor(fill))
+        if border:
+            self.pdf.setStrokeColor(HexColor(border))
+            self.pdf.setLineWidth(self.stroke)
+        self.pdf.rect(x, self.height-y-h, w, h, stroke=bool(border), fill=bool(fill))
+        self.svg.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill or "none"}" stroke="{border or "none"}" stroke-width="{self.stroke}"/>')
+
+    def bar_outline(self,x,y,w,h,color,stroke,positive,open_base):
+        if h<=0:
+            return
+        points = outline_points(x,y,w,h,positive,open_base)
+        self.pdf.saveState()
+        self.pdf.setStrokeColor(HexColor(color))
+        self.pdf.setLineWidth(stroke)
+        path = self.pdf.beginPath()
+        path.moveTo(points[0][0],self.height-points[0][1])
+        for px,py in points[1:]:
+            path.lineTo(px,self.height-py)
+        self.pdf.drawPath(path,stroke=1,fill=0)
+        self.pdf.restoreState()
+        coords = ' '.join(f'{px},{py}' for px,py in points)
+        self.svg.append(f'<polyline points="{coords}" stroke="{color}" stroke-width="{stroke}" fill="none"/>')
+
+    def gradient(self,x,y,w,h,colors,positions=None):
+        bottom = self.height-y-h
+        if positions is None:
+            positions = [i/(len(colors)-1) for i in range(len(colors))]
+        self.pdf.saveState()
+        bounds = self.pdf.beginPath()
+        bounds.rect(x,bottom,w,h)
+        self.pdf.clipPath(bounds,stroke=0,fill=0)
+        self.pdf.linearGradient(x,bottom,x+w,bottom,list(map(HexColor,colors)),positions=positions,extend=False)
+        self.pdf.restoreState()
+        name = f'gradient-{len(self.svg)}'
+        stops = ''.join(f'<stop offset="{p}" stop-color="{color}"/>' for p,color in zip(positions,colors))
+        self.svg.append(f'<defs><linearGradient id="{name}">{stops}</linearGradient></defs>')
+        self.svg.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="url(#{name})"/>')
+
+    def text(self, x, y, value, anchor='start', bold=False, angle=0, color='#171717', size=None):
+        value = str(value)
+        size = self.size if size is None else size
+        font = 'BRArialBold' if bold else 'BRArial'
+        self.pdf.saveState()
+        self.pdf.translate(x, self.height-y)
+        self.pdf.rotate(-angle)
+        self.pdf.setFont(font, size)
+        self.pdf.setFillColor(HexColor(color))
+        method = {'start':self.pdf.drawString, 'middle':self.pdf.drawCentredString, 'end':self.pdf.drawRightString}
+        method[anchor](0, 0, value)
+        self.pdf.restoreState()
+        self.svg.append(f'<text x="{x}" y="{y}" transform="rotate({angle} {x} {y})" text-anchor="{anchor}" font-family="Arial" font-size="{size}" font-weight="{700 if bold else 400}" fill="{color}">{escape(value)}</text>')
+
+    def dot(self, x, y, color, r=1.5, hollow=False, alpha=1):
+        if hollow:
+            self.pdf.saveState()
+            self.pdf.setStrokeColor(HexColor(color))
+            self.pdf.setStrokeAlpha(alpha)
+            self.pdf.setLineWidth(.5)
+            self.pdf.circle(x,self.height-y,r,stroke=1,fill=0)
+            self.pdf.restoreState()
+            self.svg.append(f'<circle cx="{x}" cy="{y}" r="{r}" fill="none" stroke="{color}" stroke-width=".5" opacity="{alpha}"/>')
+            return
+        self.pdf.setFillColor(HexColor(color))
+        self.pdf.circle(x, self.height-y, r, stroke=0, fill=1)
+        self.svg.append(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{color}"/>')
+
+    def polygon(self,points,fill,border=None):
+        p = self.pdf.beginPath()
+        p.moveTo(points[0][0],self.height-points[0][1])
+        for x,y in points[1:]:
+            p.lineTo(x,self.height-y)
+        p.close()
+        self.pdf.setFillColor(HexColor(fill))
+        if border:
+            self.pdf.setStrokeColor(HexColor(border))
+            self.pdf.setLineWidth(self.stroke)
+        self.pdf.drawPath(p,fill=1,stroke=bool(border))
+        coords = ' '.join(f'{x},{y}' for x,y in points)
+        self.svg.append(f'<polygon points="{coords}" fill="{fill}" stroke="{border or "none"}" stroke-width="{self.stroke}"/>')
+
+    def image(self, x, y, w, h, image):
+        buffer = io.BytesIO()
+        image.save(buffer, 'PNG')
+        raw = buffer.getvalue()
+        self.pdf.drawImage(ImageReader(io.BytesIO(raw)), x, self.height-y-h, w, h, mask='auto')
+        encoded = base64.b64encode(raw).decode('ascii')
+        self.svg.append(f'<image x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="none" xlink:href="data:image/png;base64,{encoded}"/>')
+
+    def export(self):
+        self.pdf.showPage()
+        self.pdf.save()
+        return {'pdf':self.buffer.getvalue(), 'svg':(''.join(self.svg)+'</svg>').encode('utf-8')}
+
+
+class MatplotlibFigure:
+    """The same verified chart geometry rendered using embedded Matplotlib."""
+    def __init__(self,width,height,style):
+        from matplotlib.figure import Figure as MplFigure
+        from matplotlib.font_manager import FontProperties
+        from matplotlib.patches import Circle,Polygon,Rectangle
+        self.width,self.height = width,height
+        self.size,self.stroke = style.get('font_size',7),style.get('stroke',0.7)
         regular,bold = arial_paths()
         pdfmetrics.registerFont(TTFont('BRArial',str(regular)))
         pdfmetrics.registerFont(TTFont('BRArialBold',str(bold)))
@@ -260,7 +396,7 @@ def width(value, size=7):
     return pdfmetrics.stringWidth(str(value), 'BRArial', size)
 
 
-def top_axis(labels,first,step,available,font_size):
+def top_axis(labels,first,step,available,font_size,*,centers=None):
     """Reserve headroom and right margin for labels anchored above their columns."""
     lengths = [width(label,font_size) for label in labels]
     tilted = bool(lengths and max(lengths)>available)
@@ -270,7 +406,9 @@ def top_axis(labels,first,step,available,font_size):
     rise = max(lengths)/math.sqrt(2)
     lanes = min(len(labels),max(1,math.ceil((font_size+2)*math.sqrt(2)/step)))
     offsets = [(i%lanes)*math.ceil(rise+font_size+3) for i in range(len(labels))]
-    right = max(first+i*step+length/math.sqrt(2)+font_size for i,length in enumerate(lengths))
+    if centers is None:
+        centers = [first+i*step for i in range(len(labels))]
+    right = max(x+length/math.sqrt(2)+font_size for x,length in zip(centers,lengths))
     return tilted,math.ceil(rise+max(offsets)+3),math.ceil(right),offsets
 
 
@@ -280,6 +418,28 @@ def scale_for(pixels, target, resolution):
 
 def wb_figure(panels, files, style):
     return wb_scene(panels,files,style).export()
+
+
+def wb_lane_positions(style,count,measurements,pixels_w):
+    slots = horizontal_slots(style,count)
+    centers = style.get('wb_lane_centers')
+    if centers:
+        if len(centers)!=count:
+            raise ValueError(f'当前有 {count} 个有标签的泳道，请提供相同数量的泳道中心。')
+        return centers
+    if not slots:
+        return []
+    gaps = dict(style.get('group_gaps',[]))
+    if gaps and measurements:
+        from wb_density import roi_bounds
+        measured = [(x+w/2)/pixels_w for x,_,w,_ in map(roi_bounds,measurements[0][1])]
+        steps = [b-a for a,b in zip(measured,measured[1:])]
+        ordinary = [step for boundary,step in enumerate(steps,1) if boundary not in gaps]
+        if ordinary and 0<measured[0]<measured[-1]<1 and all(step>0 for step in steps):
+            pitch = statistics.median(ordinary)
+            if all(steps[boundary-1]>=pitch*(1+.3*empty) for boundary,empty in gaps.items()):
+                return measured
+    return [(slot+.5)/(slots[-1]+1) for slot in slots]
 
 
 def wb_scene(panels, files, style, density=None):
@@ -300,8 +460,27 @@ def wb_scene(panels, files, style, density=None):
         below = density['display']=='below'
     else:
         measurements,below = [],False
+    rows = {}
+    row_labels = [label.strip() for label in labels]
+    for index,label in enumerate(row_labels):
+        # Older projects may have both spellings of NCAPD2 on separate strips.
+        if label=='NACPD2' and 'NCAPD2' in row_labels:
+            label = 'NCAPD2'
+        rows.setdefault(label,[]).append(index)
+    if len(rows)<len(panels):
+        return wb_repeated_rows(panels,images,rows,style,measurements,below,left,shared_width)
+    aligned = bool(style.get('group_gaps') or style.get('wb_lane_centers'))
+    centers = wb_lane_positions(style,len(lane_labels),measurements,sizes[0][0])
+    lane_pitch = min((b-a for a,b in zip(centers,centers[1:])),default=1.)
+    density_size = style.get('wb_density_font_size')
+    if below and density_size is not None:
+        widest_value = max(width(f'{ratio:.2f}',density_size) for ratios,_,_ in measurements for ratio in ratios)
+        shared_width = max(shared_width,(widest_value+2)/lane_pitch)
     cell = shared_width/max(1,len(lane_labels))
-    tilted,rise,label_right,offsets = top_axis(lane_labels,left+cell/2,cell,cell-2,style.get('font_size',7))
+    x_centers = [left+shared_width*fraction for fraction in centers]
+    pitch_pt = shared_width*lane_pitch
+    tilted,rise,label_right,offsets = top_axis(lane_labels,left+cell/2,pitch_pt,pitch_pt-2,
+                                               style.get('font_size',7),centers=x_centers)
     title = style.get('title','')
     y = (13+rise if lane_labels else 8)+(13 if title else 0)
     header = y
@@ -317,9 +496,13 @@ def wb_scene(panels, files, style, density=None):
     if measurements:
         if below:
             for i,((ratios,rects,_),(pixels_w,_)) in enumerate(zip(measurements,sizes)):
-                marks,lanes = wb_value_marks(ratios,rects,shared_width/pixels_w)
+                marks,lanes = wb_value_marks(ratios,rects,shared_width/pixels_w,density_size or 6,
+                                             [shared_width*x for x in centers] if aligned else None)
+                if not aligned and density_size is not None and lanes>1:
+                    marks = [((index+.5)*cell,0,value) for index,(_,_,value) in enumerate(marks)]
+                    lanes = 1
                 offsets_by_row.append(marks)
-                row_heights[i] += 4+8*lanes
+                row_heights[i] += 4+(density_size+2 if density_size is not None else 8)*lanes
         else:
             side_width = max(100+label_extent/math.sqrt(2)+label_spacing*len(lane_labels),
                              max(width(label+' · Relative intensity',6) for label in labels)
@@ -331,9 +514,17 @@ def wb_scene(panels, files, style, density=None):
     figure = LayoutScene(canvas_width,header+max(side_height,sum(row_heights)+gap*(len(panels)-1))+8,style,renderer)
     if title:
         figure.text(figure.width/2,10,title,'middle',True)
-    for i, name in enumerate(lane_labels):
-        x = left+(i+0.5)*shared_width/len(lane_labels)
-        figure.text(x,header-4-offsets[i],name,'start' if tilted else 'middle',angle=-45 if tilted else 0)
+    figure.horizontal_groups = [dict(index=i,label=label,x_pt=x) for i,(label,x) in
+                                enumerate(zip(lane_labels,x_centers),1)]
+    boundaries = sorted(dict(style.get('group_gaps',[])))
+    if boundaries:
+        stops = [0,*boundaries,len(x_centers)]
+        for i,(start,end) in enumerate(zip(stops,stops[1:]),1):
+            center = (x_centers[start]+x_centers[end-1])/2
+            figure.group_caption_centers.update({f'rep{i}':center,f'Rep{i}':center,f'Rep {i}':center})
+    for i,(name,x) in enumerate(zip(lane_labels,x_centers)):
+        figure.add('text',(x,header-4-offsets[i],name,'start' if tilted else 'middle',False,
+                           -45 if tilted else 0),role='wb_lane_label')
     side_y = header
     for i,(panel, im, h) in enumerate(zip(panels, images, heights),1):
         middle = y+h/2
@@ -345,10 +536,13 @@ def wb_scene(panels, files, style, density=None):
         figure.rect(left, y, shared_width, h, border='#171717')
         if panel.get('mw'):
             figure.line(left+shared_width, middle, left+shared_width+5, middle)
-            figure.text(left+shared_width+7, middle+2, panel['mw'])
+            figure.add('text',(left+shared_width+7,middle+2,panel['mw'],'start',False,0),
+                       role='wb_mass_label')
         if measurements and below:
             for x,depth,value in offsets_by_row[i-1]:
-                figure.add('text',(left+x,y+h+8+depth*8,value,'middle',False,0,'#171717',6))
+                size = density_size or 6
+                figure.add('text',(left+x,y+h+(depth+1)*(size+2),value,'middle',False,0,'#171717',size),
+                           role='wb_density_value')
         elif measurements:
             figure.members = ()
             wb_density_side(figure,left+shared_width+right+5,side_y,im,lane_labels,
@@ -358,14 +552,134 @@ def wb_scene(panels, files, style, density=None):
     return figure
 
 
-def wb_value_marks(ratios,rectangles,scale):
+def wb_strip_columns(panels,rows):
+    """Use the first repeated row to order the shared lane groups."""
+    template = next(label for label,indices in rows.items() if len(indices)>1)
+    column_by_key = {}
+    headers = []
+    placements = {}
+    for label in [template,*(label for label in rows if label!=template)]:
+        seen = defaultdict(int)
+        row = {}
+        for index in rows[label]:
+            lanes = tuple(name.strip().casefold() for name in panels[index].get('lanes',[]))
+            # Keep separate strips when the same lane set occurs twice in one row.
+            key = lanes,seen[lanes]
+            seen[lanes] += 1
+            if key not in column_by_key:
+                column_by_key[key] = len(headers)
+                headers.append(index)
+            row[column_by_key[key]] = index
+        placements[label] = dict(sorted(row.items()))
+    return {label:placements[label] for label in rows},headers
+
+
+def wb_repeated_rows(panels,images,rows,style,measurements,below,left,shared_width):
+    """Align the frames in columns while keeping crop pixels and aspect ratios."""
+    gap = 1
+    aligned = bool(style.get('group_gaps') or style.get('wb_lane_centers'))
+    labels = panels[0].get('lanes',[])
+    font = style.get('font_size',7)
+    density_font = style.get('wb_density_font_size',6)
+    placements,header_indices = wb_strip_columns(panels,rows)
+    columns = len(header_indices)
+    widths = [0.] * columns
+    sizes = {}
+    heights = {}
+    for row in placements.values():
+        first_index = next(iter(row.values()))
+        first = images[first_index]
+        height = shared_width*first.height/first.width
+        heights[first_index] = height
+        for column,index in row.items():
+            image = images[index]
+            width_pt = height*image.width/image.height
+            sizes[index] = width_pt,height
+            widths[column] = max(widths[column],width_pt)
+    starts = [left+sum(widths[:column])+column*gap for column in range(columns)]
+    frame_right = starts[-1]+widths[-1]
+
+    headers = []
+    header_rise = 0
+    header_right = 0
+    lane_centers = {}
+    for column,(start,index) in enumerate(zip(starts,header_indices)):
+        names = panels[index].get('lanes',[])
+        width_pt,_ = sizes[index]
+        centers = wb_lane_positions(style,len(names),measurements[index:index+1],images[index].width)
+        lane_centers[column] = centers
+        positions = [start+width_pt*center for center in centers]
+        pitch = min((b-a for a,b in zip(positions,positions[1:])),default=width_pt)
+        tilted,rise,right,offsets = top_axis(names,start+pitch/2,pitch,pitch-2,font,centers=positions)
+        header_rise = max(header_rise,rise)
+        header_right = max(header_right,right)
+        headers.extend((name,x,tilted,offset) for name,x,offset in zip(names,positions,offsets))
+    title = style.get('title','')
+    header = (13+header_rise if headers else 8)+(13 if title else 0)
+    figure = LayoutScene(max(frame_right+8,header_right+4,width(title,8)+16),header,style,scene_renderer(style))
+    if title:
+        figure.text(figure.width/2,10,title,'middle',True)
+    for index,(name,x,tilted,offset) in enumerate(headers,1):
+        figure.add('text',(x,header-4-offset,name,'start' if tilted else 'middle',False,
+                           -45 if tilted else 0),role='wb_lane_label')
+        figure.horizontal_groups.append(dict(index=index,label=name,x_pt=x))
+
+    label_extent = max((width(label,6) for label in labels),default=0)
+    label_spacing = max(14.,min(28.,label_extent+5))
+    side_width = 114+label_extent/math.sqrt(2)+label_spacing*len(labels)
+    y = header
+    for label,row in placements.items():
+        first_index = next(iter(row.values()))
+        height = heights[first_index]
+        middle = y+height/2
+        row_bottom = y+height
+        figure.members = ('panel:'+str(panels[first_index].get('uid',first_index+1)),)
+        figure.text(left-4,middle+2,label,'end')
+        side_y = y
+        for column,index in row.items():
+            panel,image = panels[index],images[index]
+            width_pt,_ = sizes[index]
+            start = starts[column]
+            name = 'panel:'+str(panel.get('uid',index+1))
+            figure.group(name,1,middle)
+            figure.members = (name,)
+            figure.image(start,y,width_pt,height,image,source_id='crop:'+name)
+            figure.rect(start,y,widths[column],height,border='#171717')
+            bottom = y+height
+            if measurements and below:
+                ratios,rects,_ = measurements[index]
+                centers = ([width_pt*x for x in lane_centers[column]] if aligned else None)
+                marks,levels = wb_value_marks(ratios,rects,width_pt/image.width,density_font,centers)
+                for x,depth,value in marks:
+                    figure.add('text',(start+x,bottom+(depth+1)*(density_font+2),value,'middle',
+                                       False,0,'#171717',density_font),role='wb_density_value')
+                bottom += levels*(density_font+2)
+            elif measurements:
+                wb_density_side(figure,frame_right+12,side_y,image,labels,measurements[index],
+                                label_spacing,label_extent,panel['label'])
+                side_y += 55+label_extent/math.sqrt(2)
+                figure.width = max(figure.width,frame_right+side_width+12,
+                                   frame_right+width(panel['label']+' · Relative intensity',6)+42)
+                row_bottom = max(row_bottom,side_y)
+            if panel.get('mw'):
+                mass = panel['mw']
+                bottom += 10
+                figure.add('text',(start+width_pt/2,bottom,mass,'middle',False,0),role='wb_mass_label')
+                figure.width = max(figure.width,start+width_pt/2+width(mass,font)/2+8)
+            row_bottom = max(row_bottom,bottom+3 if bottom>y+height else bottom)
+        y = row_bottom+gap
+    figure.height = y-gap+8
+    return figure
+
+
+def wb_value_marks(ratios,rectangles,scale,font_size=6,centers=None):
     from wb_density import roi_bounds
     marks,last = [],[]
-    for ratio,roi in zip(ratios,rectangles):
-        x,_,w,_ = roi_bounds(roi)
-        center = (x+w/2)*scale
+    if centers is None:
+        centers = [(x+w/2)*scale for x,_,w,_ in map(roi_bounds,rectangles)]
+    for ratio,center in zip(ratios,centers):
         label = f'{ratio:.2f}'
-        half = width(label,6)/2
+        half = width(label,font_size)/2
         for level,right in enumerate(last):
             if center-half>=right+2:
                 last[level] = center+half
@@ -433,7 +747,8 @@ def if_scale_pixels(panel):
 
 def if_scene(panels, files, style):
     arial()
-    pixels_w,pixels_h = panels[0]['rect'][2:]
+    crop_size = tuple(panels[0]['rect'][2:])
+    pixels_w,pixels_h = crop_raster_size(*crop_size)
     gap = 1.5
     channels = list(dict.fromkeys(name for panel in panels for name in panel['channels']))
     point_scale = min(72/300,80/max(pixels_w,pixels_h))
@@ -441,12 +756,17 @@ def if_scene(panels, files, style):
     left = max(28, max(width(s,8) for s in channels)+10)
     column = tile_w
     headings = [panel['label'] for panel in panels]
-    tilted,rise,label_right,offsets = top_axis(headings,left+column/2,column+gap,column-2,style.get('font_size',7))
+    slots = horizontal_slots(style,len(headings))
+    centers = [left+slot*(column+gap)+column/2 for slot in slots]
+    tilted,rise,label_right,offsets = top_axis(headings,left+column/2,column+gap,column-2,
+                                               style.get('font_size',7),centers=centers)
     title = style.get('title','')
     top = 17+rise+(13 if title else 0)
     renderer = scene_renderer(style)
-    canvas_width = max(left+(column+gap)*len(panels)-gap+8,label_right+4,width(title,8)+16)
+    canvas_width = max(centers[-1]+column/2+8,label_right+4,width(title,8)+16)
     figure = LayoutScene(canvas_width,top+(tile_h+gap)*len(channels)-gap+8,style,renderer)
+    figure.horizontal_groups = [dict(index=i,label=label,x_pt=x) for i,(label,x) in
+                                enumerate(zip(headings,centers),1)]
     if title:
         figure.text(figure.width/2,10,title,'middle',True)
     for row, channel in enumerate(channels):
@@ -456,9 +776,9 @@ def if_scene(panels, files, style):
         figure.members = (name,)
         figure.text(left-4,middle+2,channel,'end')
     for i, panel in enumerate(panels):
-        if tuple(panel['rect'][2:])!=(pixels_w,pixels_h):
+        if tuple(panel['rect'][2:])!=crop_size:
             raise ValueError('IF 每组必须使用同样的选区宽高。')
-        x = left+i*(column+gap)
+        x = centers[i]-column/2
         group = 'group:'+str(panel.get('uid',i+1))
         figure.group(group,0,x+column/2)
         figure.members = (group,)
@@ -706,12 +1026,17 @@ def chart(values, style, options, tests, *, scene_only=False):
     target_rise = math.ceil(target_width/math.sqrt(2))+4 if target_tilt else 0
     bar = 11. if target_tilt or compact and (single or len(grouped)==1) else max(11.,(target_width+6)/(target_room/11))
     slot = (1.45 if enrichment_bars and not factors else 1.63)*bar
-    group_width = bar+(count-1)*slot
+    gaps_within_block = compact and not single
+    gap_style = {} if time_points else style
+    series_slots = horizontal_slots(gap_style if gaps_within_block else {},len(order))
+    category_slots = horizontal_slots({} if gaps_within_block else gap_style,len(grouped))
+    last_series_slot = 0 if shared_center else series_slots[-1]
+    group_width = bar+last_series_slot*slot
     gap = style.get('gap',1.5*bar) if kind!='bar' else 1.5*bar
     step = slot if single else group_width+gap
     if enrichment_bars and not factors:
         step = max(step,target_width+5)
-    chart_width = .64*bar+group_width+(len(grouped)-1)*step
+    chart_width = .64*bar+group_width+category_slots[-1]*step
     first_center = .32*bar+group_width/2
     if target_tilt:
         left = max(left,target_rise+5-first_center)
@@ -721,7 +1046,7 @@ def chart(values, style, options, tests, *, scene_only=False):
         if angled:
             ticks_depth = math.ceil(12+label_width/math.sqrt(2))
             left = max(left,math.ceil(label_width/math.sqrt(2)+9))
-    centers = {key:left+first_center+step*i for i,key in enumerate(grouped)}
+    centers = {key:left+first_center+step*index for key,index in zip(grouped,category_slots)}
     if time_points:
         per_series = defaultdict(list)
         for key in grouped:
@@ -747,7 +1072,7 @@ def chart(values, style, options, tests, *, scene_only=False):
         center = centers[target]
         for j,group in enumerate([target] if single else order):
             if group in groups:
-                x = center if shared_center else center+(j-(count-1)/2)*slot
+                x = center if shared_center else center+(series_slots[j]-last_series_slot/2)*slot
                 positions[('' if single else target),group] = x
     test_positions = {key:positions[cell] for key,cell in cell_positions.items()} if factors else positions
     if transposed_matrix:
@@ -783,6 +1108,15 @@ def chart(values, style, options, tests, *, scene_only=False):
     if levels:
         vmax -= span*.185
     f = LayoutScene(canvas_width,top+bracket_space+plot_height+note_offset+4+10*len(notes),style,renderer)
+    if not time_points:
+        if gaps_within_block:
+            first_target = next(iter(grouped))
+            f.horizontal_groups = [
+                dict(index=i,label=group,x_pt=centers[first_target]+(series_slots[i-1]-last_series_slot/2)*slot)
+                for i,group in enumerate(order,1)]
+        else:
+            f.horizontal_groups = [dict(index=i,label=target_labels[key],x_pt=x)
+                                   for i,(key,x) in enumerate(centers.items(),1)]
     plot_top = top+bracket_space
     base = plot_top+plot_height
     ycoord = lambda n: base-(n-vmin)/(vmax-vmin)*plot_height
@@ -818,6 +1152,8 @@ def chart(values, style, options, tests, *, scene_only=False):
     previous = {}
     previous_target = None
     for i,(target,groups) in enumerate(grouped.items()):
+        if i and category_slots[i]-category_slots[i-1]>1:
+            previous.clear()
         if factors and target[0]!=previous_target:
             previous.clear()
             previous_target = target[0]

@@ -1,170 +1,256 @@
-"""A normal, visible Qt browser for website search; users handle any site verification."""
+"""Read a preprint search page only after the user clicks Read."""
 import threading
 import time
 from pathlib import Path
-from urllib.parse import urlsplit,unquote,parse_qs
-from PySide6.QtCore import QObject, Signal, QTimer, QUrl, Qt
+from urllib.parse import parse_qs, unquote, urlsplit
+
+from PySide6.QtCore import QObject, QTimer, QUrl, Qt, Signal
+
+NAVIGATION_GAP_SECONDS = 12
+READ_TIMEOUT_SECONDS = 900
+CANCELLED = '检索已取消，保留上次缓存。'
 
 
 class WebsiteBrowser(QObject):
     requested = Signal(object)
+    expired = Signal(object)
 
-    def __init__(self,data_directory,parent=None):
+    def __init__(self, data_directory, parent=None):
         super().__init__(parent)
-        self.data_directory=Path(data_directory)
-        self.dialog=None;self.active=None;self.profile=None
-        self.stopped=False;self.page_ready=False;self.loaded_at=0
+        self.data_directory = Path(data_directory)
+        self.dialog = None
+        self.active = None
+        self.stopped = False
+        self.page_ready = False
+        self.navigation = 0
+        self.last_navigation = None
+        self.navigation_timer = QTimer(self)
+        self.navigation_timer.setSingleShot(True)
+        self.navigation_timer.timeout.connect(self.navigate)
         self.requested.connect(self.begin)
+        self.expired.connect(self.expire)
 
-    def get(self,url,cancelled=lambda:False):
+    def get(self, url, cancelled=lambda: False):
         if self.stopped or cancelled():
-            raise InterruptedError('检索已取消，保留上次缓存。')
-        request=dict(url=url,event=threading.Event(),html=None,error=None,cancelled=cancelled,started=time.monotonic(),timeout=240)
+            raise InterruptedError(CANCELLED)
+        request = dict(url=url, event=threading.Event(), html=None, error=None, cancelled=cancelled)
+        deadline = time.monotonic() + READ_TIMEOUT_SECONDS
         self.requested.emit(request)
         while not request['event'].wait(0.1):
             if cancelled():
-                request['error']='检索已取消，保留上次缓存。';request['event'].set()
-                raise InterruptedError('检索已取消，保留上次缓存。')
-            if time.monotonic()-request['started']>request.get('timeout',240):
-                request['error']='官网页面或验证等待超时，已读取进度及旧缓存保留；稍后再次刷新可继续。'
                 request['event'].set()
+                self.expired.emit(request)
+                raise InterruptedError(CANCELLED)
+            if time.monotonic() >= deadline:
+                request['event'].set()
+                self.expired.emit(request)
+                raise ValueError('等待读取官网搜索页超时，已读取进度及旧缓存保留。')
+        if request['error'] == CANCELLED:
+            raise InterruptedError(CANCELLED)
         if request['error']:
-            if request['error'].startswith('检索已取消'):
-                raise InterruptedError(request['error'])
             raise ValueError(request['error'])
         return request['html']
 
-    def begin(self,request):
+    def begin(self, request):
         from biorxiv_website import safe_page
+
+        if request['event'].is_set():
+            return
+        if self.stopped or request['cancelled']():
+            request.update(error=CANCELLED)
+            request['event'].set()
+            return
         if not safe_page(request['url']):
-            request['error']='不是受支持的 bioRxiv 官网搜索地址。';request['event'].set();return
-        if self.active and not self.active['event'].is_set():
-            request['error']='官网浏览器仍有请求在处理，请稍后重试。';request['event'].set();return
-        if request['event'].is_set() or request['cancelled']():
-            request['error']='检索已取消，保留上次缓存。';request['event'].set();return
-        self.active=request
-        request.setdefault('timeout',240)
-        request['cooldown_until']=0
-        self.page_ready=False
+            request.update(error='不是受支持的 bioRxiv 或 medRxiv 官网搜索地址。')
+            request['event'].set()
+            return
+        if self.active:
+            if not self.active['event'].is_set():
+                request.update(error='官网浏览器仍有请求在处理，请稍后重试。')
+                request['event'].set()
+                return
+            self.expire(self.active)
+        self.active = request
+        self.page_ready = False
         try:
             if self.dialog is None:
-                # Lazy import keeps the API-only workflow independent of browser startup/GPU.
-                from PySide6.QtWebEngineCore import QWebEngineProfile,QWebEnginePage,QWebEngineSettings
-                from PySide6.QtWebEngineWidgets import QWebEngineView
-                from PySide6.QtWidgets import QDialog,QVBoxLayout,QLabel,QPushButton,QLineEdit,QHBoxLayout
-                self.dialog=QDialog(self.parent())
-                self.dialog.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowMinimizeButtonHint |
-                                           Qt.WindowType.WindowMaximizeButtonHint | Qt.WindowType.WindowCloseButtonHint)
-                self.dialog.setWindowTitle('预印本官网搜索 · bioRxiv / medRxiv')
-                self.dialog.resize(1100,800)
-                layout=QVBoxLayout(self.dialog)
-                note=QLabel('正在读取官网搜索结果。可最小化窗口，检索会继续；若网站要求验证，请恢复窗口后手动完成。关闭此窗口会取消官网检索。')
-                note.setWordWrap(True);layout.addWidget(note)
-                self.status=QLabel();self.status.setWordWrap(True);layout.addWidget(self.status)
-                self.address=QLineEdit();self.address.setReadOnly(True);layout.addWidget(self.address)
-                self.view=QWebEngineView(self.dialog)
-                self.profile=QWebEngineProfile('BioRxivWebsite',self.dialog)
-                self.profile.setPersistentStoragePath(str(self.data_directory/'website_session'))
-                self.profile.setCachePath(str(self.data_directory/'website_cache'))
-                page=QWebEnginePage(self.profile,self.view)
-                page.settings().setAttribute(QWebEngineSettings.WebAttribute.ForceDarkMode,False)
-                self.view.setPage(page)
-                layout.addWidget(self.view,1)
-                check=QPushButton('验证已完成 · 继续读取')
-                check.clicked.connect(self.inspect)
-                controls=QHBoxLayout();controls.addWidget(check)
-                reload_button=QPushButton('重新加载此页');reload_button.clicked.connect(self.reload_requested)
-                self.reload_button=reload_button
-                controls.addWidget(reload_button)
-                cancel=QPushButton('取消检索');cancel.clicked.connect(self.dialog.reject)
-                controls.addWidget(cancel);layout.addLayout(controls)
-                self.view.loadFinished.connect(self.loaded)
-                self.view.loadStarted.connect(self.loading)
-                self.dialog.rejected.connect(self.closed)
-                self.timer=QTimer(self.dialog);self.timer.setInterval(1500);self.timer.timeout.connect(self.inspect)
+                self.create_window()
             self.status.setText('加载官网搜索页面……')
-            self.reload_button.setEnabled(True)
+            self.read_button.setEnabled(False)
+            self.reload_button.setEnabled(False)
             self.address.setText(request['url'])
-            # Paging must not restore a window the reader has minimized.
-            if not self.dialog.isVisible():self.dialog.showNormal()
-            self.view.load(QUrl(request['url']))
-            self.timer.start()
+            self.dialog.showNormal()
+            delay = self.navigation_delay()
+            if delay > 0:
+                self.navigation_timer.start(int(delay * 1000) + 1)
+            else:
+                self.navigate()
         except Exception as error:
             self.finish(error=f'官网浏览器启动失败：{error}')
 
-    def loaded(self,ok):
-        self.page_ready=True;self.loaded_at=time.monotonic()
-        if not ok and self.active and not self.active['event'].is_set():
-            self.status.setText('页面尚未成功加载；可在窗口中检查网络、完成网站提示后继续。')
-        self.inspect()
+    def create_window(self):
+        from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
+        from PySide6.QtWebEngineWidgets import QWebEngineView
+        from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout
+
+        self.dialog = QDialog(self.parent())
+        self.dialog.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowMinMaxButtonsHint |
+                                   Qt.WindowType.WindowCloseButtonHint)
+        self.dialog.setWindowTitle('预印本官网搜索 · bioRxiv / medRxiv')
+        self.dialog.resize(1100, 800)
+        layout = QVBoxLayout(self.dialog)
+        note = QLabel('如网站要求验证，请手动完成。搜索结果显示后，点击“读取当前页”。有多页时，每页都需点击读取。')
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        self.status = QLabel()
+        self.status.setWordWrap(True)
+        layout.addWidget(self.status)
+        self.address = QLineEdit()
+        self.address.setReadOnly(True)
+        layout.addWidget(self.address)
+        self.view = QWebEngineView(self.dialog)
+        self.profile = QWebEngineProfile('BioRxivWebsite', self.dialog)
+        self.profile.setPersistentStoragePath(str(self.data_directory / 'website_session'))
+        self.profile.setCachePath(str(self.data_directory / 'website_cache'))
+        page = QWebEnginePage(self.profile, self.view)
+        page.settings().setAttribute(QWebEngineSettings.WebAttribute.ForceDarkMode, False)
+        self.view.setPage(page)
+        layout.addWidget(self.view, 1)
+
+        controls = QHBoxLayout()
+        self.read_button = QPushButton('读取当前页')
+        self.read_button.clicked.connect(self.read_current_page)
+        controls.addWidget(self.read_button)
+        self.reload_button = QPushButton('重新加载此页')
+        self.reload_button.clicked.connect(self.reload_requested)
+        controls.addWidget(self.reload_button)
+        cancel = QPushButton('取消检索')
+        cancel.clicked.connect(self.dialog.reject)
+        controls.addWidget(cancel)
+        layout.addLayout(controls)
+        self.view.loadStarted.connect(self.loading)
+        self.view.loadFinished.connect(self.loaded)
+        self.dialog.rejected.connect(self.closed)
+
+    def loaded(self, ok):
+        request = self.active
+        if not request or request['event'].is_set() or self.navigation_timer.isActive():
+            return
+        self.page_ready = True
+        self.read_button.setEnabled(not request.get('reading'))
+        self.reload_button.setEnabled(not request.get('blocked'))
+        self.status.setText('请确认页面显示搜索结果后点击读取。' if ok else
+                            '页面未能正常加载。请在窗口中检查网站提示。')
 
     def loading(self):
-        self.page_ready=False
+        self.page_ready = False
+        self.navigation += 1
+        self.read_button.setEnabled(False)
+        self.reload_button.setEnabled(False)
+        if self.active:
+            self.active['blocked'] = False
 
-    def inspect(self):
-        request=self.active
-        if not request:return
-        if request['event'].is_set():
-            self.timer.stop();return
+    def navigation_delay(self):
+        if self.last_navigation is None:
+            return 0
+        return max(0, NAVIGATION_GAP_SECONDS - (time.monotonic() - self.last_navigation))
+
+    def navigate(self):
+        if not self.active or self.active['event'].is_set():
+            return
+        if self.active['cancelled']():
+            self.finish(error=CANCELLED)
+            return
+        self.last_navigation = time.monotonic()
+        self.loading()
+        self.view.load(QUrl(self.active['url']))
+
+    def read_current_page(self):
+        request = self.active
+        if not request or request['event'].is_set() or request.get('reading') or not self.page_ready:
+            return
         if request['cancelled']():
-            self.finish(error='检索已取消，保留上次缓存。');return
-        if time.monotonic()-request['started']>request.get('timeout',240):
-            self.finish(error='官网加载或验证等待超时，已读取进度及旧缓存保留；稍后再次刷新可继续。');return
-        if not self.page_ready:return
-        def receive(text):
-            if self.active is not request or request['event'].is_set():return
-            from biorxiv_website import challenge_page,rate_limit_page,parse_page,safe_page,validate_search_context
-            current=self.view.url().toString()
-            if rate_limit_page(text):
-                # Allow the site's own countdown/automatic reload to complete.
-                # Never repeatedly reload a rate-limit page or bypass its checks.
-                request['timeout']=900
-                request['cooldown_until']=max(request['cooldown_until'],time.monotonic()+15)
-                self.reload_button.setEnabled(False)
-                self.status.setText('官网提示请求过多，正在等待网站倒计时及自动恢复（本页最多等待15分钟）。已读取分页已保存，可最小化；请勿连续重新加载。')
+            self.finish(error=CANCELLED)
+            return
+        url = self.view.url().toString()
+        navigation = self.navigation
+        request['reading'] = True
+        self.read_button.setEnabled(False)
+
+        def receive(html):
+            if self.active is not request or request['event'].is_set():
                 return
-            self.reload_button.setEnabled(time.monotonic()>=request['cooldown_until'])
-            if challenge_page(text):
-                request['timeout']=900
-                self.status.setText('官网要求访问验证，请手动完成。软件不会自动处理验证码或切换到 API 扫描。');return
-            if not safe_page(current):
+            request['reading'] = False
+            self.read_button.setEnabled(self.page_ready)
+            if not self.page_ready or navigation != self.navigation or url != self.view.url().toString():
                 return
-            actual,expected=urlsplit(current),urlsplit(request['url'])
-            if actual.hostname!=expected.hostname or unquote(actual.path).rstrip('/')!=unquote(expected.path).rstrip('/') or parse_qs(actual.query).get('page',['0'])!=parse_qs(expected.query).get('page',['0']):
-                self.status.setText('当前页面不是待读取的结果页。请点击“重新加载此页”返回该页后继续。')
-                return
-            try:
-                parse_page(text,current)
-                validate_search_context(text,current)
-            except ValueError as error:
-                self.status.setText(str(error))
-                if time.monotonic()-self.loaded_at>30:self.finish(error=str(error))
-                return
-            self.finish(text)
+            self.accept_page(request, url, html)
+
         self.view.page().toHtml(receive)
 
-    def reload_requested(self):
-        if self.active and not self.active['event'].is_set():
-            if time.monotonic()<self.active.get('cooldown_until',0):return
-            self.view.load(QUrl(self.active['url']))
+    def accept_page(self, request, url, html):
+        from biorxiv_website import challenge_page, parse_page, rate_limit_page, safe_page, validate_search_context
 
-    def finish(self,text=None,error=None):
-        if self.active and not self.active['event'].is_set():
-            self.active['html']=text;self.active['error']=error;self.active['event'].set()
+        if rate_limit_page(html):
+            request['blocked'] = True
+            self.reload_button.setEnabled(False)
+            self.status.setText('官网正在限制请求频率。请等待官网恢复，看到搜索结果后再点击读取。')
+            return
+        if challenge_page(html):
+            request['blocked'] = True
+            self.reload_button.setEnabled(False)
+            self.status.setText('请在网页中手动完成验证，看到搜索结果后再点击读取。')
+            return
+        request['blocked'] = False
+        self.reload_button.setEnabled(True)
+        actual, expected = urlsplit(url), urlsplit(request['url'])
+        if (not safe_page(url) or actual.hostname != expected.hostname or
+                unquote(actual.path).rstrip('/') != unquote(expected.path).rstrip('/') or
+                parse_qs(actual.query).get('page', ['0']) != parse_qs(expected.query).get('page', ['0'])):
+            self.status.setText('当前页面不是待读取的结果页。请返回搜索页后再点击读取。')
+            return
+        try:
+            parse_page(html, url)
+            validate_search_context(html, url)
+        except ValueError as error:
+            self.status.setText(str(error))
+            return
+        self.finish(html)
+
+    def reload_requested(self):
+        request = self.active
+        if not request or request['event'].is_set() or not self.page_ready or request.get('blocked'):
+            return
+        delay = self.navigation_delay()
+        if delay > 0:
+            self.status.setText(f'请等待约 {int(delay) + 1} 秒后再重新加载。')
+            return
+        self.navigate()
+
+    def finish(self, html=None, error=None):
+        self.navigation_timer.stop()
+        request, self.active = self.active, None
+        self.page_ready = False
+        if request and not request['event'].is_set():
+            request.update(html=html, error=error)
+            request['event'].set()
         if self.dialog:
-            self.timer.stop()
-            self.status.setText(error or '本页已读取，正在整理或继续下一页……')
+            self.dialog.hide()
+
+    def expire(self, request):
+        if self.active is request:
+            self.finish()
+            if self.dialog:
+                self.view.stop()
 
     def closed(self):
-        self.stopped=True
-        self.finish(error='检索已取消，保留上次缓存。')
+        self.stopped = True
+        self.end_search()
 
     def end_search(self):
+        self.finish(error=CANCELLED)
         if self.dialog:
-            if self.active and not self.active['event'].is_set():self.finish(error='检索已取消，保留上次缓存。')
-            self.timer.stop();self.view.stop();self.dialog.hide()
+            self.view.stop()
 
     def shutdown(self):
-        self.stopped=True
-        self.finish(error='检索已取消，保留上次缓存。')
-        self.end_search()
+        self.closed()

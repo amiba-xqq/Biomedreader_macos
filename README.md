@@ -22,6 +22,7 @@ Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 
 - **科研助手**：AI 寻找文章、领域知识库、AI 提出科学问题和 AI reviewer。知识库保存可复用的文献证据资料，不微调云端模型权重。审稿结果按 Summary and significance assessment、Major comments、Minor comments 组织。
 - **AI 调用通道**：在各服务商的模型设置中选择优先使用个人 API Key 或课题组授权。当前通道和用量显示在模型卡片上，Codex 本机连接使用独立设置。
 - **AI 作图**：支持 WB／gel、IF、qPCR 和 Excel／CSV 作图、可编辑 PDF／SVG 导出，以及基于项目上下文的连续修改。
+- **WB／gel 排版**：同一蛋白或核酸的条带合并到同一行，其他各行按首组重复条带的泳道标签对齐，缺失位置留空。
 - **AI Protocol**：从资料提取实验方法并编辑中文方案，支持 Word／PDF 导出和方案分享。
 - **内置科研技能**：按任务加载随软件提供的科研分析、审稿和可视化技能。
 - **科研对话**：正文引用编号可定位右侧文献卡片；正文和卡片分栏、独立滚动；支持消息复制、编辑、删除与对话布局恢复。
@@ -40,7 +41,7 @@ Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 
 ### macOS
 
 1. 按芯片类型下载 DMG，将 `Biomed Reader.app` 拖入“应用程序”，从应用程序目录启动。
-2. 应用支持 macOS 12 及以上，DMG 未进行 Apple Developer ID 公证。首次打开请核对下载来源，再按系统“隐私与安全性”中的提示允许打开。
+2. 应用支持 macOS 12 及以上。下载后可用 Release 提供的 SHA256 文件核对安装包。
 3. DMG 保留原生 Word 模板插件与架构匹配的官方 Codex 组件。Codex 不依赖 Finder 的终端 PATH，也无需另装 Node.js。
 
 ### Mac Word 插件

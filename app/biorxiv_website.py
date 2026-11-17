@@ -290,7 +290,7 @@ def search_website(session,expression,year_from,year_to,recent_years,notify,requ
             # Serial requests with a pause also between the two preprint hosts.
             # Short slices keep cancellation responsive during longer pauses.
             if network_pages:
-                delay=15 if network_pages%5==0 else 4
+                delay=20 if network_pages%5==0 else 12
                 notify(f'已保存读取进度，等待 {delay} 秒后继续官网下一页，降低请求频率……')
                 for _ in range(delay*5):
                     if cancelled and cancelled():raise InterruptedError('检索已取消，保留上次缓存。')

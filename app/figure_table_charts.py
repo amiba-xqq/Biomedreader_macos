@@ -6,7 +6,7 @@ from collections import Counter,defaultdict
 
 from figure_data import number
 from figure_render import COLORS, scene_renderer, top_axis, width
-from figure_canvas import LayoutScene
+from figure_canvas import LayoutScene, horizontal_slots
 
 
 def linear_scale(start,end,intervals=5):
@@ -158,24 +158,29 @@ def heatmap(values,style,options,*,scene_only=False):
     y_title = style.get('ylabel',options.get('ylabel',''))
     left = max(width(row,8) for row in rows)+13+(12 if y_title else 0)
     cell_w = 20
-    tilted,rise,label_right,offsets = top_axis(list(columns),left+cell_w/2,cell_w,cell_w-4,style.get('font_size',7))
+    slots = horizontal_slots(style,len(columns))
+    centers = [left+(slot+.5)*cell_w for slot in slots]
+    tilted,rise,label_right,offsets = top_axis(list(columns),left+cell_w/2,cell_w,cell_w-4,
+                                               style.get('font_size',7),centers=centers)
     cell_h,top = 13,31+rise
-    grid_w,grid_h = len(columns)*cell_w,len(rows)*cell_h
+    grid_w,grid_h = (slots[-1]+1)*cell_w,len(rows)*cell_h
     title = style.get('title',options['title'])
     figure_type = scene_renderer(style)
     f = LayoutScene(max(left+grid_w+12,label_right+4,width(title,8)+16),top+grid_h+38,style,figure_type)
+    f.horizontal_groups = [dict(index=i,label=label,x_pt=x) for i,(label,x) in
+                           enumerate(zip(columns,centers),1)]
     f.text(left+grid_w/2,11,title,'middle',True)
     if y_title:
         f.text(9,top+grid_h/2,y_title,'middle',angle=-90)
     for i,name in enumerate(columns):
-        f.text(left+(i+.5)*cell_w,top-5-offsets[i],name,'start' if tilted else 'middle',angle=-45 if tilted else 0)
+        f.text(centers[i],top-5-offsets[i],name,'start' if tilted else 'middle',angle=-45 if tilted else 0)
     for j,target in enumerate(rows):
         y = top+j*cell_h
         f.text(left-4,y+cell_h/2+2,target,'end')
         for i,group in enumerate(columns):
             value = means.get((target,group))
             fill = '#E5E5E5' if value is None else shade((value-low)/(high-low) if high>low else .5)
-            f.rect(left+i*cell_w,y,cell_w,cell_h,fill,'#FFFFFF')
+            f.rect(left+slots[i]*cell_w,y,cell_w,cell_h,fill,'#FFFFFF')
     legend_w = min(150,grid_w)
     y = top+grid_h+9
     for i in range(20):

@@ -51,7 +51,11 @@ def install_exception_handler(log_path: Path) -> None:
 def main() -> int:
     if '--service-self-test' in sys.argv:
         from service_smoke import run
-        return run(sys.argv[sys.argv.index('--service-self-test')+1])
+        index = sys.argv.index('--service-self-test')
+        if len(sys.argv)>index+3 and sys.argv[index+2]=='--student-test-input':
+            from service_smoke import verify_live_student
+            return verify_live_student(sys.argv[index+1],sys.argv[index+3])
+        return run(sys.argv[index+1])
     if '--feedback-self-test' in sys.argv:
         from feedback import run_feedback_self_test
         return run_feedback_self_test(sys.argv[sys.argv.index('--feedback-self-test')+1])
@@ -153,6 +157,13 @@ def main() -> int:
         directory = Path.cwd() / f".biomed-reader-self-test-{uuid.uuid4().hex}"
         directory.mkdir(parents=True)
         try:
+            from scientific_skills import manifest,root,workflow
+            import hashlib
+            assert len(manifest()['skills'])==8
+            for item in manifest()['files']:
+                assert hashlib.sha256((root()/item['path']).read_bytes()).hexdigest()==item['sha256']
+            for feature in ('summary','questions','reviewer','finder','figure','protocol'):
+                assert workflow(feature)
             database = Database(directory / "test.sqlite3", paper_directory=directory / "paper")
             window = MainWindow(database, icon_path)
             from citations import render
@@ -550,7 +561,8 @@ def main() -> int:
                 provider='codex'
                 store=window.ai_manager.store
                 cancelled=staticmethod(lambda:False)
-                def call(self,instructions,body,reference=None):
+                def call(self,instructions,body,reference=None,*,output_schema=None):
+                    assert output_schema and "allowed" in output_schema["required"]
                     assert reference['images'][0].startswith('data:image/png;base64,')
                     return json.dumps(dict(prompt='Add a title'))
                 def draw_pixels(self,prompt,reference,instructions):
@@ -786,13 +798,15 @@ def main() -> int:
                 provider='codex'
                 input_budget=8000
                 cancelled=staticmethod(lambda:False)
-                def call(self,instructions,body,reference=None):
+                def call(self,instructions,body,reference=None,*,output_schema=None):
+                    assert output_schema and 'allowed' in output_schema['required']
                     if reference:
                         assert reference['images'][0].startswith('data:image/png;base64,iVBOR')
                         return '{"allowed":true,"notes":"图像标注说明"}'
                     assert '补充图像标注' in body
                     return '{"allowed":true,"queries":[]}'
-                def reduce(self,material,progress,instructions):
+                def reduce(self,material,progress,instructions,*,output_schema=None):
+                    assert output_schema and 'body' in output_schema['required']
                     assert '补充图像标注' in material and '图像标注说明' in material and '检查图像信息' in material
                     return '{"allowed":true,"title":"修订稿","body":"已修订的完整正文"}',False
                 def result(self,body,**metadata):

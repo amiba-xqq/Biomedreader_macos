@@ -33,7 +33,7 @@ from figure_data import (
     COLUMN_CHARTS, GROUPED_CHARTS, MATRIX_ORIENTATIONS, matrix_values,
 )
 from figure_materials import REFERENCE_FILES
-from figure_render import COLORS, chart, crop_image, if_scale_pixels, if_scene, rotate, source_image, wb_scene
+from figure_render import COLORS, chart, crop_image, crop_raster_size, if_scale_pixels, if_scene, rotate, source_image, wb_scene
 from figure_script import GUIDANCE, read_script, renderer_bundle, renderer_source
 from path_dialog import QFileDialog
 from scientific_skills import enhance, receipt
@@ -373,6 +373,16 @@ def integer(maximum=1000000, initial=0, minimum=0):
     return widget
 
 
+def crop_dimension(initial=1.,minimum=.0001):
+    field = QDoubleSpinBox()
+    field.setDecimals(4)
+    field.setRange(minimum,1_000_000)
+    field.setSingleStep(1.)
+    field.setValue(initial)
+    field.setKeyboardTracking(False)
+    return field
+
+
 def viewport_tools(area):
     tools = QHBoxLayout()
     zoom_note = QLabel('100%')
@@ -445,8 +455,10 @@ class CropDialog(QDialog):
         tools.addWidget(self.rule)
         saved_side = project.state['panels'][0]['rect'][2] if project.mode=='if' and project.state['panels'] else min(256,*self.original.size)
         default_width = geometry.get('rect',[0,0,saved_side])[2] if project.mode=='if' else 4
-        self.rw = integer(initial=geometry.get('rule_width',default_width),minimum=1)
-        self.rh = integer(initial=geometry.get('rule_height',1),minimum=1)
+        self.rw = crop_dimension(geometry.get('rule_width',default_width))
+        self.rh = crop_dimension(geometry.get('rule_height',1))
+        self.rw.setToolTip('固定像素尺寸或宽高比的宽度，最多保留 4 位小数。')
+        self.rh.setToolTip('固定像素尺寸或宽高比的高度，最多保留 4 位小数。')
         tools.addWidget(QLabel('宽'))
         tools.addWidget(self.rw)
         self.height_label = QLabel('高')
@@ -467,11 +479,11 @@ class CropDialog(QDialog):
         tools.addStretch()
         layout.addLayout(tools)
         coords = QHBoxLayout()
-        self.coords = [integer(minimum=1 if i>=2 else 0, initial=1 if i>=2 else 0) for i in range(4)]
+        self.coords = [crop_dimension(0.,0.),crop_dimension(0.,0.),crop_dimension(),crop_dimension()]
         for name, field in zip(('X','Y','宽 px','高 px'),self.coords):
             coords.addWidget(QLabel(name))
             coords.addWidget(field)
-            field.valueChanged.connect(self.show_rect)
+            field.valueChanged.connect(self.coordinate_changed)
         layout.addLayout(coords)
         form = QFormLayout()
         self.target = QLineEdit(previous.get('label',''))
@@ -523,10 +535,7 @@ class CropDialog(QDialog):
         self.buttons.rejected.connect(self.reject)
         outer.addWidget(self.buttons)
         self.update_image()
-        if self.project.mode=='if' and self.rule.currentIndex()==2:
-            self.rw.setMaximum(min(self.dimensions))
-            self.rh.hide()
-            self.height_label.hide()
+        self.refresh_size_controls()
         self.set_rect(self.constrain(*(geometry.get('rect') or ((0,0,*self.dimensions) if project.mode=='wb' else (0,0,saved_side,saved_side)))))
         if not geometry and project.mode=='wb':
             self.area.begin = self.area.end = None
@@ -593,9 +602,8 @@ class CropDialog(QDialog):
 
     def refresh_after_rotation(self):
         self.update_image()
+        self.refresh_size_controls()
         if self.project.mode=='if':
-            if self.rule.currentIndex()==2:
-                self.rw.setMaximum(min(self.dimensions))
             self.set_rect(self.constrain(*self.current_rect()))
         else:
             self.set_rect(self.constrain(0,0,*self.dimensions))
@@ -628,22 +636,21 @@ class CropDialog(QDialog):
             b = a if self.project.mode=='if' else self.rh.value()
         elif self.rule.currentIndex()==1:
             ratio = self.rw.value()/self.rh.value()
-            a = max(1,min(a,w,round(h*ratio)))
-            b = max(1,min(h,round(a/ratio)))
-        else:
-            a,b = min(a,w),min(b,h)
-        return max(0,min(x,w-a)),max(0,min(y,h-b)),a,b
+            a = min(a,w,h*ratio)
+            b = a/ratio
+        a,b = max(.0001,min(w,round(a,4))),max(.0001,min(h,round(b,4)))
+        return max(0,min(x,round(w-a,4))),max(0,min(y,round(h-b,4))),a,b
 
     def fixed_size(self,*_):
         self.area.allow_resize = self.rule.currentIndex()!=2
         self.set_rect(self.constrain(*self.current_rect()))
 
     def change_rule(self,index):
+        self.refresh_size_controls()
         if self.project.mode=='if':
             _,_,w,h = self.current_rect()
             self.rw.blockSignals(True)
             self.rh.blockSignals(True)
-            self.rw.setMaximum(min(self.dimensions) if index==2 else 1000000)
             if index==2:
                 self.rw.setValue(min(w,h))
             elif index==1:
@@ -651,9 +658,28 @@ class CropDialog(QDialog):
                 self.rh.setValue(h)
             self.rw.blockSignals(False)
             self.rh.blockSignals(False)
-            self.rh.setVisible(index!=2)
-            self.height_label.setVisible(index!=2)
         self.fixed_size()
+
+    def refresh_size_controls(self):
+        rule = self.rule.currentIndex()
+        square = self.project.mode=='if' and rule==2
+        w,h = self.dimensions
+        for field,maximum in ((self.rw,min(w,h) if square else w if rule==2 else 1_000_000),
+                              (self.rh,h if rule==2 else 1_000_000)):
+            blocked = field.blockSignals(True)
+            field.setMaximum(maximum)
+            field.blockSignals(blocked)
+            field.setEnabled(rule!=0)
+        self.rh.setVisible(not square)
+        self.height_label.setVisible(not square)
+        for field in self.coords[2:]:
+            field.setReadOnly(rule==2)
+
+    def coordinate_changed(self):
+        x,y,w,h = self.current_rect()
+        if self.rule.currentIndex()==1 and self.sender() is self.coords[3]:
+            w = h*self.rw.value()/self.rh.value()
+        self.set_rect(self.constrain(x,y,w,h))
 
     def current_rect(self):
         return tuple(field.value() for field in self.coords)
@@ -677,20 +703,20 @@ class CropDialog(QDialog):
         top = 't' in mode
         horizontal = left or 'r' in mode
         vertical = top or 'b' in mode
-        new_w = max(1,w+(-dx if left else dx)) if horizontal else w
-        new_h = max(1,h+(-dy if top else dy)) if vertical else h
+        new_w = max(.0001,w+(-dx if left else dx)) if horizontal else w
+        new_h = max(.0001,h+(-dy if top else dy)) if vertical else h
         max_w = x+w if left else image_w-x if horizontal else 2*min(x+w/2,image_w-x-w/2)
         max_h = y+h if top else image_h-y if vertical else 2*min(y+h/2,image_h-y-h/2)
         if self.rule.currentIndex()==1:
             ratio = self.rw.value()/self.rh.value()
             if not horizontal or (vertical and abs(new_h-h)*ratio>abs(new_w-w)):
-                new_w = round(new_h*ratio)
-            new_w = max(1,min(new_w,int(max_w),int(max_h*ratio)))
-            new_h = max(1,min(int(max_h),round(new_w/ratio)))
+                new_w = new_h*ratio
+            new_w = max(.0001,min(new_w,max_w,max_h*ratio))
+            new_h = max(.0001,min(max_h,new_w/ratio))
         else:
-            new_w,new_h = min(new_w,int(max_w)),min(new_h,int(max_h))
-        new_x = x+w-new_w if left else x if horizontal else round(x+(w-new_w)/2)
-        new_y = y+h-new_h if top else y if vertical else round(y+(h-new_h)/2)
+            new_w,new_h = min(new_w,max_w),min(new_h,max_h)
+        new_x = x+w-new_w if left else x if horizontal else x+(w-new_w)/2
+        new_y = y+h-new_h if top else y if vertical else y+(h-new_h)/2
         self.set_rect((new_x,new_y,new_w,new_h))
 
     def set_rect(self, rect):
@@ -716,7 +742,7 @@ class CropDialog(QDialog):
             rect = list(self.constrain(*self.current_rect()))
             w,h = self.dimensions
             x,y,a,b = rect
-            if x+a>w or y+b>h:
+            if x+a>w+1e-8 or y+b>h+1e-8:
                 raise ValueError('选区超出了图片，请减小宽高。')
             name = self.target.text().strip()
             if not name:
@@ -736,7 +762,7 @@ class CropDialog(QDialog):
                 panel['channels'] = channels
                 scale_target = self.scale_target.currentData()
                 calibration,length = self.scale_calibration.value(),self.scale_length.value()
-                if scale_target is not None and (calibration<=0 or length<=0 or length*calibration>=a):
+                if scale_target is not None and (calibration<=0 or length<=0 or length*calibration>=crop_raster_size(a,b)[0]):
                     raise ValueError('请填写正数的像素尺寸和比例尺长度。比例尺不能超过截图宽度。')
                 panel.update(scale_target=scale_target,scale_pixels_per_um=calibration,scale_length=length)
             self.result = panel
@@ -1650,7 +1676,7 @@ class ProjectDialog(QDialog):
             max_y = min(sizes[file,angle][1] for file in panel['channels'].values())-h
             if min(max_x,max_y)<0:
                 raise ValueError(f"「{panel['label']}」的素材尺寸小于新选区。未修改已保存选区。")
-            if if_scale_pixels(panel)>=w:
+            if if_scale_pixels(panel)>=crop_raster_size(w,h)[0]:
                 raise ValueError(f"「{panel['label']}」的比例尺长于新选区。请先调整该组的比例尺。")
             x,y = panel['rect'][:2]
             rule = 2 if w==h and panel.get('rule',2)==2 else panel.get('rule',2) if panel.get('rule') in (0,1) else 1
@@ -1662,7 +1688,7 @@ class ProjectDialog(QDialog):
         self.panels.clear()
         for i,p in enumerate(self.state['panels'],1):
             x,y,w,h = p['rect']
-            self.panels.addItem(f"{i} · {p['label']}   {w} × {h} px · ({x}, {y})")
+            self.panels.addItem(f"{i} · {p['label']}   {w:g} × {h:g} px · ({x:g}, {y:g})")
             self.panels.item(i-1).setData(Qt.ItemDataRole.UserRole,i-1)
             self.panels.item(i-1).setFlags(self.panels.item(i-1).flags() & ~Qt.ItemFlag.ItemIsDropEnabled)
         self.panels.setCurrentRow(self.panels.count()-1)
@@ -1678,7 +1704,7 @@ class ProjectDialog(QDialog):
         for index,(item,panel) in enumerate(zip(items,self.state['panels'])):
             x,y,w,h = panel['rect']
             item.setData(Qt.ItemDataRole.UserRole,index)
-            item.setText(f"{index+1} · {panel['label']}   {w} × {h} px · ({x}, {y})")
+            item.setText(f"{index+1} · {panel['label']}   {w:g} × {h:g} px · ({x:g}, {y:g})")
         self.store.save(self.identifier,self.state)
 
     def move_panel(self,delta):
@@ -2115,8 +2141,16 @@ def build_project(store,identifier,mode,state,engine,request,mark,reference=None
             originals = export_scene(render_scene(style))
     if engine:
         exclude_selection = mode=='table' and bool(mark) and wants_observation_exclusion(request)
+        compact_selection = bool(mark and not exclude_selection and re.fullmatch(
+            r'\s*(?:请\s*)?(?:把|将)?(?:这|选中(?:的)?|框选(?:的)?)(?:两|二|2|几|多)行'
+            r'\s*(?:靠拢|靠近|压紧|缩小行距)(?:一?些|一点)?'
+            r'\s*[，,]?(?:并|再|然后)?\s*(?:往上移|上移|向上移)(?:一?些|一点)?'
+            r'(?:\s*靠近\s*[xXyY]轴)?[。！!]?\s*', request))
+        if compact_selection:
+            known = 'transform_annotations([marked_region(),0,-3,1,0.64])'
+            note = '已将框选的标注一起上移并缩小行距，保持原有列对齐。'
         excluded_rows = []
-        scene = render_scene(style) if exclude_selection or not known or not originals else None
+        scene = render_scene(style) if exclude_selection or compact_selection or not known or not originals else None
         if exclude_selection:
             excluded_rows,note = selected_observations(scene,mark,previous_svg)
             known = 'exclude_observations('+json.dumps(excluded_rows)+')'
@@ -2132,6 +2166,15 @@ def build_project(store,identifier,mode,state,engine,request,mark,reference=None
                     reference['images'].extend(preview['images'])
         scene_info = scene.metadata() if scene is not None else None
         material['scene'] = scene_info
+        marked_pt = None
+        if mark and scene_info:
+            preview_width,preview_height = scene_info['preview_size_pt']
+            left,top = scene_info['origin_offset_pt']
+            x0,x1 = sorted((mark[0],mark[2]))
+            y0,y1 = sorted((mark[1],mark[3]))
+            marked_pt = [round(x0*preview_width-left,3),round(y0*preview_height-top,3),
+                         round(x1*preview_width-left,3),round(y1*preview_height-top,3)]
+            scene_info['marked_region_pt'] = marked_pt
         if not known and send_preview and reference is None:
             reference = svg_reference(scene.export()['svg'],mark)
         check_cancelled()
@@ -2149,6 +2192,8 @@ def build_project(store,identifier,mode,state,engine,request,mark,reference=None
             payload = dict(mode=mode,figure=material,style=style,request=task_request,
                            marked_region=mark,prior_revisions=prior,base_is_software_original=fresh,
                            preview_supplied=bool(reference))
+            if marked_pt:
+                payload['marked_region_pt'] = marked_pt
             kwargs = {'reference': reference} if reference else {}
             instructions = GUIDANCE
             if fresh:
@@ -2186,7 +2231,10 @@ def build_project(store,identifier,mode,state,engine,request,mark,reference=None
         if 'colors' in revision:
             state['palette_settings'] = {'mode':'custom'}
         layout_commands = revision.pop('layout_commands',[])
-        if not revision.pop('reset_layout',False):
+        if revision.pop('reset_layout',False):
+            revision.setdefault('group_gaps',[])
+            revision.setdefault('wb_lane_centers',[])
+        else:
             layout_commands = [*style.get('layout_commands',[]),*layout_commands]
         if len(layout_commands)>120:
             raise ValueError('此图累积的布局命令过多。可切换到软件原图，再开始新的 AI 作图。')
@@ -2200,6 +2248,10 @@ def build_project(store,identifier,mode,state,engine,request,mark,reference=None
             options['kind'] = revision.pop('chart_kind',options['kind'])
             if options['kind'] not in ('line','grouped_line') and style.get('x_time_axis') and not revision.get('x_time_axis'):
                 revision.update(x_time_axis=False,x_color_strip=False,x_strip_gradient=False)
+            numeric_axis = options['kind'] in ('histogram','ecdf','xy','xyline') or revision.get(
+                'x_time_axis',style.get('x_time_axis',False))
+            if numeric_axis and revision.get('group_gaps'):
+                raise ValueError('当前横轴是数值坐标。请在分类图中插入组间空位。')
             if 'statistical_test' in revision:
                 options['test'] = revision.pop('statistical_test')
             if new_settings or excluded_rows:
@@ -2430,6 +2482,23 @@ def direct_time_axis_edit(request):
 
 
 def direct_figure_edit(mode,state,request):
+    explicit_gap = re.fullmatch(
+        r'\s*(?:请\s*)?在第\s*(\d{1,4})\s*(?:项|组|列|个泳道)(?:之)?后'
+        r'\s*(?:保?留|添加|插入)\s*(\d{1,2}|一)\s*个(?:空位|空泳道|空列|空组)[。！!]?\s*',request)
+    if explicit_gap:
+        boundary,amount = explicit_gap.groups()
+        count = 1 if amount=='一' else int(amount)
+        return f'set_group_gaps([[{int(boundary)},{count}]])','已在指定组之间保留空位并对齐标签。'
+    if mode=='wb':
+        labels = state['panels'][0].get('lanes',[]) if state['panels'] else []
+        middle = len(labels)//2
+        if middle and labels[:middle]==labels[middle:] and re.fullmatch(
+                r'\s*(?:最?上面[^，。；\n]{0,55}对应关系[^，。；\n]{0,12}[，,]\s*)?'
+                r'(?:(?:需要|请)?(?:把|将)?(?:泳道标签)?对齐(?:到)?泳道[，,]\s*)?'
+                r'两个\s*(?:rep|重复组)\s*之间(?:有|留|保留)\s*[一1]\s*个空泳道(?:间隔)?[。！!]?\s*',
+                request,re.I):
+            return (f'set_group_gaps([[{middle},1]])',
+                    '已将重复组的标签与灰度数字对齐至泳道，中间留出一个空泳道。')
     if mode=='if':
         return direct_if_edit(request,state['panels']),'已按请求应用通道顺序及比例尺。'
     if mode in ('qpcr','table') and GROUPED_CHARTS.get(state['options']['kind'],('',state['options']['kind']))[1]=='bar':
@@ -2546,7 +2615,7 @@ def apply_if_scale(panels,length):
             calibration = 1/panel['scale_calibration']
         if not calibration and (panel.get('scale_length') or 0)>0 and (panel.get('scale_px') or 0)>0:
             calibration = panel['scale_px']/panel['scale_length']
-        if calibration<=0 or calibration*length>=panel['rect'][2]:
+        if calibration<=0 or calibration*length>=crop_raster_size(*panel['rect'][2:])[0]:
             missing.append(panel['label'])
             continue
         panel.update(scale_target='all',scale_pixels_per_um=calibration,scale_length=length)

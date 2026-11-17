@@ -17,9 +17,12 @@ COMMANDS = {
     'set_x_color_strip': ('x_color_strip',bool),
     'set_x_strip_gradient': ('x_strip_gradient',bool),
     'set_x_category_order': ('x_category_order','names'),
+    'set_group_gaps': ('group_gaps','group gaps'),
+    'set_wb_lane_centers': ('wb_lane_centers','lane centers'),
     'set_bar_outline_width': ('bar_outline_width',(.25,8)),
     'set_bar_outline_open_base': ('bar_outline_open',bool),
     'set_font_size': ('font_size',(6,8)),
+    'set_wb_density_font_size': ('wb_density_font_size',(4,8)),
     'set_stroke': ('stroke',(.5,1.5)),
     'set_spacing': ('gap',(2,10)),
     'set_palette': ('colors',list),
@@ -38,7 +41,7 @@ GUIDANCE = """根据用户要求修改软件当前的科研绘图脚本。只输
 可用 import matplotlib.pyplot as plt、import numpy as np、import matplotlib.colors as mc（须用别名）。
 可用 import math as m（sqrt/log/log10/sin/cos）和 import statistics as s（mean/median/stdev）。
 这些模块仅开放下列函数。画布坐标是以左上角为原点的 pt，不是统计数据坐标：
-plt.text(x,y,"A",color="#222222",ha="left",fontsize=8)，plt.plot([x1,x2],[y1,y2],color="#222222")，
+plt.text(x,y,"A",color="#222222",ha="left",fontsize=8,rotation=90)，plt.plot([x1,x2],[y1,y2],color="#222222",linewidth=1)，
 plt.scatter([x1,x2],[y1,y2],color="#222222",radius=1.5)，plt.rectangle(x,y,w,h,color="#222222",fill=False)，
 plt.annotate("label",xy=[x,y],xytext=[label_x,label_y],color="#222222")。
 np.linspace(start,stop,num=10)、np.clip(value,lower,upper)、mc.to_hex("steelblue")；无需导出文件，软件自动渲染。
@@ -49,7 +52,7 @@ WB／gel 和 IF 可使用当前项目素材：figure.scene.source_images 是既�
 rebuild_canvas([宽pt,高pt]) 从空白画布重新排版。用 plt.imshow("素材ID",x,y,width) 或
 place_image(["素材ID",x,y,width]) 放置原图／现有选区，高度按原比例计算，像素、亮度和对比度保持原样。
 from PIL import Image 后可用 Image.size("素材ID") 取得 [像素宽,像素高]。选区已有的比例尺随图保留。
-自定义排版后，标签和外框须按需添加。添加的文字和图形不要覆盖实验原图，重排请完整保留用户需要的实验组。
+自定义排版后，标签和外框须按需添加。用户指定在图内的位置时，可在独立矢量层添加线和文字。重排请完整保留用户需要的实验组。
 所有模式可调用 set_title("Title"), set_font_size(7), set_stroke(0.7)。
 普通表格可调用 set_spacing(3)。WB／gel 的上下条带间距固定为 1 pt，IF 截图的上下及左右间距固定为 1.5 pt。
 统计图（qPCR、Excel／CSV）还可调用 use_backend("matplotlib") 或 use_backend("reportlab"),
@@ -59,6 +62,12 @@ set_plot_height(110)。Matplotlib 是软件内置库，优先用它生成统计�
 再调用 set_x_color_strip(True)，在刻度下绘制与每个时间点对齐的分段色条。
 对已启用的横轴色条，调用 set_x_strip_gradient(True) 直接换成无分界的矢量渐变。
 横轴类别重排调用 set_x_category_order(["ATM","BRCA1","BRCA2","PALB2"])。重排整组数据、重复点及统计标注。
+四种模式的横向分类布局均可调用 set_group_gaps([[5,1]])，在左起第 5 项之后保留 1 个空位。
+figure.scene.horizontal_groups 给出从 1 开始的编号、标签、中心坐标。多处空位可写成 [[2,1],[5,1]]，用 [] 清除。
+WB／gel 中空位是原裁剪图里的空泳道。调整时保持源像素、标签顺序及灰度数值，顶端标签和灰度注释使用同一组泳道中心。
+若用户或标定提供确切的不等距泳道中心，可调用 set_wb_lane_centers([0.06,0.15,0.24])，数值是相对条带宽度的横坐标，按左至右列出全部有标签的泳道，空泳道不列入。不要把空位加成样本或计算灰度。
+例如两个 rep 均含 WT、D1、D2、D3、D4，且中间有一个空泳道，应使用 set_group_gaps([[5,1]])。
+IF 横向空位留在整列之间。qPCR、Excel／CSV 的分类图在分类或样本之间保留空位，数值轴仍按实际数值定位。
 柱体描边直接调用 set_bar_outline_width(2) 和 set_bar_outline_open_base(True) 去掉零基线一侧描边，保留已有填色和原边框颜色。
 使用当前图上的类别原名。可仅指定一部分，其余类别按原顺序排在后面。数值时间轴始终按时间排序。
 通用画布可以用 add_gradient([x,y,width,height,"#D8E8F5","#263F71"]) 放置横向矢量渐变，可添加多个色标。
@@ -78,9 +87,11 @@ signedrank（配对 Wilcoxon 符号秩）、anova（单因素独立样本）、k
 只写本次要改变的调用，未指定的设置会保留。若只需建议，可返回空脚本。
 不修改原始数据或像素。明确要求时可修改设置并由软件重新计算统计。
 set_setting(["options.error","sd"])、set_setting(["options.comparison_mode","none"]) 修改已有设置。
-figure.scene.elements 列出了可编辑图元。edit_element([ID,"text","新标签"])，edit_element([ID,"size",10])，
-edit_element([ID,"x",30])，edit_element([ID,"y",50])，edit_element([ID,"width",60])。
-也可修改颜色、角度、半径与线段终点 x2/y2。截图改变宽高时维持原始像素和长宽比。
+figure.scene.elements 的 editable_properties 列出了每个图元可修改的属性。文字图元用 edit_element([ID,"size",5]) 缩小字号，
+用 edit_element([ID,"text","新标签"]) 改字。线段用 edit_element([ID,"stroke_width",1]) 改线宽。
+按图元种类选择 ID，不要将字号应用到图片、线段或外框。可同时针对已有文字改字号，并在框选区用 add_label 和 add_line 添加新标注。
+WB／gel 中要求条带下方的相对灰度数字缩小并排成一行，使用 set_wb_density_font_size(4.5)；不要逐个编辑带 wb_density_value 标记的数字。
+若同一句还要求标注蛋白大小，同时另写一行 set_wb_mass，软件会按条带当前位置放置右侧短线和文字，不要把字号或文字设置用在条带图片或边框上。
 用户要求的方法只能由应用实际计算。不得虚构比例尺、数值或检验结果。
 WB／gel 可调用 set_wb_mass([条带编号, 分子量数值, "predicted"])，或使用 "measured" 表示用户明确给出的实测值。
 例如 set_wb_mass([1, 42.7, "predicted"]) 会在第 1 条条带右边实际绘出「≈42.7 kDa (pred.)」。
@@ -93,7 +104,19 @@ move_group(["对象id",dx,dy]) 移动整个对象，包括标签、原始像素�
 IF 可调用 set_if_scale(["all",5])，按各处理组已保存的像素／μm 标定给所有图块添加 5 μm 比例尺。
 要求既交换通道又加比例尺时，同时输出 swap_groups 和 set_if_scale。缺少标定时不要猜测像素尺寸。
 resize_canvas([width,height]) 可扩大画布，add_text([x,y,"文字"])、add_line([x1,y1,x2,y2,"#222222"])、
-add_rectangle([x,y,w,h,"#222222"]) 可添加可编辑图元。实验图像保持完整，不能重叠或被新标注覆盖。
+add_rectangle([x,y,w,h,"#222222"]) 可添加可编辑图元。原始实验图像完整保留，不叠放两个实验图块。
+单条线宽可用 add_line([x1,y1,x2,y2,"#222222",1])，竖排标注可用 add_label([x,y,"分组说明","#222222","middle",7,-90])。
+add_label 最后一个参数为顺时针旋转角度，x/y 是旋转锚点；竖排标注用 middle 放在线段中点左侧。已有自定义画布直接追加标注，无需重建。
+四种模式均可用 add_line_label([x1,y1,x2,y2,"文字","#222222",线宽pt,字号pt,偏移pt,角度]) 一次添加线和文字。
+横线配横排字：add_line_label([20,30,60,30,"横排文字","#222222",1,7,4,0])，正偏移把字放在线上方。
+竖线配竖排字：add_line_label([20,30,20,70,"竖排文字","#222222",1,7,4,-90])，正偏移把字放在左侧；负偏移放到另一侧。
+用户要求在框选区加类似标注时，请用 marked_region_pt 推导端点坐标；这些绘图命令不会更改统计数据、灰度比值或源图像。
+有框选区时，脚本可用 left,top,right,bottom = marked_region() 直接读它的坐标，不必猜像素或手抄数值。
+需移动、靠拢已经绘制的标注时，四种模式都可用 transform_annotations([marked_region(),0,-3,1,0.64])。
+参数依次为选区、向右位移 pt、向下位移 pt、横向间距倍数、纵向间距倍数。示例把框选的文字和处理矩阵圆点一起上移并缩小行距，保留列的横坐标。
+该命令适用于已有文字和 AI 标注，保留字号、点大小与颜色。实验图像、数据散点及原有统计线保持原位。
+横线、竖线及横排、竖排文字可放在画布内用户指定的位置。靠近边缘时可自动增加白边。figure.scene 的尺寸及元素位置使用命令坐标。
+marked_region_pt 给出已转换的命令坐标 [左,上,右,下]，已扣除新增白边偏移；按该矩形定位画线与文字。
 prior_revisions 按时间顺序提供历史需求和结果，最后一次可继续使用的记录包含已执行脚本。figure.scene 是当前画布，
 随附 previous-ai-figure.pdf 时可对照上次保存的 AI 图。根据上下文理解「继续」「刚才」等指代，只输出本轮增量。
 默认保留之前的脚本排版，需要从默认布局重新设计时先调用 reset_layout()。
@@ -139,6 +162,8 @@ def read_script(script,mode,scene=None,source_size=None):
             continue
         if command in STAT_ONLY and mode not in ('table','qpcr'):
             raise ValueError('当前模式不支持脚本中的统计绘图操作，已保留上次图件。')
+        if command in ('set_wb_density_font_size','set_wb_lane_centers') and mode!='wb':
+            raise ValueError('泳道定位和相对灰度字号命令仅用于 WB／gel。')
         if command in TABLE_ONLY and mode not in ('table','qpcr'):
             raise ValueError('AI 切换统计图型或检验仅适用于统计图。')
         key,rule = COMMANDS[command]
@@ -154,6 +179,15 @@ def read_script(script,mode,scene=None,source_size=None):
             valid = (isinstance(value,list) and 1<=len(value)<=60 and all(
                 isinstance(name,str) and 0<len(name.strip())<=160 for name in value)
                 and len(set(value))==len(value))
+        elif rule=='group gaps':
+            valid = (isinstance(value,list) and all(isinstance(gap,list) and len(gap)==2
+                     and type(gap[0]) is int and 1<=gap[0]<=10000
+                     and type(gap[1]) is int and 1<=gap[1]<=10 for gap in value)
+                     and len({gap[0] for gap in value})==len(value)
+                     and sum(gap[1] for gap in value)<=30)
+        elif rule=='lane centers':
+            valid = (isinstance(value,list) and all(type(x) in (int,float) and 0<x<1 for x in value)
+                     and all(left<right for left,right in zip(value,value[1:])))
         elif isinstance(rule[0],str):
             valid = value in rule
         else:

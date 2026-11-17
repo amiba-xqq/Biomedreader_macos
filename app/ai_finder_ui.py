@@ -171,7 +171,7 @@ QToolButton:pressed {background:#F4D6B1;}
             self.articles=[a for a in self.articles if a['article_key'] in retained];self.notes={k:v for k,v in self.notes.items() if k in retained};self.manager.repository.replace_finder_cards(self.identifier,self.articles)
         self.editing_index=None
         entry=dict(role='user',content=text,created_at=datetime.now().astimezone().isoformat(),files=old_files+[Path(p).name for p in self.pending]);self.messages.append(entry);self.input.clear();self.render(scroll_to_end=True);files=list(self.pending);messages=[{k:v for k,v in m.items() if k!='display_width'} for m in self.messages];attachments=list(self.attachments);notes=dict(self.notes);self.persist()
-        web_fetch=lambda url:self.manager.article_reader.get(url,automatic=True)
+        web_fetch=self.manager.article_reader.get
         work=lambda:find_articles(engine,self.manager.store.database,messages,files,attachments,notes,web_fetch,lambda text:self.manager.progress.emit(self.channel,text))
         self.task=self.manager.submit(self,work,'completed','failed');self.update_state();self.status.setText('正在识别问题、检索真实文献并读取证据；可最小化，可与其它AI功能并行运行。')
     def completed(self,result):

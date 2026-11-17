@@ -33,6 +33,8 @@ class LoginDialog(CloudDialog):
         layout=QVBoxLayout(self)
         layout.addWidget(plain_label('会连接到 Cloudflare，可能需要科学上网。PI和学生每天各可登录20次，等待期间可以取消或关闭窗口。',True))
         layout.addWidget(plain_label('使用服务商API Key验证课题组身份，API费用由PI承担。' if role=='pi' else '一个完整学生访问ID可使用PI开通的全部API平台；无需按平台另建ID，也无需API Key。绘图平台仅用于模型图；Codex本机登录不共享。'))
+        if role=='student':
+            layout.addWidget(plain_label('登录会向课题组服务提交本机网卡 MAC 地址，用于登记设备。每个学生 ID 可同时登录两台电脑，联网退出后释放本机名额。',True))
         form=QFormLayout();self.provider=QComboBox()
         self.gateway=QComboBox();self.gateway.addItem('默认 · biomedreader.cn',LAB_CUSTOM_URL);self.gateway.addItem('备用入口 · workers.dev',LAB_URL);form.addRow('登录入口',self.gateway)
         from settings_wheel import ClickOnlyComboGuard
@@ -246,6 +248,7 @@ class LabPanel(QFrame):
     def reload(self):
         state=self.manager.store.lab_state();self.mode.blockSignals(True);self.mode.setCurrentIndex(1 if state and state['active'] else 0);self.mode.blockSignals(False)
         self.logout_button.setVisible(bool(state));self.balance_button.setVisible(bool(state and state['identity']['role']=='pi'))
+        self.logout_button.setEnabled(not getattr(self,'logout_pending',False))
         self.keys_button.setVisible(bool(state and state['identity']['role']=='pi'))
         for button in self.login_buttons.values():button.setEnabled(not bool(state))
         for role,button in self.available_buttons.items():button.setVisible(bool(state and state['identity']['role']==role))
@@ -284,9 +287,25 @@ class LabPanel(QFrame):
         LabManagementDialog(self.manager,self).exec()
     def logout(self):
         state=self.manager.store.lab_state()
-        if not state:return
+        if not state or getattr(self,'logout_pending',False):return
         if self.task:self.manager.cancel(self.task)
-        token=self.manager.store.lab_token();self.manager.store.logout_lab();self.manager.changed.emit()
+        token=self.manager.store.lab_token()
+        self.logout_pending=True;self.logout_fingerprint=state['fingerprint']
+        if state['identity']['role']=='pi':self.manager.store.logout_lab();self.manager.changed.emit()
+        self.logout_button.setEnabled(False)
+        self.status.setText('正在连接课题组服务，等待设备解绑确认……')
         self.task=self.manager.submit(self,lambda:LabAPI(token,state['identity'].get('gateway_url')).logout(),'logged_out','logout_failed')
-    def logged_out(self,result):self.task=None
-    def logout_failed(self,message):self.task=None
+    def logged_out(self,result):
+        if not isinstance(result,dict) or result.get('ok') is not True:
+            return self.logout_failed('服务未确认退出。')
+        self.task=None;self.logout_pending=False
+        state=self.manager.store.lab_state()
+        if state and state['fingerprint']==self.logout_fingerprint:
+            from student_keys import clear_keys
+            owner=state['identity'].get('local_owner')
+            if state['identity']['role']=='student' and owner:clear_keys(self.manager.store.database,owner)
+            self.manager.store.logout_lab()
+        self.manager.changed.emit()
+    def logout_failed(self,message):
+        self.task=None;self.logout_pending=False;self.reload()
+        if self.manager.store.lab_state():self.status.setText('未确认设备解绑，仍保持登录。联网后可重试。'+message)

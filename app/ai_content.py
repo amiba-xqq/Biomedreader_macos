@@ -1,10 +1,15 @@
 """Read documents on this computer; never give cloud models campus credentials."""
 import io,ipaddress,re,socket,threading
 from pathlib import Path
-from urllib.parse import urlsplit,urljoin
+from urllib.parse import unquote,urlsplit,urljoin
 from html.parser import HTMLParser
 from software_update import session_for_updates
 import requests
+
+VERIFICATION_PAGE = re.compile(r'verify (?:that )?you are human|are you a robot|checking your browser|'
+                               r'captcha challenge|just a moment|access denied|人机验证')
+MANUAL_READ_TIMEOUT_MS = 20000
+MANUAL_READ_RETRY_MS = 3000
 
 def source_label(value):
     parsed=urlsplit(value)
@@ -32,8 +37,9 @@ class ArticleHTML(HTMLParser):
     def handle_data(self,data):
         if not self.skip:self.append(data+' ')
 
-def html_document(html,url,article):
-    parser=ArticleHTML();parser.feed(html)
+def html_document(html,url,article,*,parser=None,include_figures=True):
+    if parser is None:
+        parser=ArticleHTML();parser.feed(html)
     article_text=''.join(parser.article_text);raw=article_text if len(article_text)>1500 else ''.join(parser.text)
     text='\n'.join(line.strip() for line in re.sub('[ \t]+',' ',raw).splitlines() if line.strip())
     expected=str(article.get('doi') or '').lower().removeprefix('https://doi.org/')
@@ -45,16 +51,26 @@ def html_document(html,url,article):
     if expected and not actual and expected not in html.lower() and not title_matches:
         raise ValueError('未能确认网页属于目标文章，未把门户、登录或其它文章页面当作正文。')
     lowered=text.lower()
-    blocked=any(word in lowered for word in ('verify you are human','just a moment','checking your browser','access denied','captcha'))
+    blocked=bool(VERIFICATION_PAGE.search(' '.join(lowered[:2500].split())))
     blocked|=any(word in lowered for word in ('this is a preview of subscription content','purchase this article','rent this article'))
-    sections=sum(bool(re.search(r'(?m)^\s*(?:\d+[.\s]*)?'+name+r'\s*$',lowered)) for name in ('introduction','methods','results','discussion'))
-    body_available=(sections>=3 or len(article_text)>8000) and len(text)>6000 and not blocked
+    section_names = ('introduction', '(?:materials and |experimental )?methods', 'results(?: and discussion)?', 'discussion')
+    sections = sum(bool(re.search(r'(?m)^ *(?:\d+[. ]*)?'+name+r' *$', lowered)) for name in section_names)
+    article_lower = article_text.lower()
+    abstract = re.search(r'(?m)^ *abstract *$', article_lower)
+    if abstract:
+        # A publisher's surrounding article element can contain a long abstract,
+        # recommendations and navigation even before the actual body appears.
+        after_abstract = article_lower[abstract.end():]
+        body_start = re.search(r'(?m)^ *(?:\d+[. ]*)?(?:'+ '|'.join(section_names)+r') *$', after_abstract)
+        article_lower = after_abstract[body_start.start():] if body_start else ''
+    body_available = (sections>=3 or len(article_lower)>8000) and len(text)>6000 and not blocked
     coverage='网页正文候选（请核查完整性；未分析补充材料或图片像素）' if body_available else '网页片段／可能仅摘要'
-    from source_figures import MODEL_CAPTION
-    model_figure=next((item for item in parser.figures if item['url'] and MODEL_CAPTION.search(''.join(item['text']))),None)
-    from source_figures import html_model_candidate
-    candidate=html_model_candidate(html)
-    if candidate:model_figure=dict(url=candidate['url'],text=[candidate['caption']])
+    model_figure=None
+    if include_figures:
+        from source_figures import MODEL_CAPTION, html_model_candidate
+        model_figure=next((item for item in parser.figures if item['url'] and MODEL_CAPTION.search(''.join(item['text']))),None)
+        candidate=html_model_candidate(html)
+        if candidate:model_figure=dict(url=candidate['url'],text=[candidate['caption']])
     return dict(text=text,url=source_label(url),coverage=coverage,fulltext=body_available,
                 model_image_url=urljoin(url,model_figure['url']) if model_figure else '',model_image_caption=''.join(model_figure['text']).strip()[:600] if model_figure else '',
                 pdf_url=urljoin(url,parser.meta.get('citation_pdf_url','')) if parser.meta.get('citation_pdf_url') else '',blocked=blocked)
@@ -112,6 +128,40 @@ def pdf_document(source,label):
     if characters<300:raise ValueError('PDF 可提取文字太少，可能是扫描件；本版本不把未识别的图片当作已读全文。')
     return dict(text='\n\n'.join(pages),url=source_label(label),coverage='PDF 可提取文字（未分析图片像素及未包含的补充材料）',fulltext=True,figure=figure)
 
+def open_article_document(article):
+    from xml.etree import ElementTree as ET
+    pmcid=str(article.get('pmcid') or '').strip().upper()
+    if not re.fullmatch(r'PMC[0-9]+',pmcid):return None
+    url='https://www.ebi.ac.uk/europepmc/webservices/rest/'+pmcid+'/fullTextXML'
+    with session_for_updates() as session:
+        with session.get(url,timeout=(4,8),allow_redirects=False,stream=True) as response:
+            if response.status_code!=200:return None
+            chunks=[];size=0
+            from ai_cancel import check_cancelled
+            for chunk in response.iter_content(65536):
+                check_cancelled();size+=len(chunk)
+                if size>12*1024*1024:return None
+                chunks.append(chunk)
+    try:root=ET.fromstring(b''.join(chunks))
+    except ET.ParseError:return None
+    if root.tag!='article':return None
+    meta=root.find('./front/article-meta');body=root.find('./body')
+    if meta is None or body is None:return None
+    doi=str(article.get('doi') or '').strip().casefold()
+    if doi:
+        actual=meta.findtext("article-id[@pub-id-type='doi']",'').strip().casefold()
+        if actual!=doi:return None
+    parts=[]
+    for element in (meta.find('abstract'),body,root.find('back')):
+        if element is not None:
+            parts.extend(' '.join(''.join(node.itertext()).split()) for node in element.iter()
+                         if node.tag in ('title','p','tr'))
+    text='\n'.join(part for part in parts if part)
+    if len(text)<800:return None
+    return dict(text=text,url='https://europepmc.org/articles/'+pmcid,
+                coverage='Europe PMC 正文 XML（文字、图注及表格文字；未读取外链补充材料或图片像素）',
+                fulltext=True)
+
 def read_article(database,article,web_fetch=None,prefer_pdf=True,progress=lambda text:None):
     from ai_cancel import check_cancelled
     check_cancelled()
@@ -124,16 +174,25 @@ def read_article(database,article,web_fetch=None,prefer_pdf=True,progress=lambda
                 return pdf_document(path,'已链接本地 PDF：'+path.name)
             except InterruptedError:raise
             except Exception as error:errors.append(str(error))
+    if article.get('pmcid'):
+        try:
+            progress('正在查询 Europe PMC 开放全文……')
+            document=open_article_document(article)
+            if document:return document
+        except (requests.RequestException,OSError):pass
     doi=str(article.get('doi') or '')
     url=('https://doi.org/'+doi) if doi else str(article.get('landing_page_url') or '')
     if url:
         try:
-            progress('正在通过本机网络读取 DOI 网页……')
+            progress('请在内置浏览器中点击“读取当前文章”。' if web_fetch else '正在通过本机网络读取 DOI 网页……')
             if web_fetch:
                 payload=web_fetch(url)
                 if payload.get('pdf_path'):
                     try:return pdf_document(payload['pdf_path'],payload['url'])
-                    finally:payload['temporary'].cleanup()
+                    finally:
+                        temporary = payload.get('temporary')
+                        if temporary is not None:
+                            temporary.cleanup()
                 document=html_document(payload['html'],payload['url'],article)
             else:
                 data,final,kind=download(url)
@@ -167,142 +226,311 @@ def read_article(database,article,web_fetch=None,prefer_pdf=True,progress=lambda
         coverage='仅标题与摘要；'+ '；'.join(errors)[:600],fulltext=False)
 
 class ArticleWebReader:
-    """QObject bridge is constructed lazily to keep HTTP/PDF-only tests headless."""
-    def __new__(cls,data_directory,parent):
-        from PySide6.QtCore import QObject,Signal,QTimer,QUrl,Qt
-        from PySide6.QtWidgets import QDialog,QVBoxLayout,QLabel,QPushButton,QHBoxLayout
+    '''Open linked articles and wait for the user to request a read.'''
+    def __new__(cls, data_directory, parent):
+        from PySide6.QtCore import QObject, Signal, QElapsedTimer, QTimer, QUrl, Qt
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+
         class Reader(QObject):
-            requested=Signal(object)
-            expired=Signal(object)
+            requested = Signal(object)
+            expired = Signal(object)
+
             def __init__(self):
-                super().__init__(parent);self.queue=[];self.active=None;self.dialog=None;self.requested.connect(self.enqueue);self.expired.connect(self.expire)
-                self.auto_timer=QTimer(self);self.auto_timer.setInterval(3000);self.auto_timer.timeout.connect(self.auto_probe);self.probing=False;self.capturing=False
-            def get(self,url,automatic=False):
-                from ai_cancel import check_cancelled,register_abort
+                super().__init__(parent)
+                self.queue = []
+                self.active = None
+                self.dialog = None
+                self.capturing = False
+                self.navigation = 0
+                self.loading = False
+                self.read_elapsed = QElapsedTimer()
+                self.read_retry = QTimer(self)
+                self.read_retry.setSingleShot(True)
+                self.read_retry.timeout.connect(self.attempt_read)
+                self.requested.connect(self.enqueue)
+                self.expired.connect(self.expire)
+
+            def get(self, url):
+                from ai_cancel import check_cancelled, register_abort
                 check_cancelled()
                 public_url(url)
                 check_cancelled()
-                request=dict(url=url,event=threading.Event(),result=None,error=None,automatic=automatic)
+                request = dict(url=url, event=threading.Event(), result=None, error=None)
                 self.requested.emit(request)
+
                 def abort():
-                    request['error']='用户取消本机网页读取。';request['event'].set();self.expired.emit(request)
-                unregister=register_abort(abort)
+                    request['error'] = '用户取消本机网页读取。'
+                    request['event'].set()
+                    self.expired.emit(request)
+
+                unregister = register_abort(abort)
                 try:
-                    if not request['event'].wait(600):request['error']='本机网页读取等待超时。';request['event'].set();self.expired.emit(request)
-                finally:unregister()
+                    if not request['event'].wait(600):
+                        request['error'] = '等待点击“读取当前文章”超时。'
+                        request['event'].set()
+                        self.expired.emit(request)
+                finally:
+                    unregister()
                 check_cancelled()
                 if request['error']:
-                    if request['error'].startswith('用户取消'):raise InterruptedError(request['error'])
+                    if request['error'].startswith('用户取消'):
+                        raise InterruptedError(request['error'])
                     raise ValueError(request['error'])
                 return request['result']
-            def enqueue(self,request):self.queue.append(request);self.advance()
+
+            def enqueue(self, request):
+                self.queue.append(request)
+                self.advance()
+
             def advance(self):
-                if self.active or not self.queue:return
-                self.active=self.queue.pop(0)
-                if self.active['event'].is_set():self.active=None;self.advance();return
-                if self.dialog is None:
-                    from PySide6.QtWebEngineWidgets import QWebEngineView
-                    from PySide6.QtWebEngineCore import QWebEngineProfile,QWebEnginePage,QWebEngineSettings
-                    self.dialog=QDialog(parent);self.dialog.setWindowFlags(Qt.WindowType.Window|Qt.WindowType.WindowMinMaxButtonsHint|Qt.WindowType.WindowCloseButtonHint)
-                    self.dialog.setWindowTitle('本机文章读取 · 请自行完成授权登录');self.dialog.resize(1100,820)
-                    layout=QVBoxLayout(self.dialog);self.read_note=QLabel();self.read_note.setWordWrap(True);layout.addWidget(self.read_note)
-                    self.view=QWebEngineView(self.dialog);self.profile=QWebEngineProfile('ArticleAIReader',self.dialog)
-                    self.profile.setPersistentStoragePath(str(Path(data_directory)/'article_web_session'));self.profile.setCachePath(str(Path(data_directory)/'article_web_cache'))
-                    self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies)
-                    self.profile.downloadRequested.connect(self.download_pdf)
-                    page=QWebEnginePage(self.profile,self.view);page.settings().setAttribute(QWebEngineSettings.WebAttribute.ForceDarkMode,False);self.view.setPage(page);layout.addWidget(self.view,1)
-                    page.settings().setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled,False)
-                    row=QHBoxLayout();read=QPushButton('读取当前文章');read.clicked.connect(self.capture);row.addWidget(read);cancel=QPushButton('取消本次网页读取');cancel.clicked.connect(self.dialog.reject);row.addWidget(cancel);layout.addLayout(row);self.dialog.rejected.connect(self.cancel)
-                from article_autoread import ArticleReadyState
-                self.active['ready_state']=ArticleReadyState();self.probing=False;self.capturing=False
-                self.dialog.setWindowTitle('本机文章读取 · 自动检测正文' if self.active.get('automatic') else '本机文章读取 · 请自行完成授权登录')
-                self.read_note.setText('进入目标文章且内容加载稳定后会自动读取；如需学校／出版社登录或人机验证，请自行完成。本窗口不会自动操作验证或将密码、Cookie发送给AI。也可点击“读取当前文章”。' if self.active.get('automatic') else '请确认已进入目标文章，必要时自行完成学校／出版社登录、验证或展开正文，然后点击读取。不会将密码或Cookie发送给AI。')
-                self.view.load(QUrl(self.active['url']));self.dialog.showNormal()
-                if self.active.get('automatic'):self.auto_timer.start()
-            def auto_probe(self):
-                request=self.active
-                if not request or not request.get('automatic') or self.probing or self.capturing:return
-                from article_autoread import PAGE_STATE_JS,decode_page_state
-                self.probing=True;url=self.view.url().toString()
-                def state_received(snapshot):
-                    if self.active is not request:return
-                    snapshot=decode_page_state(snapshot)
-                    if snapshot.get('gate') or __import__('re').search(r'verify.*human|just a moment|checking your browser|人机验证|安全验证',str(snapshot.get('text') or '')[:2200],__import__('re').I):
-                        self.probing=False;request['ready_state'].reset();self.auto_timer.setInterval(10000);return
-                    self.auto_timer.setInterval(3000)
-                    if not isinstance(snapshot,dict) or snapshot.get('url')!=url or self.view.url().toString()!=url:self.probing=False;request['ready_state'].reset();return
-                    def html_received(html):
-                        if self.active is not request:return
-                        self.probing=False
-                        if self.view.url().toString()!=url:request['ready_state'].reset();return
-                        if request['ready_state'].observe(html,url,request['url'],snapshot):self.capture()
-                    self.view.page().toHtml(html_received)
-                self.view.page().runJavaScript(PAGE_STATE_JS,state_received)
+                if self.active:
+                    return
+                while self.queue:
+                    request = self.queue.pop(0)
+                    if not request['event'].is_set():
+                        self.active = request
+                        break
+                if not self.active:
+                    return
+                try:
+                    if self.dialog is None:
+                        self.create_window()
+                    self.loading = True
+                    self.read_note.setText('请在网页中手动完成验证或登录。看到目标文章后，点击“读取当前文章”。')
+                    self.view.load(QUrl(self.active['url']))
+                    self.dialog.showNormal()
+                except Exception as error:
+                    self.finish(error=f'无法打开本机文章浏览器：{error}')
+
+            def create_window(self):
+                from PySide6.QtWebEngineWidgets import QWebEngineView
+                from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage, QWebEngineSettings
+
+                self.dialog = QDialog(parent)
+                self.dialog.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowMinMaxButtonsHint |
+                                           Qt.WindowType.WindowCloseButtonHint)
+                self.dialog.setWindowTitle('本机文章读取')
+                self.dialog.resize(1100, 820)
+                layout = QVBoxLayout(self.dialog)
+                self.read_note = QLabel()
+                self.read_note.setWordWrap(True)
+                layout.addWidget(self.read_note)
+                self.view = QWebEngineView(self.dialog)
+                self.profile = QWebEngineProfile('ArticleAIReader', self.dialog)
+                self.profile.setPersistentStoragePath(str(Path(data_directory)/'article_web_session'))
+                self.profile.setCachePath(str(Path(data_directory)/'article_web_cache'))
+                self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies)
+                self.profile.downloadRequested.connect(self.download_pdf)
+                page = QWebEnginePage(self.profile, self.view)
+                page.settings().setAttribute(QWebEngineSettings.WebAttribute.ForceDarkMode, False)
+                page.settings().setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, False)
+                self.view.setPage(page)
+                self.view.loadStarted.connect(self.navigation_started)
+                self.view.loadFinished.connect(self.navigation_finished)
+                layout.addWidget(self.view, 1)
+
+                controls = QHBoxLayout()
+                self.read_button = QPushButton('读取当前文章')
+                self.read_button.clicked.connect(self.capture)
+                controls.addWidget(self.read_button)
+                cancel = QPushButton('取消本次网页读取')
+                cancel.clicked.connect(self.dialog.reject)
+                controls.addWidget(cancel)
+                layout.addLayout(controls)
+                self.dialog.rejected.connect(self.cancel)
+
+            def navigation_started(self):
+                self.loading = True
+                self.navigation += 1
+                if self.active:
+                    pdf = self.active.pop('pdf_result', None)
+                    if pdf:
+                        pdf['temporary'].cleanup()
+
+            def navigation_finished(self, _ok):
+                self.loading = False
+
             def capture(self):
-                request=self.active
-                if not request or self.capturing:return
-                url=self.view.url().toString()
-                try:public_url(url,False)
-                except ValueError:return
-                self.capturing=True
+                request = self.active
+                if not request or request['event'].is_set() or self.read_elapsed.isValid():
+                    return
+                self.read_elapsed.start()
+                self.read_button.setEnabled(False)
+                self.read_note.setText('正在读取，等待目标文章正文或网站 PDF 加载……')
+                self.attempt_read()
+
+            def stop_read(self):
+                self.read_retry.stop()
+                self.read_elapsed.invalidate()
+                if hasattr(self,'read_button'):
+                    self.read_button.setEnabled(True)
+
+            def wait_for_body(self):
+                remaining = MANUAL_READ_TIMEOUT_MS - self.read_elapsed.elapsed()
+                if remaining <= 0:
+                    if fallback := self.active.get('abstract_page'):
+                        self.finish(fallback)
+                    else:
+                        self.finish(error='等待目标文章正文超时。请确认网站已打开有访问权限的全文。')
+                else:
+                    self.read_retry.start(min(remaining, MANUAL_READ_RETRY_MS))
+
+            def attempt_read(self):
+                request = self.active
+                if not request or request['event'].is_set() or not self.read_elapsed.isValid() or self.capturing:
+                    return
+                if pdf := request.pop('pdf_result', None):
+                    self.finish(pdf)
+                    return
+                url = self.view.url().toString()
+                try:
+                    public_url(url, False)
+                except ValueError:
+                    self.wait_for_body()
+                    return
+                self.capturing = True
+                navigation = self.navigation
+
+                def current():
+                    if self.active is not request or request['event'].is_set() or not self.read_elapsed.isValid():
+                        return False
+                    if self.navigation != navigation or self.view.url().toString() != url:
+                        self.capturing = False
+                        self.wait_for_body()
+                        return False
+                    return True
+
                 def received(html):
-                    if self.active is not request:return
-                    if self.view.url().toString()!=url:self.capturing=False;return
+                    if not current():
+                        return
+                    parsed = ArticleHTML()
+                    parsed.feed(html)
+                    prefix = ' '.join(' '.join(parsed.text).casefold()[:2500].split())
+                    if VERIFICATION_PAGE.search(prefix):
+                        self.capturing = False
+                        self.stop_read()
+                        self.read_note.setText('请先完成网站验证或登录，再点击“读取当前文章”。')
+                        return
+                    requested = urlsplit(request['url'])
+                    doi = unquote(requested.path.lstrip('/')) if requested.hostname == 'doi.org' else ''
+                    try:
+                        document = html_document(html,url,{'doi':doi},parser=parsed,include_figures=False)
+                    except ValueError:
+                        document = None
+                    if not document or not document['fulltext']:
+                        if re.search(r'<title\b[^>]*>[^<]{0,64}\b(?:sign in|log in|login)\b',html,re.I):
+                            self.capturing = False
+                            self.stop_read()
+                            self.read_note.setText('请先完成网站登录，再点击“读取当前文章”。')
+                            return
+                        if document and not document['blocked'] and prefix:
+                            request['abstract_page'] = dict(html=html,url=url)
+                        self.capturing = False
+                        self.wait_for_body()
+                        return
                     from source_figures import html_model_candidate
-                    candidate=html_model_candidate(html)
-                    if not candidate:self.finish(dict(html=html,url=url));return
-                    target=urljoin(url,candidate['url'])
-                    # Read already-rendered pixels in this local browser session.
-                    # Canvas access respects CORS. Never export cookies/passwords.
-                    javascript='''(()=>{const target=%s;const im=Array.from(document.images).find(i=>i.src===target||i.currentSrc===target);if(!im||!im.complete||im.naturalWidth<120||im.naturalWidth*im.naturalHeight>24000000)return '';try{const canvas=document.createElement('canvas');const scale=Math.min(1,1600/im.naturalWidth,1200/im.naturalHeight);canvas.width=im.naturalWidth*scale;canvas.height=im.naturalHeight*scale;canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png').split(',')[1]}catch(e){return ''}})()'''
+                    candidate = html_model_candidate(html)
+                    if not candidate:
+                        self.finish(dict(html=html, url=url))
+                        return
+                    target = urljoin(url, candidate['url'])
+                    # Capture the chosen article's rendered image after the user clicks Read.
+                    javascript = '''(()=>{const target=%s;const im=Array.from(document.images).find(i=>i.src===target||i.currentSrc===target);if(!im||!im.complete||im.naturalWidth<120||im.naturalWidth*im.naturalHeight>24000000)return '';try{const canvas=document.createElement('canvas');const scale=Math.min(1,1600/im.naturalWidth,1200/im.naturalHeight);canvas.width=im.naturalWidth*scale;canvas.height=im.naturalHeight*scale;canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png').split(',')[1]}catch(e){return ''}})()'''
                     import json
+
                     def pixels(data):
-                        if self.active is request:
-                            if self.view.url().toString()!=url:self.capturing=False;return
-                            self.finish(dict(html=html,url=url,model_image_base64=data if isinstance(data,str) and len(data)<6*1024*1024 else ''))
-                    self.view.page().runJavaScript(javascript % json.dumps(target),pixels)
+                        if current():
+                            self.finish(dict(html=html, url=url, model_image_base64=
+                                             data if isinstance(data,str) and len(data)<6*1024*1024 else ''))
+
+                    self.view.page().runJavaScript(javascript % json.dumps(target), pixels)
+
                 self.view.page().toHtml(received)
-            def expire(self,request):
+
+            def expire(self, request):
                 if self.active is request:
-                    if hasattr(self,'view'):self.view.stop()
-                    downloads=request.pop('downloads',[])
                     self.finish(error=request['error'])
-                    for download in downloads:
-                        try:download.cancel()
-                        except RuntimeError:pass
-                elif request in self.queue:self.queue.remove(request)
-            def download_pdf(self,download):
-                request=self.active
-                if not request:download.cancel();return
-                url=download.url().toString()
-                try:public_url(url,False)
-                except ValueError:download.cancel();return
-                if 'pdf' not in download.mimeType().lower() and not urlsplit(url).path.lower().endswith('.pdf'):download.cancel();return
-                request.setdefault('downloads',[]).append(download)
-                import tempfile
-                temporary=tempfile.TemporaryDirectory(prefix='biomed-ai-paper-')
-                download.setDownloadDirectory(temporary.name);download.setDownloadFileName('paper.pdf')
+                    self.view.stop()
+                elif request in self.queue:
+                    self.queue.remove(request)
+
+            def download_pdf(self, download):
+                request = self.active
+                if not request or request['event'].is_set() or request.get('download'):
+                    download.cancel()
+                    return
+                url = download.url().toString()
+                try:
+                    public_url(url, False)
+                except ValueError:
+                    download.cancel()
+                    return
+                if 'pdf' not in download.mimeType().lower() and not urlsplit(url).path.lower().endswith('.pdf'):
+                    download.cancel()
+                    return
+                from tempfile import TemporaryDirectory
+                from PySide6.QtWebEngineCore import QWebEngineDownloadRequest
+                temporary = TemporaryDirectory(prefix='biomed-ai-paper-')
+                request['download'] = download
+                navigation = self.navigation
+                download.setDownloadDirectory(temporary.name)
+                download.setDownloadFileName('paper.pdf')
+
                 def size_check():
-                    if download.receivedBytes()>50*1024*1024 or download.totalBytes()>50*1024*1024:download.cancel()
+                    if download.receivedBytes() > 50*1024*1024 or download.totalBytes() > 50*1024*1024:
+                        download.cancel()
+
                 def changed(state):
-                    from PySide6.QtWebEngineCore import QWebEngineDownloadRequest
-                    if state==QWebEngineDownloadRequest.DownloadState.DownloadCompleted:
-                        path=Path(temporary.name)/'paper.pdf'
-                        if self.active is request and path.is_file():self.finish(dict(pdf_path=path,temporary=temporary,url=url))
-                        else:temporary.cleanup()
-                    elif state in (QWebEngineDownloadRequest.DownloadState.DownloadCancelled,QWebEngineDownloadRequest.DownloadState.DownloadInterrupted):
+                    states = QWebEngineDownloadRequest.DownloadState
+                    if state not in (states.DownloadCompleted, states.DownloadCancelled, states.DownloadInterrupted):
+                        return
+                    request.pop('download', None)
+                    path = Path(temporary.name)/'paper.pdf'
+                    current = self.active is request and not request['event'].is_set() and navigation == self.navigation
+                    if current and state==states.DownloadCompleted and path.is_file():
+                        previous = request.get('pdf_result')
+                        if previous:
+                            previous['temporary'].cleanup()
+                        request['pdf_result'] = dict(pdf_path=path, temporary=temporary, url=url)
+                        if self.read_elapsed.isValid():
+                            self.attempt_read()
+                        else:
+                            self.read_note.setText('网站的正文 PDF 已准备好。点击“读取当前文章”后开始读取。')
+                    else:
                         temporary.cleanup()
-                        if self.active is request:self.finish(error='本机 PDF 下载未完成。可下载后在收藏中链接该 PDF。')
-                download.receivedBytesChanged.connect(size_check);download.totalBytesChanged.connect(size_check);download.stateChanged.connect(changed);download.accept()
-            def finish(self,result=None,error=None):
-                self.auto_timer.stop();self.probing=False;self.capturing=False
-                if self.active:
-                    self.active['result']=result;self.active['error']=error;self.active['event'].set();self.active=None
-                if self.dialog:self.dialog.hide()
-                QTimer.singleShot(0,self.advance)
+                        if current:
+                            self.read_note.setText('正文 PDF 下载未完成。可在网页中重新打开文章。')
+
+                download.receivedBytesChanged.connect(size_check)
+                download.totalBytesChanged.connect(size_check)
+                download.stateChanged.connect(changed)
+                download.accept()
+
+            def finish(self, result=None, error=None):
+                request, self.active = self.active, None
+                self.capturing = False
+                self.stop_read()
+                if request:
+                    if pdf := request.pop('pdf_result', None):
+                        pdf['temporary'].cleanup()
+                    if download := request.pop('download', None):
+                        try:
+                            download.cancel()
+                        except RuntimeError:
+                            pass
+                    request.update(result=result, error=error)
+                    request['event'].set()
+                if self.dialog:
+                    self.dialog.hide()
+                QTimer.singleShot(0, self.advance)
+
             def cancel(self):
-                for request in self.queue:request['error']='用户取消本机网页读取。';request['event'].set()
-                self.queue=[]
+                for request in self.queue:
+                    request['error'] = '用户取消本机网页读取。'
+                    request['event'].set()
+                self.queue.clear()
                 if self.active:
-                    self.active['error']='用户取消本机网页读取。';self.expire(self.active)
+                    self.active['error'] = '用户取消本机网页读取。'
+                    self.expire(self.active)
+
         return Reader()

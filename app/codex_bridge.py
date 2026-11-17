@@ -91,8 +91,9 @@ class CodexClient:
             if event.get('method')=='account/login/completed':
                 if not event.get('params',{}).get('success'):raise ValueError('Codex登录未完成。')
                 return self.models()
-    def complete(self,model,instructions,text,max_output_tokens=None,reference=None):
-        if reference is None:return self.turn(model,instructions,[dict(type='text',text=text)])
+    def complete(self,model,instructions,text,max_output_tokens=None,reference=None,output_schema=None):
+        response_options = {'output_schema':output_schema} if output_schema is not None else {}
+        if reference is None:return self.turn(model,instructions,[dict(type='text',text=text)],**response_options)
         with tempfile.TemporaryDirectory(prefix='biomed-codex-reference-') as folder:
             items=[dict(type='text',text=text)]
             if reference.get('mode')=='project':
@@ -102,8 +103,8 @@ class CodexClient:
             for index,value in enumerate(reference['images']):
                 path=Path(folder)/f'Model20250528-page-{index+1}.png';path.write_bytes(base64.b64decode(value.split(',',1)[1],validate=True));items.append(dict(type='localImage',path=str(path)))
             if reference.get('mode')=='project':
-                return self.turn(model,instructions,items,workspace=Path(folder),read_only=True)
-            return self.turn(model,instructions,items)
+                return self.turn(model,instructions,items,workspace=Path(folder),read_only=True,**response_options)
+            return self.turn(model,instructions,items,**response_options)
     def recommend(self,model,topic,max_output_tokens=None):return self.complete(model,INSTRUCTIONS,topic)
     def describe_image(self,model,instructions,data_url):
         with tempfile.TemporaryDirectory(prefix='biomed-codex-image-') as folder:
@@ -128,27 +129,42 @@ class CodexClient:
                 return self.generated_images[-1],usage,incomplete
             from image_routes import ImageUnavailable
             raise ImageUnavailable('当前Codex会话未返回图像工具结果，已跳过模型图。请更新CLI并检查ChatGPT账户图像权限。')
-    def turn(self,model,instructions,items,workspace=None,read_only=False):
+    def turn(self,model,instructions,items,workspace=None,read_only=False,output_schema=None):
         options=dict(model=model,developerInstructions=instructions,approvalPolicy='never',sandbox='workspace-write' if workspace and not read_only else 'read-only',ephemeral=True)
         if workspace:options.update(cwd=str(workspace),config={'features.image_generation':not read_only})
         thread=self.rpc.request('thread/start',options)['thread']['id']
         params=dict(threadId=thread,input=items);effort=getattr(self,'reasoning_effort','default')
+        if output_schema is not None:params['outputSchema']=output_schema
         if workspace and not read_only:params.update(cwd=str(workspace),sandboxPolicy=dict(type='workspaceWrite',writableRoots=[str(workspace)],networkAccess=False))
         if effort!='default':params['effort']=effort
-        turn=self.rpc.request('turn/start',params);self.rpc.active_turn=(thread,turn['turn']['id']);parts=[];final=[];usage={}
+        turn=self.rpc.request('turn/start',params);self.rpc.active_turn=(thread,turn['turn']['id'])
+        parts={}
+        final=[]
+        unphased=[]
+        usage={}
         while True:
             event=self.rpc.next();method=event.get('method');params=event.get('params') or {}
             if 'id' in event:self.rpc.send(dict(id=event['id'],error=dict(code=-32601,message='Tool approval unavailable.')));continue
-            if method=='item/agentMessage/delta':parts.append(params.get('delta',''))
+            if method=='item/agentMessage/delta':
+                parts.setdefault(params.get('itemId'),[]).append(params.get('delta',''))
             if method=='item/completed':
                 item=params.get('item') or {}
-                if item.get('type')=='agentMessage':final.append(item.get('text',''))
+                if item.get('type')=='agentMessage':
+                    streamed=parts.pop(item.get('id'),[])
+                    answer=item.get('text') or ''.join(streamed)
+                    if answer.strip():
+                        phase=item.get('phase')
+                        if phase=='final_answer':
+                            final.append(answer)
+                        elif phase is None:
+                            unphased.append(answer)
                 if workspace and item.get('type')=='imageGeneration' and item.get('status')=='completed':
                     self.accept_image(item,workspace)
             if method=='thread/tokenUsage/updated':usage=(params.get('tokenUsage') or {}).get('last') or {}
             if method=='turn/completed':
                 if (params.get('turn') or {}).get('status')!='completed':raise ValueError('Codex任务失败或被中断；未自动重试。')
-                text='\n'.join(final) or ''.join(parts)
+                answers=final or unphased or [''.join(lines) for lines in parts.values() if lines]
+                text=(answers[-1] if output_schema is not None else '\n'.join(answers)) if answers else ''
                 if not text.strip() and not (workspace and getattr(self,'generated_images',[])):raise ValueError('Codex未返回最终回答。')
                 return text,normal_usage(dict(input_tokens=usage.get('inputTokens'),output_tokens=usage.get('outputTokens'),total_tokens=usage.get('totalTokens'))),False
 

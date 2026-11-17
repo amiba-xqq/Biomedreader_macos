@@ -14,7 +14,7 @@ class Tests(unittest.TestCase):
     tearDown=Runtime22Tests.tearDown
     def login(self,keys,role='pi',student_id='',user='pi'):
         store=AIStore(self.db)
-        identity=save_account(self.db,dict(user_id=user,role=role,name='Fixture',providers=list(keys) or ['deepseek'],gateway_url=LAB_URL),keys,student_id)
+        identity=save_account(self.db,dict(user_id=user,role=role,name='Fixture',providers=list(keys) or ['deepseek'],gateway_url=LAB_URL,device_bound=role=='student'),keys,student_id)
         store.save_lab_session('fixture-session-token',identity)
         store.save('deepseek',store.key('deepseek'),'fixture-model',[dict(id='fixture-model',name='Fixture')]);store.toggle('deepseek')
         return store,identity
@@ -80,8 +80,9 @@ class Tests(unittest.TestCase):
         from ai_analysis import AnalysisEngine
         store,ia=self.login({'deepseek':'same-fixture-key'},'student','ID-A','student')
         engine=AnalysisEngine(store,'deepseek')
-        self.login({'deepseek':'same-fixture-key'},'student','ID-B','student')
-        with self.assertRaises(InterruptedError):engine.call('Evidence','Scientific question')
+        _,current=self.login({'deepseek':'same-fixture-key'},'student','ID-B','student')
+        with patch('lab_service.LabAPI.me',return_value=current):
+            with self.assertRaises(InterruptedError):engine.call('Evidence','Scientific question')
     def test_pi_balance_uses_active_cache_and_skips_unsupported_platforms(self):
         from lab_balance_ui import LabBalanceDialog
         store,identity=self.login({'deepseek':'fixture-key-A','openai':'fixture-key-openai'})

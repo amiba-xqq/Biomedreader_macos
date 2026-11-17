@@ -77,9 +77,10 @@ def points(xs,ys):
 
 
 PLOT_ARGS = {
-    'text': lambda x,y,s,color='#171717',ha='left',fontsize=7: [
-        x,y,s,to_hex(color),{'left':'start','center':'middle','right':'end'}[ha],fontsize],
-    'plot': lambda x,y,color='#171717': [*points(x,y),to_hex(color)],
+    'text': lambda x,y,s,color='#171717',ha='left',fontsize=7,rotation=0: [
+        x,y,s,to_hex(color),{'left':'start','center':'middle','right':'end'}[ha],fontsize,-numeric(rotation)],
+    'plot': lambda x,y,color='#171717',linewidth=None: (
+        [*points(x,y),to_hex(color)] if linewidth is None else [*points(x,y),to_hex(color),linewidth]),
     'scatter': lambda x,y,color='#171717',radius=1.5: [*points(x,y),to_hex(color),radius],
     'rectangle': lambda x,y,w,h,color='#171717',fill=False: [x,y,w,h,to_hex(color),fill],
     'annotate': lambda text,xy,xytext,color='#171717': [*xytext,*xy,text,to_hex(color)],
@@ -203,6 +204,11 @@ class PlotScript:
                 return len(args[0])
             if name in ('canvas_width','canvas_height') and not args:
                 return self.scene['width_pt' if name=='canvas_width' else 'height_pt']
+            if name=='marked_region' and not args:
+                rect = self.scene.get('marked_region_pt')
+                if not rect:
+                    raise ValueError('本轮没有框选区，请使用画布坐标定位标注。')
+                return list(rect)
             if name=='group_anchor' and len(args)==1:
                 return next(group['anchor_pt'] for group in self.scene['groups'] if group['id']==args[0])
         if isinstance(node.func,ast.Attribute) and isinstance(node.func.value,ast.Name):

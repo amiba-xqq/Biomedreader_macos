@@ -78,7 +78,7 @@ class Tests(unittest.TestCase):
     def test_cancel_article_browser_stops_loading_and_pending_pdf(self):
         from ai_content import ArticleWebReader
         reader=ArticleWebReader(self.root,None);reader.view=Mock();download=Mock()
-        request=dict(event=threading.Event(),error='用户取消本机网页读取。',downloads=[download])
+        request=dict(event=threading.Event(),error='用户取消本机网页读取。',download=download)
         reader.active=request;reader.expire(request)
         reader.view.stop.assert_called_once();download.cancel.assert_called_once()
         self.assertIsNone(reader.active);self.assertTrue(request['event'].is_set())

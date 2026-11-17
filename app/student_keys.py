@@ -42,6 +42,22 @@ def expire_on_startup(store,now=None):
     return removed
 
 _locks={};_guard=threading.Lock()
+def verify_session(store):
+    from lab_service import LabAPI,StudentDisabledError
+    from student_policy import disable_cached,DISABLED_MESSAGE
+    state=store.lab_state()
+    if not state or state['identity'].get('role')!='student':return
+    identity=state['identity']
+    if identity.get('disabled'):raise ValueError(DISABLED_MESSAGE)
+    if not identity.get('device_bound'):raise ValueError('学生登录需重新绑定本机。请联网退出课题组，再重新登录。')
+    try:
+        current=LabAPI(store.lab_token(),identity.get('gateway_url')).me()
+    except StudentDisabledError as error:
+        disable_cached(store.database,identity.get('local_owner'),error.identity)
+        raise
+    if current.get('user_id')!=identity['user_id'] or (store.lab_state() or {}).get('fingerprint')!=state['fingerprint']:
+        raise InterruptedError('课题组账户已变化，已停止 AI 调用。')
+
 def ensure(store,*,force=False):
     """Called in an AI worker, never in a GUI config getter."""
     from lab_local import account,save_account
@@ -61,7 +77,7 @@ def ensure(store,*,force=False):
         access=cached.get('student_id')
         if not access:raise ValueError('本地登录凭证不可用，请重新登录学生ID。')
         gateway=identity.get('gateway_url')
-        try:data=LabAPI(gateway=gateway).renew_student(access)
+        try:data=LabAPI(store.lab_token(),gateway).renew_student(access)
         except StudentDisabledError as error:
             disable_cached(store.database,owner,error.identity);raise
         check_cancelled();current=store.lab_state()

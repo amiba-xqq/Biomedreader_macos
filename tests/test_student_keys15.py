@@ -14,7 +14,7 @@ class Tests(unittest.TestCase):
     tearDown=Runtime22Tests.tearDown
     def login(self,keys=True,gateway=LAB_CUSTOM_URL):
         self.manager=AIManager(self.db);store=self.manager.store
-        identity=save_account(self.db,dict(role='student',user_id='student',name='Student',providers=['deepseek'],gateway_url=gateway),{'deepseek':'fixture-old-key'} if keys else {},'student.fixture-id')
+        identity=save_account(self.db,dict(role='student',user_id='student',name='Student',providers=['deepseek'],gateway_url=gateway,device_bound=True),{'deepseek':'fixture-old-key'} if keys else {},'student.fixture-id')
         store.save_lab_session('fixture-session',identity)
         store.save('deepseek',store.key('deepseek'),'fixture-model',[dict(id='fixture-model',name='Fixture')]);store.toggle('deepseek')
         return store,identity
@@ -69,10 +69,13 @@ class Tests(unittest.TestCase):
         fake=Mock();fake.__enter__=Mock(return_value=fake);fake.__exit__=Mock(return_value=False);fake.complete.return_value=('Scientific answer',dict(known=True,total_tokens=4),False)
         seen=[]
         def factory(p,k):seen.append(k);return fake
-        with patch.object(LabAPI,'renew_student',return_value=self.response(identity)) as renew:
-            engine=AnalysisEngine(store,'deepseek',client_factory=factory);renew.assert_not_called()
+        with (patch.object(LabAPI,'renew_student',return_value=self.response(identity)) as renew,
+              patch.object(LabAPI,'me',return_value=identity) as session):
+            engine=AnalysisEngine(store,'deepseek',client_factory=factory)
+            renew.assert_not_called();session.assert_not_called()
             self.assertEqual(engine.call('instruction','evidence'),'Scientific answer')
             self.assertEqual(seen,['fixture-new-key']);self.assertEqual(renew.call_count,1)
+            session.assert_called_once_with()
     def test_login_clears_old_key_before_auth_and_locks_selected_host(self):
         store,identity=self.login();store.logout_lab();jobs=[];self.manager.submit=lambda owner,work,*a:jobs.append(work) or 1
         dialog=LoginDialog(self.manager,'student');self.assertEqual(dialog.gateway.currentData(),LAB_CUSTOM_URL);dialog.secret.setText('student.fixture-id')
