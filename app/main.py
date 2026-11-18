@@ -561,8 +561,7 @@ def main() -> int:
                 provider='codex'
                 store=window.ai_manager.store
                 cancelled=staticmethod(lambda:False)
-                def call(self,instructions,body,reference=None,*,output_schema=None):
-                    assert output_schema and "allowed" in output_schema["required"]
+                def call(self,instructions,body,reference=None):
                     assert reference['images'][0].startswith('data:image/png;base64,')
                     return json.dumps(dict(prompt='Add a title'))
                 def draw_pixels(self,prompt,reference,instructions):
