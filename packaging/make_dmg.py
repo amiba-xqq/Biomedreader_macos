@@ -1,10 +1,14 @@
 """Bounded retries for transient disk-image device contention on hosted runners."""
-import subprocess,sys,time
+import os,subprocess,sys,time
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 source=(root/'build/dmg').resolve();target=(root/'outputs'/sys.argv[1]).resolve()
 assert source.is_relative_to(root) and target.parent==root/'outputs'
 assert target.suffix=='.dmg'
+subprocess.run([sys.executable, str(root/'packaging/ddrimage_smoke.py'),
+                str(source/'Biomed Reader.app/Contents/MacOS/BiomedReader')],
+               check=True, env={**os.environ, 'PYTHONPATH': str(root/'app'),
+                                'QT_QPA_PLATFORM': 'offscreen'})
 for attempt in range(4):
     command=['hdiutil','create','-fs','HFS+','-volname','Biomed Reader','-srcfolder',str(source),'-format','UDZO','-ov',str(target)]
     result=subprocess.run(command,capture_output=True,text=True)

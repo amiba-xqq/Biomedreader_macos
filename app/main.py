@@ -9,6 +9,11 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--ddrimage-worker":
+    from ddrimage_worker import run
+
+    raise SystemExit(run(Path(sys.argv[2])))
+
 from PySide6.QtCore import QStandardPaths, Qt,QProcess,QSettings,QTimer,QCoreApplication,QEvent,QEventLoop,QUrl
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox

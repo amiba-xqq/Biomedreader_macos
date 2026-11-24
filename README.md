@@ -1,16 +1,18 @@
-# 刊禾 · Biomed Reader 2.2.2
+# 刊禾 · Biomed Reader 2.2.3
 
 面向生物医学研究者的文献检索、收藏管理、离线阅读、引用与 AI 辅助分析桌面软件。
 
 ## 下载
 
+刊禾 · Biomed Reader 已在 Microsoft Store 上架。可查看 [Windows 商店版](https://apps.microsoft.com/detail/9NS1LVX86VVB)。
+
 | 系统 | 安装包 |
 | --- | --- |
-| Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.2/BiomedReader_Setup_2.2.2_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.2/BiomedReader_2.2.2_Portable_x64.zip) |
-| macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.2/BiomedReader_2.2.2_macOS12_AppleSilicon.dmg) |
-| macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.2/BiomedReader_2.2.2_macOS12_Intel.dmg) |
+| Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.3/BiomedReader_Setup_2.2.3_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.3/BiomedReader_2.2.3_Portable_x64.zip) |
+| macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.3/BiomedReader_2.2.3_macOS12_AppleSilicon.dmg) |
+| macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.3/BiomedReader_2.2.3_macOS12_Intel.dmg) |
 
-[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.2) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.2) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
+[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.3) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.3) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
 
 Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 Word，并备份本地资料库。
 
@@ -23,6 +25,7 @@ Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 
 - **AI 调用通道**：在各服务商的模型设置中选择优先使用个人 API Key 或课题组授权。当前通道和用量显示在模型卡片上，Codex 本机连接使用独立设置。
 - **AI 作图**：支持 WB／gel、IF、qPCR 和 Excel／CSV 作图、可编辑 PDF／SVG 导出，以及基于项目上下文的连续修改。
 - **WB／gel 排版**：同一蛋白或核酸的条带合并到同一行，其他各行按首组重复条带的泳道标签对齐，缺失位置留空。
+- **DDRimage**：支持 Leica LIF 与 Olympus OIR 导出 TIFF、细胞核内 Foci、核内相对荧光强度、DNA fiber 和单克隆形成统计。「测试一张」的中间文件在关闭工作流窗口时自动清理。
 - **AI Protocol**：从资料提取实验方法并编辑中文方案，支持 Word／PDF 导出和方案分享。
 - **内置科研技能**：按任务加载随软件提供的科研分析、审稿和可视化技能。
 - **科研对话**：正文引用编号可定位右侧文献卡片；正文和卡片分栏、独立滚动；支持消息复制、编辑、删除与对话布局恢复。

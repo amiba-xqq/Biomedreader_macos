@@ -3343,6 +3343,9 @@ class MainWindow(QMainWindow):
         brand = QLabel("刊禾\nBiomed Reader")
         brand.setObjectName("Brand")
         sidebar_layout.addWidget(brand)
+        from ddrimage_worker import available
+
+        self.ddrimage_page = None
         self.nav_buttons = []
         for label, callback in (
             ("关键词方案", self.show_home),
@@ -3359,6 +3362,14 @@ class MainWindow(QMainWindow):
             button.clicked.connect(callback)
             sidebar_layout.addWidget(button)
             self.nav_buttons.append(button)
+        if available():
+            self.ddrimage_button = QPushButton("DDRimage")
+            self.ddrimage_button.setObjectName("NavButton")
+            self.ddrimage_button.setCheckable(True)
+            self.ddrimage_button.clicked.connect(self.show_ddrimage)
+            sidebar_layout.insertWidget(4, self.ddrimage_button)
+        else:
+            self.ddrimage_button = None
         sidebar_layout.addStretch()
         root_layout.addWidget(sidebar)
 
@@ -3451,6 +3462,17 @@ class MainWindow(QMainWindow):
     def _select_navigation(self, index: int | None) -> None:
         for button_index, button in enumerate(self.nav_buttons):
             button.setChecked(index is not None and button_index == index)
+        if self.ddrimage_button is not None:
+            self.ddrimage_button.setChecked(self.pages.currentWidget() is self.ddrimage_page)
+
+    def show_ddrimage(self):
+        if self.ddrimage_page is None:
+            from ddrimage_ui import DDRimagePage
+
+            self.ddrimage_page = DDRimagePage()
+            self.pages.addWidget(self.ddrimage_page)
+        self.pages.setCurrentWidget(self.ddrimage_page)
+        self._select_navigation(None)
 
     def show_home(self) -> None:
         self.home.reload()
@@ -3510,6 +3532,9 @@ class MainWindow(QMainWindow):
         if getattr(self.settings_page,'move_task',None):
             event.ignore();return
         if self.favorites.pdf_import_dialog is not None:self.favorites.pdf_import_dialog.close()
+        if self.ddrimage_page is not None and not self.ddrimage_page.close_workflows():
+            event.ignore()
+            return
         self.word_bridge.timer.stop()
         if self.batch_refresh.active:self.batch_refresh.cancel()
         self.interface_scale.stop()
