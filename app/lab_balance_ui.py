@@ -1,8 +1,9 @@
 """PI-only balance queries against official endpoints, using active local keys."""
-from PySide6.QtCore import QUrl,QTimer
+from PySide6.QtCore import QSize,QUrl,QTimer
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QVBoxLayout,QHBoxLayout,QTableWidget,QTableWidgetItem,QPushButton,QLabel,QHeaderView
+from PySide6.QtWidgets import QApplication,QVBoxLayout,QHBoxLayout,QTableWidget,QTableWidgetItem,QPushButton,QLabel,QHeaderView
 from lab_ui import CloudDialog
+from skin_theme import decorate
 from lab_service import LAB_PROVIDERS
 
 BILLS={'deepseek':'https://platform.deepseek.com/usage','openai':'https://platform.openai.com/settings/organization/billing/overview','kimi':'https://platform.moonshot.cn/console/account','glm':'https://bigmodel.cn/finance-center/finance/overview','bailian':'https://bailian.console.aliyun.com/','ark':'https://console.volcengine.com/ark/'}
@@ -45,7 +46,15 @@ class LabBalanceDialog(CloudDialog):
         self.table.setRowCount(len(rows))
         for i,(provider,text) in enumerate(rows):
             self.table.setItem(i,0,QTableWidgetItem(LAB_PROVIDERS.get(provider,provider)));self.table.setItem(i,1,QTableWidgetItem(text))
-            button=QPushButton('打开用量 / 账单');button.clicked.connect(lambda checked=False,p=provider:QDesktopServices.openUrl(QUrl(BILLS[p])));self.table.setCellWidget(i,2,button)
+            button = QPushButton('打开用量 / 账单')
+            button.clicked.connect(lambda checked=False,p=provider:QDesktopServices.openUrl(QUrl(BILLS[p])))
+            skin = getattr(QApplication.instance(), 'biomed_skin', None)
+            if skin:
+                decorate(button, skin)
+            self.table.setCellWidget(i, 2, button)
+            item = QTableWidgetItem()
+            item.setSizeHint(button.sizeHint() + QSize(12, 4))
+            self.table.setItem(i, 2, item)
         self.table.resizeRowsToContents();self.status.setText('查询完成；余额以服务商账户为准。')
     def failed(self,message):
         if not getattr(self,'_closed',False):self.task=None;self.status.setText(message)
