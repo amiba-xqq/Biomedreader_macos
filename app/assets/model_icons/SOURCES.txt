@@ -1,0 +1,8 @@
+Provider logos shown on the corresponding service cards. Each mark belongs to its respective owner.
+
+DeepSeek: https://github.com/deepseek-ai/awesome-deepseek-integration/tree/main/docs/_logo%20svg
+OpenAI and Codex: https://openai.com/favicon.svg
+Kimi: https://www.kimi.com/favicon.ico
+GLM: https://open.bigmodel.cn/static/images/favicon.png
+Volcengine Ark: https://portal.volccdn.com/obj/volcfe/misc/favicon.png
+Qwen Image on Alibaba Cloud Model Studio: https://www.aliyun.com/product/bailian
