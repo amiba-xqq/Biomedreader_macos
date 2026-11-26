@@ -383,6 +383,7 @@ def draw(engine,text,reference,progress):
 
 from PySide6.QtWidgets import QDialog,QVBoxLayout,QFormLayout,QLineEdit,QComboBox,QPushButton,QLabel,QFrame,QHBoxLayout,QMessageBox,QCheckBox
 from PySide6.QtCore import Signal
+from card_board import AccentCard
 class ImageSettingsDialog(QDialog):
     models_ready=Signal(object)
     def __init__(self,db,provider,parent=None):
@@ -446,7 +447,7 @@ class ImageSettingsDialog(QDialog):
         selected=self.model.currentText();self.model.clear();self.model.addItems(rows);self.model.setCurrentText(selected)
     def reject(self):
         if not self.loading:super().reject()
-class ImageModelCard(QFrame):
+class ImageModelCard(AccentCard):
     def __init__(self,manager,provider):
         from PySide6.QtWidgets import QToolButton,QWidget,QSizePolicy
         from PySide6.QtCore import Qt
@@ -455,6 +456,7 @@ class ImageModelCard(QFrame):
         settings=QPushButton('设置');settings.setProperty('secondary',True);settings.clicked.connect(self.settings);header.addWidget(settings);box.addLayout(header)
         self.model_name=QLabel();self.model_name.setWordWrap(True);box.addWidget(self.model_name);self.state=QLabel();box.addWidget(self.state)
         row=QHBoxLayout();self.toggle=QPushButton();self.toggle.clicked.connect(self.switch);row.addWidget(self.toggle);row.addStretch();box.addLayout(row)
+        self.brand_anchor = self.toggle
         self.details=QWidget();detail=QVBoxLayout(self.details);detail.setContentsMargins(0,10,0,0);self.usage=QLabel();self.usage.setWordWrap(True);detail.addWidget(self.usage)
         note=QLabel('图片费用以官方账单为准；课题组学生请由 PI 核对账单。普通推理 API Key 不用于查询需要独立账户权限的现金余额。');note.setWordWrap(True);detail.addWidget(note)
         bill=QPushButton('打开用户用量/账单');bill.setProperty('secondary',True);bill.clicked.connect(self.open_billing);bill_row=QHBoxLayout();bill_row.addWidget(bill);bill_row.addStretch();detail.addLayout(bill_row);box.addWidget(self.details);self.details.hide();manager.changed.connect(self.refresh);self.refresh()
@@ -471,7 +473,7 @@ class ImageModelCard(QFrame):
         priority=self.manager.store.channel_priority('image_'+self.provider)
         self.model_name.setText('当前模型：'+cfg['model']);self.state.setWordWrap(True)
         self.state.setText(('● 已开启 · ' if enabled else '○ 未开启 · ')+'仅用于模型图\n优先：'+labels[priority]+' · 当前：'+labels[cfg['route']]);self.toggle.setText('关闭模型' if enabled else '开启模型')
-        self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
+        self.set_deployment_appearance(self.provider, enabled)
         self.usage.setText('课题组本机直连：使用当前账户的加密缓存Key；用量在本机记录。' if cfg.get('local_direct') else '课题组云端转发：PI Key 保留在服务端；本机用量请在“我的用量”查看。' if cfg.get('route')=='lab' else '个人 API Key 直连。图像按服务商规则计费；完整调用量与费用请在官方账单查看。')
     def settings(self):ImageSettingsDialog(self.manager.store.database,self.provider,self).exec();self.refresh()
     def switch(self):

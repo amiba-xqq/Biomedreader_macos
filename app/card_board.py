@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QFrame,QVBoxLayout,QLabel,QWidget,QProgressBar
 from keyword_cards import KeywordBoard,KeywordCard
 from interface_scale import apply_scaled_style
 from pathlib import Path
+from skin_artwork import paint_card_artwork
 
 FEATURE_CARD_ICONS = {
     "knowledge": "M3 5h5a4 4 0 0 1 4 4v12a5 5 0 0 0-4-2H3z M21 5h-5a4 4 0 0 0-4 4v12a5 5 0 0 1 4-2h5z M6 9h2m8 0h2",
@@ -98,9 +99,11 @@ class AccentCard(QFrame):
 
     def paintEvent(self, event):
         super().paintEvent(event)
-        if self.feature_icon is None:
-            return
         painter = QPainter(self)
+        paint_card_artwork(self,painter)
+        if self.feature_icon is None:
+            painter.end()
+            return
         painter.setOpacity(0.18)
         size = min(70, self.width() // 3, self.height() - 20)
         if size > 0:

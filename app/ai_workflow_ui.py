@@ -279,11 +279,20 @@ class ScientificQuestionsDialog(AnalysisDialog):
         self.saved_history_id=self.manager.repository.save_history('questions',inputs['topic'][:100] or '科学问题报告',inputs,result,self.saved_history_id)
         self.manager.changed.emit()
 
+ASSISTANT_CARD_PALETTES = {
+    "knowledge": ("#EAE8FA", "#D9D2EB", "#7565A2"),
+    "questions": ("#FDF0D8", "#EBDCC1", "#AB7031"),
+    "reviewer": ("#E6EFF9", "#D4E1EF", "#537C9F"),
+    "finder": ("#E7F3EA", "#D2E4D7", "#598367"),
+    "figure": ("#FCE8DF", "#EFD1C6", "#B66A53"),
+    "protocol": ("#F4E7EF", "#E7D5E2", "#936586"),
+}
+
+
 class AIAssistantPage(QWidget):
     def __init__(self,manager,parent=None):
         super().__init__(parent);self.manager=manager;layout=QVBoxLayout(self);title=QLabel('AI助手');title.setObjectName('PageTitle');layout.addWidget(title)
         layout.addWidget(plain_label('建立领域知识库，可选加载用于选题探索或同行评审；也可仅输入研究领域，或提供自己的稿件。可与文章总结、关键词推荐和增量报告同时运行。',True))
-        from card_board import CardBoard
         from expert_ui import ExpertBoard,KnowledgeHub,ReviewerDialog
         self.assistant_board=ExpertBoard(columns=4);self.assistant_board.setMinimumHeight(360)
         self.assistant_board.add_card('knowledge','AI模型训练','领域文献知识库 · 非权重训练\n支持多个模型与持续补充文献',lambda _:show_window(KnowledgeHub(manager,self)))
@@ -308,10 +317,15 @@ class AIAssistantPage(QWidget):
             show_window(self.findChild(ProtocolHub) or ProtocolHub(manager,self))
         protocol=self.assistant_board.add_card('protocol','AI Protocol','提取实验方法并编写中文操作草案\n编辑、导出与打包分享',open_protocol)
         protocol.mouseMoveEvent=lambda event:None
+        for card in self.assistant_board.cards:
+            card.set_palette(*ASSISTANT_CARD_PALETTES[card.identifier])
         scroll=QScrollArea()
         scroll.setWidgetResizable(True)
         layout.removeWidget(self.assistant_board)
+        from skin_artwork import connect_artwork_scroll
         scroll.setWidget(self.assistant_board)
+        connect_artwork_scroll(scroll)
+        self.assistant_board.setProperty('skinArtworkOffset',16)
         layout.addWidget(scroll,1)
 
 class AIReportDialog(QDialog):

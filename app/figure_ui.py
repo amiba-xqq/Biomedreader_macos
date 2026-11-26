@@ -6,17 +6,18 @@ import json
 import math
 import os
 import re
+import sqlite3
 import uuid
 from copy import deepcopy
 from datetime import datetime,timezone
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, QPointF, QRectF, Qt, QUrl, Signal
+from PySide6.QtCore import QByteArray, QPoint, QPointF, QRectF, QTimer, Qt, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QImage, QPainter, QPen, QTextCursor
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QAbstractItemView, QCheckBox, QComboBox as QtComboBox, QDialog, QDialogButtonBox,
-    QDoubleSpinBox as QtDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel,
+    QDoubleSpinBox as QtDoubleSpinBox, QFormLayout, QHBoxLayout, QInputDialog, QLabel,
     QLineEdit, QListWidget, QMessageBox, QPlainTextEdit, QProgressBar,
     QPushButton, QScrollArea, QSpinBox as QtSpinBox, QSplitter, QStackedWidget, QVBoxLayout, QWidget,
 )
@@ -35,6 +36,7 @@ from figure_data import (
 from figure_materials import REFERENCE_FILES
 from figure_render import COLORS, chart, crop_image, crop_raster_size, if_scale_pixels, if_scene, rotate, source_image, wb_scene
 from figure_script import GUIDANCE, read_script, renderer_bundle, renderer_source
+from interface_scale import scaled
 from path_dialog import QFileDialog
 from scientific_skills import enhance, receipt
 
@@ -419,7 +421,7 @@ class CropDialog(QDialog):
         self.task = None
         self.result = None
         self.setWindowTitle('选取原图区域')
-        self.resize(960, 790)
+        self.resize(scaled(960),scaled(790))
         outer = QVBoxLayout(self)
         outer.addWidget(plain_label('拖动框内可移动，拖动控制点可调整尺寸。Shift＋拖动重选，方向键微调。滚轮缩放，使用抓手或中键平移。'))
         split = QSplitter(Qt.Orientation.Vertical)
@@ -439,6 +441,7 @@ class CropDialog(QDialog):
         scroll.setWidget(settings)
         split.addWidget(scroll)
         self.area = CropArea()
+        self.area.setMinimumSize(240,120)
         self.area.selected.connect(self.selection)
         self.area.adjusted.connect(self.adjust_selection)
         self.area.nudged.connect(self.nudge)
@@ -543,6 +546,31 @@ class CropDialog(QDialog):
         self.rw.valueChanged.connect(self.fixed_size)
         self.rh.valueChanged.connect(self.fixed_size)
         self.rule.currentIndexChanged.connect(self.change_rule)
+
+    def fit_frame_to_screen(self, *, center=False):
+        if self.isMaximized() or self.isMinimized():
+            return
+        screen = self.project.screen() if center else self.screen()
+        if screen is None:
+            return
+        available = screen.availableGeometry().adjusted(8,8,-8,-8)
+        frame = self.frameGeometry()
+        extra_width = max(0,frame.width()-self.width())
+        extra_height = max(0,frame.height()-self.height())
+        self.resize(min(self.width(),available.width()-extra_width),
+                    min(self.height(),available.height()-extra_height))
+        frame = self.frameGeometry()
+        preferred = available.center()-QPoint(frame.width()//2,frame.height()//2) if center else frame.topLeft()
+        self.move(max(available.left(),min(preferred.x(),available.right()-frame.width()+1)),
+                  max(available.top(),min(preferred.y(),available.bottom()-frame.height()+1)))
+
+    def showEvent(self,event):
+        super().showEvent(event)
+        if not getattr(self,'_initial_frame_positioned',False):
+            self._initial_frame_positioned = True
+            self.fit_frame_to_screen(center=True)
+            # Native title-bar sizes are final after returning to the event loop.
+            QTimer.singleShot(0,self,self.fit_frame_to_screen)
 
     def scale_number(self,value,suffix):
         field = QDoubleSpinBox()
@@ -876,7 +904,7 @@ class ProjectDialog(QDialog):
         self.setAcceptDrops(True)
         outer = QVBoxLayout(self)
         top = QHBoxLayout()
-        heading = QLabel(self.title+' · '+MODES[self.mode])
+        heading = self.heading = QLabel(self.title+' · '+MODES[self.mode])
         heading.setTextFormat(Qt.TextFormat.PlainText)
         heading.setObjectName('PageTitle')
         top.addWidget(heading,1)
@@ -1610,6 +1638,11 @@ class ProjectDialog(QDialog):
     def dropEvent(self,event):
         self.attach([u.toLocalFile() for u in event.mimeData().urls()])
         event.acceptProposedAction()
+
+    def update_project_title(self,title):
+        self.title = title
+        self.setWindowTitle('AI作图 · '+title)
+        self.heading.setText(title+' · '+MODES[self.mode])
 
     def add_panel(self):
         index = self.files.currentRow()
@@ -2650,6 +2683,7 @@ class FigureHub(QDialog):
         area = QScrollArea()
         area.setWidgetResizable(True)
         self.board = CardBoard(columns=4)
+        self.board.minimum_card_width = 190
         self.board.empty.setText('暂无作图项目。请选择作图模式并新建卡片。')
         area.setWidget(self.board)
         layout.addWidget(area,1)
@@ -2666,10 +2700,34 @@ class FigureHub(QDialog):
             subtitle = MODES[item['mode']]+'\n最近操作 '+updated.strftime('%Y-%m-%d %H:%M:%S')
             card = self.board.add_card(identifier,item['title'],subtitle,self.open_project)
             card.mouseMoveEvent = lambda event:None
-            button = QPushButton('删除卡片')
-            button.setProperty('secondary',True)
-            button.clicked.connect(lambda _,key=identifier:self.delete(key))
-            card.layout().addWidget(button,0,Qt.AlignmentFlag.AlignRight)
+            actions = QHBoxLayout()
+            actions.addStretch()
+            for label,callback,key in (('重命名',self.rename,'edit'),('删除',self.delete,'trash')):
+                button = QPushButton(label)
+                button.setProperty('secondary',True)
+                button.setStyleSheet('padding:6px 8px;')
+                button._skin_icon_key = key
+                button.clicked.connect(lambda _,operation=callback,project=identifier:operation(project))
+                actions.addWidget(button)
+            card.layout().addLayout(actions)
+
+    def rename(self,identifier):
+        record = self.store.project(identifier)
+        if record is None:
+            self.reload()
+            return
+        title,accepted = QInputDialog.getText(self,'重命名作图卡片','卡片名称',text=record['title'])
+        if not accepted:
+            return
+        try:
+            title = self.store.rename(identifier,title)
+        except (ValueError,sqlite3.Error) as error:
+            QMessageBox.warning(self,'重命名未完成',str(error))
+            return
+        dialog = self.find_project(identifier)
+        if dialog:
+            dialog.update_project_title(title)
+        self.reload()
 
     def create(self):
         dialog = QDialog(self)

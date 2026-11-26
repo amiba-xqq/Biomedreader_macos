@@ -211,13 +211,17 @@ class CodexSettingsDialog(QDialog):
             self.manager.store.save('codex','codex-local-session',self.model.currentData(),self.rows);self.reasoning.save();self.manager.changed.emit();self.accept()
         except ValueError as error:QMessageBox.warning(self,'无法保存',str(error))
 
-class CodexCard(QFrame):
+from card_board import AccentCard
+
+
+class CodexCard(AccentCard):
     def __init__(self,manager):
         super().__init__();self.manager=manager;self.task=None;self.setObjectName('AIModelCard');layout=QVBoxLayout(self)
         header=QHBoxLayout();self.heading=QToolButton();self.heading.setText('ChatGPT Codex · 本机连接');self.heading.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Fixed);self.heading.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon);self.heading.setArrowType(Qt.ArrowType.RightArrow);self.heading.setCheckable(True);self.heading.toggled.connect(self.expand);header.addWidget(self.heading,1)
         self.settings_button=QPushButton('设置');self.settings_button.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed);self.settings_button.setProperty('secondary',True);self.settings_button.clicked.connect(self.settings);header.addWidget(self.settings_button);layout.addLayout(header)
         self.model_name=plain_label();layout.addWidget(self.model_name);self.state=plain_label();layout.addWidget(self.state)
         toggle_row=QHBoxLayout();self.toggle_button=QPushButton('开启模型');self.toggle_button.clicked.connect(self.toggle);toggle_row.addWidget(self.toggle_button);toggle_row.addStretch();layout.addLayout(toggle_row)
+        self.brand_anchor = self.toggle_button
         self.details=QWidget();details=QVBoxLayout(self.details);details.setContentsMargins(0,10,0,0)
         self.status=plain_label('官方本机App Server；使用个人ChatGPT登录，不参与课题组Key共享。',True);details.addWidget(self.status);self.models=QComboBox();self.models.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon);details.addWidget(self.models);row=QVBoxLayout()
         for label,fn in [('检测 / 刷新模型',self.refresh),('使用 ChatGPT 登录',self.login)]:
@@ -227,7 +231,7 @@ class CodexCard(QFrame):
         self.wheel_guard=ClickOnlyComboGuard(self.models)
         self.reload();manager.changed.connect(self.reload)
     def reload(self):
-        config=self.manager.store.config('codex');enabled=bool(config['enabled']);self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}');self.models.clear()
+        config=self.manager.store.config('codex');enabled=bool(config['enabled']);self.set_deployment_appearance('codex',enabled);self.models.clear()
         self.heading.setStyleSheet('font-size:12pt;font-weight:700;color:'+('#B45309' if enabled else '#30251D')+';background:transparent;border:none;')
         self.model_name.setText('当前模型：'+(config['model'] or '尚未设置')+' · 推理强度：'+__import__('reasoning').description(config.get('reasoning_effort')))
         self.state.setText('● 已开启 · 可用于 AI 功能' if enabled else '○ 未开启')

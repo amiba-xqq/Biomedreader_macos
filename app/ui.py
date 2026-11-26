@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from PySide6.QtCore import QObject, QRunnable, QSettings, Qt, QThreadPool, QUrl, Signal, QTimer
+from skin_artwork import SkinRoot, connect_artwork_scroll
 from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon, QIntValidator
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -60,7 +61,7 @@ from data_backup import backup_data_directory
 from path_dialog import QFileDialog
 from interface_scale import scaled,InterfaceScale
 from article_card_layout import CardTitle
-from card_board import CardBoard
+from card_board import CardBoard, CUSTOM_JOURNAL_PALETTES, JOURNAL_PALETTES
 from journal_bundle import export_journal_bundle, import_journal_bundle
 from source_modes import cache_mode,profile_settings
 from website_browser import WebsiteBrowser
@@ -980,6 +981,8 @@ class HomePage(QWidget):
         self.container.order_changed.connect(self.persist_order)
         self.container.width_changed.connect(self.database.set_profile_card_width)
         self.scroll.setWidget(self.container)
+        connect_artwork_scroll(self.scroll)
+        self.container.setProperty("skinArtworkOffset",0)
         self.container.scroll_area = self.scroll
         outer.addWidget(self.scroll, 1)
         self.reload()
@@ -1249,6 +1252,7 @@ class ResultsPage(QWidget):
         self.card_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.card_grid.setVerticalSpacing(14)
         self.card_scroll.setWidget(card_container)
+        connect_artwork_scroll(self.card_scroll)
         card_layout.addWidget(self.card_scroll, 1)
         pager = QHBoxLayout()
         previous, following = QPushButton("上一页"), QPushButton("下一页")
@@ -2081,36 +2085,58 @@ class FavoritesPage(QWidget):
         subtitle.setObjectName("Muted")
         layout.addWidget(subtitle)
 
-        share_row = QHBoxLayout()
-        self.export_bundle_button = QPushButton("打包分享…")
-        self.import_bundle_button = QPushButton("读取分享压缩包…")
-        self.export_bundle_button.clicked.connect(self.export_favorites_bundle)
-        self.import_bundle_button.clicked.connect(self.import_favorites_bundle)
-        self.bundle_status = QLabel("")
+        toolbar = QWidget()
+        toolbar_row = QHBoxLayout(toolbar)
+        toolbar_row.setContentsMargins(0,0,0,2)
+        toolbar_row.setSpacing(5)
+        self.export_bundle_button = QPushButton("打包分享")
+        self.import_bundle_button = QPushButton("读取分享压缩包")
+        self.pdf_import_button = QPushButton('批量收藏 PDF')
+        self.pdf_cancel_button = QPushButton('取消 PDF 导入')
+        self.pdf_cancel_button.hide()
+        self.add_group_button = QPushButton('自定义分组')
+        self.transfer_button = QPushButton('复制 / 移动所选文章')
+        self.search_favorites_button = QPushButton('搜索已收藏文章')
+        self.clear_search_button = QPushButton('清除搜索')
+        self.bulk_cancel_button = QPushButton('批量取消收藏')
+        self.bundle_status = QLabel('')
         self.bundle_status.setWordWrap(True)
-        share_row.addWidget(self.export_bundle_button)
-        share_row.addWidget(self.import_bundle_button)
-        self.pdf_import_button=QPushButton('批量收藏 PDF…');self.pdf_import_button.clicked.connect(self.start_pdf_import)
-        self.pdf_cancel_button=QPushButton('取消 PDF 导入');self.pdf_cancel_button.hide();self.pdf_cancel_button.clicked.connect(self.cancel_pdf_import)
-        share_row.addWidget(self.pdf_import_button);share_row.addWidget(self.pdf_cancel_button)
-        self.add_group_button=QPushButton('＋ 自定义分组')
-        self.add_group_button.clicked.connect(self.add_custom_group)
-        self.transfer_button=QPushButton('复制 / 移动所选文章…')
-        self.transfer_button.clicked.connect(self.transfer_selected)
-        share_row.addWidget(self.add_group_button);share_row.addWidget(self.transfer_button)
-        share_row.addWidget(self.bundle_status, 1)
-        layout.addLayout(share_row)
+        self.search_status = QLabel()
+        self.search_status.setWordWrap(True)
+        self.search_status.setTextFormat(Qt.TextFormat.PlainText)
+        actions = [
+            (self.export_bundle_button,self.export_favorites_bundle,'upload'),
+            (self.import_bundle_button,self.import_favorites_bundle,'download'),
+            (self.pdf_import_button,self.start_pdf_import,'star'),
+            (self.pdf_cancel_button,self.cancel_pdf_import,'close'),
+            (self.add_group_button,self.add_custom_group,'add'),
+            (self.transfer_button,self.transfer_selected,'copy'),
+            (self.search_favorites_button,self.search_favorites,'search'),
+            (self.clear_search_button,self.clear_favorite_search,'close'),
+            (self.bulk_cancel_button,self.bulk_unfavorite,'trash'),
+        ]
         if sys.platform=='darwin':
-            self.word_export_button=QPushButton('导出 Word / EndNote…')
-            self.word_export_button.clicked.connect(self.export_mac_word)
-            layout.addWidget(self.word_export_button,alignment=Qt.AlignmentFlag.AlignLeft)
-        tools=QHBoxLayout()
-        self.search_favorites_button=QPushButton('搜索已收藏文章…');self.search_favorites_button.clicked.connect(self.search_favorites)
-        self.clear_search_button=QPushButton('清除搜索');self.clear_search_button.clicked.connect(self.clear_favorite_search)
-        self.bulk_cancel_button=QPushButton('批量取消收藏…');self.bulk_cancel_button.clicked.connect(self.bulk_unfavorite)
-        self.search_status=QLabel();self.search_status.setWordWrap(True);self.search_status.setTextFormat(Qt.TextFormat.PlainText)
-        for button in (self.search_favorites_button,self.clear_search_button,self.bulk_cancel_button):tools.addWidget(button)
-        tools.addWidget(self.search_status,1);layout.addLayout(tools)
+            self.word_export_button = QPushButton('导出 Word / EndNote')
+            actions.append((self.word_export_button,self.export_mac_word,'upload'))
+        for button,callback,icon_name in actions:
+            button.setStyleSheet('padding:7px 8px;')
+            button._skin_icon_key = icon_name
+            button.clicked.connect(callback)
+            toolbar_row.addWidget(button)
+        toolbar_row.addStretch()
+        toolbar_scroll = QScrollArea()
+        toolbar_scroll.setObjectName('FavoritesToolbar')
+        toolbar_scroll.setWidgetResizable(True)
+        toolbar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        toolbar_scroll.setWidget(toolbar)
+        layout.addWidget(toolbar_scroll)
+        layout.addWidget(self.bundle_status)
+        layout.addWidget(self.search_status)
+        def fit_toolbar():
+            horizontal=toolbar_scroll.horizontalScrollBar()
+            toolbar_scroll.setFixedHeight(toolbar.sizeHint().height()+(horizontal.sizeHint().height() if horizontal.maximum() else 0)+1)
+        toolbar_scroll.horizontalScrollBar().rangeChanged.connect(fit_toolbar)
+        QTimer.singleShot(0,fit_toolbar)
         self.stack = QStackedWidget()
         self.group_scroll = QScrollArea()
         self.group_scroll.setWidgetResizable(True)
@@ -2118,6 +2144,8 @@ class FavoritesPage(QWidget):
         self.group_container.scroll_area=self.group_scroll
         self.group_container.order_changed.connect(lambda order:self.database.save_card_order('favorite',order))
         self.group_scroll.setWidget(self.group_container)
+        connect_artwork_scroll(self.group_scroll)
+        self.group_container.setProperty("skinArtworkOffset",4)
         self.table_page = QWidget()
         table_layout = QVBoxLayout(self.table_page)
         self.group_back = QPushButton("← 返回分组")
@@ -2146,7 +2174,9 @@ class FavoritesPage(QWidget):
         self.favorite_scroll=QScrollArea();self.favorite_scroll.setWidgetResizable(True)
         self.favorite_container=QWidget();self.favorite_grid=QGridLayout(self.favorite_container)
         self.favorite_grid.setAlignment(Qt.AlignmentFlag.AlignTop);self.favorite_grid.setVerticalSpacing(14)
-        self.favorite_scroll.setWidget(self.favorite_container);cards_layout.addWidget(self.favorite_scroll,1)
+        self.favorite_scroll.setWidget(self.favorite_container)
+        connect_artwork_scroll(self.favorite_scroll)
+        cards_layout.addWidget(self.favorite_scroll,1)
         pager=QHBoxLayout();self.favorite_previous=QPushButton('上一页');self.favorite_next=QPushButton('下一页')
         self.favorite_page_label=QLabel()
         self.favorite_previous.clicked.connect(lambda:self.turn_favorite_page(-1));self.favorite_next.clicked.connect(lambda:self.turn_favorite_page(1))
@@ -3171,6 +3201,8 @@ class JournalScopesPage(QWidget):
         self.grid=container
         container.order_changed.connect(lambda order:self.database.save_card_order('scope',order))
         scroll.setWidget(container)
+        connect_artwork_scroll(scroll)
+        container.setProperty("skinArtworkOffset",8)
         cards_layout.addWidget(scroll, 1)
         self.stack.addWidget(cards_page)
 
@@ -3247,9 +3279,11 @@ class JournalScopesPage(QWidget):
     def reload(self):
         self.directory_board.clear()
         for index, scope in enumerate(self.database.list_scopes()):
-            card = self.directory_board.add_card(scope["id"], scope["name"],
+            palette = JOURNAL_PALETTES.get(scope["id"], CUSTOM_JOURNAL_PALETTES[index % len(CUSTOM_JOURNAL_PALETTES)])
+            self.directory_board.add_card(scope["id"], scope["name"],
                                  f"{len(json.loads(scope['issns_json']))} 个 ISSN\n"
-                                 + ("内置固定目录 · 点击查看" if scope["is_builtin"] else "自定义目录 · 点击编辑"),self.open_scope)
+                                 + ("内置固定目录 · 点击查看" if scope["is_builtin"] else "自定义目录 · 点击编辑"),
+                                 self.open_scope, palette=palette)
         self.directory_board.reflow()
 
     def show_cards(self):
@@ -3329,8 +3363,9 @@ class MainWindow(QMainWindow):
         if icon_path and icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
 
-        root = QWidget()
+        root = SkinRoot()
         root.setObjectName("RootWidget")
+        root.setAcceptDrops(True)
         self.setCentralWidget(root)
         root_layout = QHBoxLayout(root)
         root_layout.setContentsMargins(0, 0, 0, 0)
@@ -3343,19 +3378,20 @@ class MainWindow(QMainWindow):
         brand = QLabel("刊禾\nBiomed Reader")
         brand.setObjectName("Brand")
         sidebar_layout.addWidget(brand)
-        from ddrimage_worker import available
-
-        self.ddrimage_page = None
         self.nav_buttons = []
-        for label, callback in (
+        navigation = [
             ("关键词方案", self.show_home),
             ("收藏文章", self.show_favorites),
             ("期刊目录", self.show_journal_scopes),
             ("AI助手", self.show_ai_assistant),
             ("AI部署", self.show_ai),
             ("反馈", self.show_feedback),
+            ("皮肤", self.show_skins),
             ("设置", self.show_settings),
-        ):
+        ]
+        from ddrimage_worker import available
+        self.ddrimage_page = None
+        for label, callback in navigation:
             button = QPushButton(label)
             button.setObjectName("NavButton")
             button.setCheckable(True)
@@ -3374,9 +3410,13 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(sidebar)
 
         self.pages = QStackedWidget()
+        root.pages = self.pages
+        root.sidebar = sidebar
         self.pages.setContentsMargins(18, 18, 18, 18)
         from ai_ui import AIManager,AIDeploymentPage
         self.ai_manager=AIManager(database,self)
+        from skins import SkinStore
+        self.skin_store=SkinStore(database)
         self.home = HomePage(database,self.ai_manager)
         self.favorites = FavoritesPage(database)
         self.settings_page = SettingsPage(database)
@@ -3405,6 +3445,10 @@ class MainWindow(QMainWindow):
         self.settings_page.journals_changed.connect(self.home.reload)
         self.show_home()
         self.interface_scale=InterfaceScale(self,database,APP_STYLE)
+        from skin_theme import apply_theme
+        apply_theme(self.interface_scale,self.skin_store.active())
+        self.pages.currentChanged.connect(self.interface_scale.schedule)
+        self.pages.currentChanged.connect(lambda _:root.update())
         from batch_refresh import BatchRefresh
         self.batch_refresh = BatchRefresh(self)
         self.home.refresh_all_button.clicked.connect(self.toggle_batch_refresh)
@@ -3494,9 +3538,17 @@ class MainWindow(QMainWindow):
     def show_feedback(self):
         self.pages.setCurrentWidget(self.feedback_page);self._select_navigation(5)
 
+    def show_skins(self):
+        if not hasattr(self,'skin_page'):
+            from skin_ui import SkinPage
+            self.skin_page=SkinPage(self,self.skin_store)
+            self.pages.addWidget(self.skin_page)
+        self.pages.setCurrentWidget(self.skin_page)
+        self._select_navigation(6)
+
     def show_settings(self) -> None:
         self.pages.setCurrentWidget(self.settings_page)
-        self._select_navigation(6)
+        self._select_navigation(7)
 
     def show_journal_scopes(self) -> None:
         self.journal_scopes.show_cards()
@@ -3531,10 +3583,9 @@ class MainWindow(QMainWindow):
             self.favorites.cancel_pdf_import();event.ignore();return
         if getattr(self.settings_page,'move_task',None):
             event.ignore();return
-        if self.favorites.pdf_import_dialog is not None:self.favorites.pdf_import_dialog.close()
         if self.ddrimage_page is not None and not self.ddrimage_page.close_workflows():
-            event.ignore()
-            return
+            event.ignore();return
+        if self.favorites.pdf_import_dialog is not None:self.favorites.pdf_import_dialog.close()
         self.word_bridge.timer.stop()
         if self.batch_refresh.active:self.batch_refresh.cancel()
         self.interface_scale.stop()

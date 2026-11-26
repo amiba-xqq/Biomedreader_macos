@@ -86,6 +86,17 @@ class FigureStore:
             db.execute('INSERT INTO figure_projects(id,title,mode) VALUES(?,?,?)', (identifier, title, mode))
         return identifier
 
+    def rename(self, identifier, title):
+        title = title.strip()
+        if not title:
+            raise ValueError('请输入作图卡片名称。')
+        with self.database.connect() as db:
+            result = db.execute('UPDATE figure_projects SET title=?,updated=CURRENT_TIMESTAMP WHERE id=?',
+                                (title,identifier))
+            if not result.rowcount:
+                raise ValueError('找不到该作图项目。')
+        return title
+
     def project(self, identifier):
         with self.database.connect() as db:
             return db.execute('SELECT * FROM figure_projects WHERE id=?', (identifier,)).fetchone()

@@ -210,7 +210,11 @@ class ExpertBoard(CardBoard):
     def paintEvent(self,event):
         super().paintEvent(event)
         if len(self.cards)<3:return
-        painter=QPainter(self);painter.setRenderHint(QPainter.RenderHint.Antialiasing);painter.setPen(QPen(QColor('#D9A26D'),2))
+        from PySide6.QtWidgets import QApplication
+        from skins import blend
+        skin=getattr(QApplication.instance(),'biomed_skin',None)
+        stroke=blend(skin.accent,'#FFFFFF',.30) if skin and skin.id!='classic' else '#D9A26D'
+        painter=QPainter(self);painter.setRenderHint(QPainter.RenderHint.Antialiasing);painter.setPen(QPen(QColor(stroke),2))
         for card in self.cards[1:3]:
             a=self.cards[0].geometry();b=card.geometry()
             if a.top()!=b.top():continue

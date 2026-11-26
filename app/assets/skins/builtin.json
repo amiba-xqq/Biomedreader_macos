@@ -1,0 +1,7 @@
+[
+  {"id":"classic","name":"经典","accent":"#E88225","sidebar":"#302923","surface":"#F7F8FA","sidebar_text":"#F8EBDD","selected":"#E88225","selected_text":"#FFFFFF","note":"暖橙按钮与深棕导航"},
+  {"id":"jade","name":"江山青","accent":"#276D63","sidebar":"#F0F4E8","surface":"#F5FAF7","sidebar_text":"#204C46","selected":"#C3DDD3","selected_text":"#204C46","note":"青瓷色与柔和的浅绿"},
+  {"id":"ocean","name":"深海蓝","accent":"#23558B","sidebar":"#EAF4FC","surface":"#F5F9FD","sidebar_text":"#173F69","selected":"#C8E1F4","selected_text":"#173F69","note":"海蓝色与浅蓝导航"},
+  {"id":"champagne","name":"香槟金","accent":"#796032","sidebar":"#FAF3E4","surface":"#FCF8F0","sidebar_text":"#5E4929","selected":"#EAD7B2","selected_text":"#46341B","note":"香槟金与暖白底色"},
+  {"id":"maple","name":"枫叶红","accent":"#AB2939","sidebar":"#542631","surface":"#FFF7F6","sidebar_text":"#FBE8E8","selected":"#BD4252","selected_text":"#FFFFFF","note":"枫红按钮与深酒红导航"}
+]

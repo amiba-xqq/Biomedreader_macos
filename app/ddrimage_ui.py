@@ -635,7 +635,10 @@ class DDRimagePage(QWidget):
             self.board.add_card(identifier, spec["title"], spec["description"],
                                 partial(self.open_workflow, spec),
                                 palette=DDRIMAGE_CARD_PALETTES[identifier])
+        from skin_artwork import connect_artwork_scroll
         scroll.setWidget(self.board)
+        connect_artwork_scroll(scroll)
+        self.board.setProperty("skinArtworkOffset",12)
         layout.addWidget(scroll, 1)
 
     def open_workflow(self, spec, _identifier=None):

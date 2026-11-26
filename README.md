@@ -1,4 +1,4 @@
-# 刊禾 · Biomed Reader 2.2.3
+# 刊禾 · Biomed Reader 2.3.0
 
 面向生物医学研究者的文献检索、收藏管理、离线阅读、引用与 AI 辅助分析桌面软件。
 
@@ -8,13 +8,19 @@
 
 | 系统 | 安装包 |
 | --- | --- |
-| Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.3/BiomedReader_Setup_2.2.3_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.2.3/BiomedReader_2.2.3_Portable_x64.zip) |
-| macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.3/BiomedReader_2.2.3_macOS12_AppleSilicon.dmg) |
-| macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.2.3/BiomedReader_2.2.3_macOS12_Intel.dmg) |
+| Windows 10/11 x64 | [安装版 EXE](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.3.0/BiomedReader_Setup_2.3.0_x64.exe) · [完整目录 ZIP](https://github.com/amiba-xqq/Biomedreader/releases/download/v2.3.0/BiomedReader_2.3.0_Portable_x64.zip) |
+| macOS 12+，Apple Silicon | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.3.0/BiomedReader_2.3.0_macOS12_AppleSilicon.dmg) |
+| macOS 12+，Intel | [DMG](https://github.com/amiba-xqq/Biomedreader_macos/releases/download/v2.3.0/BiomedReader_2.3.0_macOS12_Intel.dmg) |
 
-[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.2.3) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.2.3) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
+[Windows Release](https://github.com/amiba-xqq/Biomedreader/releases/tag/v2.3.0) · [macOS Release](https://github.com/amiba-xqq/Biomedreader_macos/releases/tag/v2.3.0) · [使用教程](https://amiba-xqq.github.io/Biomedreader/)
 
 Release 同时提供 SHA256 校验文件。升级前请退出 Biomed Reader 和 Word，并备份本地资料库。
+
+## 2.3.0 更新
+
+- 五款内置皮肤：经典、江山青、深海蓝、香槟金、枫叶红。AI DIY 可选文字模型和生图模型，支持拖入参考图片，并以 ZIP 导入、导出和分享皮肤包。生图使用个人 API 直连或 Codex 本机连接。
+- 常用导航、卡片和按钮增加功能图标，收藏文章工具集中在一行。
+- AI 作图的 WB／gel、IF、qPCR 和 Excel／CSV 项目均可重命名。WB／gel 和 IF 选区窗口按当前屏幕定位，方便直接确认。
 
 ## 主要功能
 

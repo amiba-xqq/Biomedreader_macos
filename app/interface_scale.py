@@ -2,7 +2,8 @@
 import re
 import weakref
 from PySide6.QtCore import QObject,QEvent,QTimer,Signal
-from PySide6.QtWidgets import QApplication,QWidget,QAbstractItemView,QDialog
+from PySide6.QtWidgets import QApplication,QWidget,QAbstractItemView,QDialog,QPushButton,QToolButton
+from skin_theme import application_style,recolor,decorate
 
 
 def factor():
@@ -21,7 +22,7 @@ def scale_style(style,zoom):
 def apply_scaled_style(widget,style):
     """New cards may be created after zoom has already been applied."""
     widget._zoom_base_style=style
-    widget._zoom_last_style=scale_style(style,factor())
+    widget._zoom_last_style=scale_style(recolor(style,skin) if (skin := getattr(QApplication.instance(),"biomed_skin",None)) else style,factor())
     widget.setStyleSheet(widget._zoom_last_style)
 
 
@@ -42,11 +43,23 @@ class InterfaceScale(QObject):
         self.window_scan.timeout.connect(self.watch_dialogs);self.window_scan.start()
         self.schedule()
 
+    def decorate_controls(self):
+        app=QApplication.instance()
+        skin=getattr(app,'biomed_skin',None)
+        if skin is None:
+            return
+        for top in app.topLevelWidgets():
+            if top.isVisible():
+                for button in top.findChildren(QWidget):
+                    if isinstance(button,(QPushButton,QToolButton)) and button.isVisibleTo(top):
+                        decorate(button,skin)
+
     def watch_dialogs(self):
         if getattr(self,'stopped',False):return
         for top in QApplication.topLevelWidgets():
             if isinstance(top,QDialog) and top not in self.watched_windows:
                 top.installEventFilter(self);self.watched_windows.add(top);self.schedule()
+        self.decorate_controls()
 
     def eventFilter(self,obj,event):
         if event.type() in (QEvent.Type.Show,QEvent.Type.ScreenChangeInternal) and isinstance(obj,QWidget):
@@ -95,10 +108,12 @@ class InterfaceScale(QObject):
                 available=screen.availableGeometry()
                 self.window.resize(min(available.width(),round(self.window.width()*zoom/previous)),
                     min(available.height(),round(self.window.height()*zoom/previous)))
-            stylesheet=scale_style(self.style,zoom)
+            skin=getattr(app,"biomed_skin",None)
+            stylesheet=scale_style(application_style(self.style,skin) if skin else self.style,zoom)
             if app.styleSheet()!=stylesheet:app.setStyleSheet(stylesheet)
             for top in app.topLevelWidgets():
-                if isinstance(top,QDialog) and screen:
+                fit_frame = getattr(top,'fit_frame_to_screen',None)
+                if isinstance(top,QDialog) and screen and fit_frame is None:
                     current=(top.width(),top.height())
                     if not hasattr(top,'_zoom_base_size'):top._zoom_base_size=current
                     elif current!=getattr(top,'_zoom_last_size',current):
@@ -110,7 +125,8 @@ class InterfaceScale(QObject):
                 for widget in [top,*top.findChildren(QWidget)]:
                     current=widget.styleSheet()
                     if current!=getattr(widget,'_zoom_last_style',None):widget._zoom_base_style=current
-                    updated=scale_style(getattr(widget,'_zoom_base_style',current),zoom)
+                    base=getattr(widget,'_zoom_base_style',current)
+                    updated=scale_style(recolor(base,skin) if skin else base,zoom)
                     if current!=updated:widget.setStyleSheet(updated)
                     widget._zoom_last_style=updated
                     layout=widget.layout()
@@ -134,6 +150,9 @@ class InterfaceScale(QObject):
                             if width!=header._zoom_last_widths[n]:header._zoom_widths[n]=width/previous
                             header.resizeSection(n,round(header._zoom_widths[n]*zoom))
                         header._zoom_last_widths=[header.sectionSize(n) for n in range(header.count())]
+                if fit_frame is not None and top.isVisible():
+                    fit_frame()
+            self.decorate_controls()
             self.window.sidebar.setFixedWidth(scaled(220))
             from keyword_cards import KeywordBoard
             for board in self.window.findChildren(KeywordBoard):board.reflow()

@@ -3,11 +3,17 @@ from html import escape
 from pathlib import Path
 import sys
 from PySide6.QtCore import QSettings
-from PySide6.QtWidgets import QDialog,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QTextBrowser,QDialogButtonBox
+from PySide6.QtWidgets import QDialog,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QTextBrowser,QDialogButtonBox,QApplication
 from version import APP_VERSION
 
-BUILD_ID='2.2.2-20261111.3'
-SECTIONS=[('2.2.2 · AI Protocol',
+BUILD_ID='2.3.0'
+SECTIONS=[('2.3.0 · 皮肤与功能图标',
+  '新增皮肤卡片，可切换经典、江山青、深海蓝、香槟金或枫叶红。常用按钮添加图标，收藏文章操作按钮集中到一行。',
+  '在「AI DIY皮肤包」选择文字模型与生图模型，可以拖入参考图片提取配色，并填写作图要求。生图支持个人 API 直连或 Codex 本机连接。预览确认后保存，可导入、导出或删除自定义 ZIP 皮肤包。'),
+ ('2.2.3 · DDRimage',
+  'Windows 安装程序可选装 DDRimage。选装后，在「期刊目录」与「AI助手」之间打开 DDRimage，可直接离线处理图像。',
+  '提供 Leica LIF 导出 TIFF、细胞核内 Foci、核内相对荧光强度、DNA Fiber 和单克隆形成。支持单张试跑、批量统计、结果预览与打开输出目录。图像分析生成独立结果目录，统计图可从已有 CSV 生成。'),
+ ('2.2.2 · AI Protocol',
   'AI 助手新增 AI Protocol，可从论文、学位论文、收藏文献或自拟方法编写中文实验方案。',
   '自动加载内置科研写作、科学证据评估与文献检索技能。支持指定要提取的方法、检索补充资料、生成流程图与中文草案，并在全屏中编辑。可导出 Word 或 PDF，也可批量打包分享和导入。'),
  ('2.2.2 · AI 作图',
@@ -56,7 +62,7 @@ SECTIONS=[('2.2.2 · AI Protocol',
 class ReleaseNotesDialog(QDialog):
     def __init__(self,parent=None):
         super().__init__(parent);self.setWindowTitle(f'刊禾 · Biomed Reader {APP_VERSION} 更新内容');self.resize(800,640)
-        layout=QVBoxLayout(self);row=QHBoxLayout();heading=QLabel(f'<h2 style="color:#d96516">Biomed Reader {APP_VERSION}</h2>');row.addWidget(heading);row.addStretch()
+        layout=QVBoxLayout(self);row=QHBoxLayout();heading=QLabel(f'Biomed Reader {APP_VERSION}');heading.setObjectName("SectionTitle");row.addWidget(heading);row.addStretch()
         self.mode=QComboBox();self.mode.addItems(['精简','详细']);row.addWidget(QLabel('阅读模式'));row.addWidget(self.mode);layout.addLayout(row)
         self.browser=QTextBrowser();self.browser.setOpenExternalLinks(False);layout.addWidget(self.browser,1)
         buttons=QDialogButtonBox(QDialogButtonBox.StandardButton.Close);buttons.rejected.connect(self.reject);layout.addWidget(buttons)
@@ -64,7 +70,12 @@ class ReleaseNotesDialog(QDialog):
     def render(self):
         detailed=self.mode.currentIndex()==1
         content=''.join('<h3 style="color:#bd5b15">'+escape(title)+'</h3><p>'+escape(short)+'</p>'+('<p style="color:#625447">'+escape(long)+'</p>' if detailed else '') for title,short,long in SECTIONS)
-        self.browser.setHtml('<html><body style="background:#fffaf3;font-family:Microsoft YaHei UI,Arial;line-height:1.7;padding:18px"><p style="color:#8b7762">本机内置说明 · 无需联网</p>'+content+'</body></html>')
+        from skin_theme import recolor
+        skin=getattr(QApplication.instance(),'biomed_skin',None)
+        if skin:
+            content=recolor(content,skin)
+        bg=skin.surface if skin else '#fffaf3'
+        self.browser.setHtml(f'<html><body style="background:{bg};font-family:Microsoft YaHei UI,Arial;line-height:1.7;padding:18px"><p style="color:#8b7762">本机内置说明 · 无需联网</p>'+content+'</body></html>')
 
 def show_release_notes(parent=None):ReleaseNotesDialog(parent).exec()
 

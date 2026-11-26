@@ -48,6 +48,10 @@ class LightTheme(QObject):
             hints=self.application.styleHints()
             if hints.colorScheme()!=Qt.ColorScheme.Light:hints.setColorScheme(Qt.ColorScheme.Light)
             desired=light_palette()
+            skin=getattr(self.application,'biomed_skin',None)
+            if skin:
+                from skin_theme import theme_palette
+                desired=theme_palette(desired,skin)
             if self.application.palette()!=desired:self.application.setPalette(desired)
         finally:self.busy=False
 

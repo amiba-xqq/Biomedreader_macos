@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QWidget,QDialog,QVBoxLayout,QHBoxLayout,QFormLayo
     QPushButton,QComboBox,QFrame,QMessageBox,QTableWidget,QTableWidgetItem,QAbstractItemView,
     QScrollArea,QApplication,QPlainTextEdit)
 from ai_ui import plain_label
+from card_board import AccentCard
 from ai_store import PROVIDERS
 from lab_service import LabAPI,LAB_PROVIDERS,LAB_URL,LAB_CUSTOM_URL
 from lab_activity import TokenActivity,year_days
@@ -235,7 +236,7 @@ class LabPanel(QFrame):
         row=QHBoxLayout();row.addWidget(QLabel('未单独设置时的默认通道'));self.mode=QComboBox();self.mode.addItems(['优先个人 API Key 直连','优先课题组授权']);row.addWidget(self.mode);row.addStretch();layout.addLayout(row)
         self.status=plain_label('',True);layout.addWidget(self.status);self.available_buttons={};self.login_buttons={}
         for role,title,description in [('pi','PI · 课题组管理','使用自己的 API Key 建立课题组，创建学生访问ID，管理权限并查看本机最近一年的每日Token用量。'),('student','学生 · 课题组授权','使用 PI 提供的访问ID登录，不需要 PI 的 API Key。也可切回个人通道，使用自己的 Key。')]:
-            card=QFrame();card.setObjectName('LabRoleCard');card.setStyleSheet('QFrame#LabRoleCard {background:#FFF8EB;border:1px solid #EDCEAA;border-radius:12px;}');box=QVBoxLayout(card);heading=plain_label(title);heading.setStyleSheet('font-weight:700;color:#B45309;');box.addWidget(heading);box.addWidget(plain_label(description,True));controls=QHBoxLayout()
+            card=AccentCard();card.setObjectName('LabRoleCard');card.set_deployment_appearance(role);box=QVBoxLayout(card);heading=plain_label(title);heading.setStyleSheet('font-weight:700;color:#B45309;');box.addWidget(heading);box.addWidget(plain_label(description,True));controls=QHBoxLayout()
             login=QPushButton('PI登录' if role=='pi' else '学生登录');login.clicked.connect(lambda checked=False,r=role:self.login(r));controls.addWidget(login);self.login_buttons[role]=login
             manage=QPushButton('学生与用量管理' if role=='pi' else '我的用量');manage.clicked.connect(lambda checked=False,r=role:self.manage(r));controls.addWidget(manage)
             available=QPushButton('可用AI模型');available.clicked.connect(self.available_models);controls.addWidget(available);self.available_buttons[role]=available

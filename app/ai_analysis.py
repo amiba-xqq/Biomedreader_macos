@@ -33,8 +33,8 @@ def byte_chunks(text,budget):
     return parts or ['']
 
 class AnalysisEngine:
-    def __init__(self,store,provider,output_limit=None,client_factory=None):
-        self.store=store;self.provider=provider;self.config=store.config(provider)
+    def __init__(self,store,provider,output_limit=None,client_factory=None,*,route=None):
+        self.store=store;self.provider=provider;self.config=store.config(provider,route) if route else store.config(provider);self.fixed_route=route
         if self.config.get('blocked_reason'):raise ValueError(self.config['blocked_reason'])
         if not self.config['enabled']:raise ValueError('请先在 AI部署 中开启所选模型。')
         self.key=store.key(provider,self.config.get('route'));self.model=self.config['model'];self.fingerprint=key_fingerprint(self.key)
@@ -59,7 +59,7 @@ class AnalysisEngine:
         self.config=self.store.config(self.provider,'lab');self.key=self.store.key(self.provider,'lab');self.fingerprint=key_fingerprint(self.key)
         self.factory=self._custom_factory or self.store.client_factory(self.provider,self.config)
     def switch_channel(self):
-        if self.provider=='codex' or self.config.get('route')!=self.initial_route:
+        if self.fixed_route or self.provider=='codex' or self.config.get('route')!=self.initial_route:
             return False
         route='lab' if self.initial_route=='personal' else 'personal'
         config=self.store.config(self.provider,route)

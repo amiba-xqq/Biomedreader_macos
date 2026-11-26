@@ -106,8 +106,10 @@ class FeedbackPage(QWidget):
         heading=QLabel('反馈');heading.setObjectName('PageTitle');cards_layout.addWidget(heading)
         from card_board import CardBoard
         self.feedback_board=CardBoard(columns=4)
+        self.feedback_board.setProperty("skinArtworkOffset",31)
         for title,text,index in [('反馈发送到开发者邮箱','私密表单 · 无需 GitHub 账号\n适合不希望公开的问题',1),('反馈上传到 GitHub Issue','公开讨论 · Bug 与功能建议\n打开预填网页后自行确认提交',0)]:
-            card=self.feedback_board.add_card(str(index),title,text,lambda value:self.open_form(int(value)));card.setToolTip('点击填写反馈');card.mouseMoveEvent=lambda event:None
+            palette = ("#E8F0FC", "#D4E2F5", "#5884B6", "mail") if index else ("#F0EAF7", "#E1D7EF", "#82649F", "issue")
+            card=self.feedback_board.add_card(str(index),title,text,lambda value:self.open_form(int(value)),palette=palette);card.setToolTip('点击填写反馈');card.mouseMoveEvent=lambda event:None
         cards_layout.addWidget(self.feedback_board,1);form=QWidget();self.stack.addWidget(form);layout=QVBoxLayout(form)
         back=QPushButton('← 返回反馈方式');back.setProperty('secondary',True);back.clicked.connect(lambda:self.stack.setCurrentIndex(0));layout.addWidget(back,0,Qt.AlignmentFlag.AlignLeft)
         title=QLabel('反馈');title.setObjectName('PageTitle');layout.addWidget(title)

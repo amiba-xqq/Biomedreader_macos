@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QWidget,QDialog,QFrame,QLabel,QPushButton,QToolBu
     QApplication,QDialogButtonBox,QGridLayout,QProgressBar,QSizePolicy,QSpinBox,QTabWidget,QCheckBox)
 from ai_store import AIStore,PROVIDERS,key_fingerprint
 from ai_service import AIClient,generate_recommendations
+from card_board import AccentCard
 
 class JobSignals(QObject):
     completed=Signal(int,object)
@@ -207,7 +208,7 @@ class AISettingsDialog(QDialog):
             self.manager.store.save_channel_priority(self.provider,self.route);self.manager.changed.emit();self.accept()
         except ValueError as error:QMessageBox.warning(self,'无法保存',str(error))
 
-class ModelCard(QFrame):
+class ModelCard(AccentCard):
     def __init__(self,manager,provider,parent=None):
         super().__init__(parent);self.manager=manager;self.provider=provider;self.balance_task=None
         self.setObjectName('AIModelCard');layout=QVBoxLayout(self)
@@ -216,6 +217,7 @@ class ModelCard(QFrame):
         self.model_name=plain_label();layout.addWidget(self.model_name)
         self.state=plain_label();layout.addWidget(self.state)
         row=QHBoxLayout();self.toggle_button=QPushButton();self.toggle_button.clicked.connect(self.toggle);row.addWidget(self.toggle_button);row.addStretch();layout.addLayout(row)
+        self.brand_anchor = self.toggle_button
         self.details=QWidget();details=QVBoxLayout(self.details);details.setContentsMargins(0,10,0,0)
         self.usage=UsageLabel();self.usage.setTextFormat(Qt.TextFormat.PlainText);self.usage.setWordWrap(True);self.usage.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse);details.addWidget(self.usage)
         from ai_service import BALANCE_PROVIDERS
@@ -249,7 +251,7 @@ class ModelCard(QFrame):
                            '\n当前：'+names[config.get('route','personal')]+' · 优先：'+names[priority])
         if config.get('blocked_reason'):self.state.setText(config['blocked_reason'])
         self.toggle_button.setText('关闭模型' if enabled else '开启模型')
-        self.setStyleSheet('QFrame#AIModelCard {background:'+('#FFF1D6' if enabled else '#FFFFFF')+';border:2px solid '+('#F59E0B' if enabled else '#E8D5C4')+';border-radius:14px;padding:12px;}')
+        self.set_deployment_appearance(self.provider, enabled)
         self.usage.setText(f"本软件调用次数：{usage['calls']:,}　未确认用量：{usage['unknown_calls']:,}\n输入 Token：{usage['input_tokens']:,}　输出 Token：{usage['output_tokens']:,}\n总 Token：{usage['total_tokens']:,}　其中缓存输入：{usage['cached_tokens']:,}\n上次调用：{local_time(usage['last_call'])}")
     def settings(self):
         if self.provider=='biomni':
@@ -306,8 +308,11 @@ class AIDeploymentPage(QWidget):
         from image_routes import ImageModelCard
         self.image_cards=[ImageModelCard(manager,p) for p in ('ark','bailian')]
         for index,card in enumerate([*self.cards.values(),*self.image_cards]):
+            card.setProperty("skinArtworkIndex",22+index)
             self.model_grid.addWidget(card,index//3,index%3,Qt.AlignmentFlag.AlignTop)
+        from skin_artwork import connect_artwork_scroll
         layout.addStretch();scroll.setWidget(content);outer.addWidget(scroll,1)
+        connect_artwork_scroll(scroll)
 
 class RecommendationDialog(QDialog):
     def __init__(self,manager,parent=None):

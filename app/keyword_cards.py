@@ -4,7 +4,8 @@ import json
 import uuid
 from datetime import datetime
 from PySide6.QtCore import Qt, QPoint, QRect, QMimeData, Signal, QTimer
-from PySide6.QtGui import QDrag
+from PySide6.QtGui import QDrag, QPainter
+from skin_artwork import paint_card_artwork
 from PySide6.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout, QProgressBar, QApplication, QMenu, QLayout,QPushButton,QHBoxLayout
 
 MIME = 'application/x-biomed-reader-keyword-card'
@@ -97,6 +98,11 @@ class KeywordCard(QFrame):
         self.handle = WidthHandle(self)
         self.set_busy('')
 
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        with QPainter(self) as painter:
+            paint_card_artwork(self,painter)
+
     def update_elapsed(self):
         try:
             stamp=datetime.fromisoformat(self.refreshed_at.replace('Z','+00:00')).astimezone()
@@ -159,6 +165,7 @@ class KeywordBoard(QWidget):
         super().__init__()
         self.cards = []
         self.columns=columns;self.card_height=card_height;self.row_gap=16
+        self.minimum_card_width = 140
         self.scroll_area = None
         self.scroll_step = 0
         self.scroll_timer = QTimer(self)
@@ -189,7 +196,7 @@ class KeywordBoard(QWidget):
         self.indicator.hide()
 
     def reflow(self):
-        gap=scaled(16);edge=scaled(10);minimum=scaled(140)
+        gap=scaled(16);edge=scaled(10);minimum=scaled(self.minimum_card_width)
         columns=max(1,min(self.columns,(self.width()-2*edge+gap)//(minimum+gap)))
         available=max(minimum,self.width()-2*edge)
         automatic=max(minimum,(available-(columns-1)*gap)//columns)
