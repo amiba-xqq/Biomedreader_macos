@@ -58,6 +58,16 @@ class AIClient:
             try:
                 code=response.status_code
                 if code!=200:
+                    if self.provider=='openai' and payload and {'type':'image_generation'} in payload.get('tools',[]):
+                        from image_routes import image_review_notice
+                        try:
+                            body=response.json()
+                        except ValueError:
+                            body={}
+                        error=body.get('error') if isinstance(body,dict) else None
+                        notice=image_review_notice(error.get('code')) if isinstance(error,dict) else ''
+                        if notice:
+                            raise AIAPIError(notice)
                     if hasattr(self,'http_error'):raise AIAPIError(self.http_error(response))
                     messages={401:'API Key 无效或已失效，请重新设置。',403:'当前账户或所在地区无权调用该服务或模型。',
                               402:'账户余额不足，请前往服务商平台检查。',429:'调用受限、额度不足或请求过于频繁，请稍后重试并检查平台额度。',
@@ -179,7 +189,7 @@ class AIClient:
     def generate_pixels(self,model,instructions,text,reference):
         if self.provider!='openai':raise ValueError('当前服务商通道没有可接收的模型图文件产出接口。文字分析仍可使用；请使用支持文件输出的OpenAI API、Codex本机连接或Biomni。')
         from reasoning import payload_fields
-        from image_routes import ImageUnavailable
+        from image_routes import ImageUnavailable,image_review_notice
         content=[dict(type='input_text',text=text)]
         if reference.get('file_data'):
             content.append(dict(type='input_file',filename=reference['filename'],file_data=reference['file_data']))
@@ -188,10 +198,16 @@ class AIClient:
         payload.update(payload_fields(self.provider,getattr(self,'reasoning_effort','default'),responses=True))
         self.pdf_started=True;data=self.request('POST','/responses',payload);self.pdf_usage=normal_usage(data.get('usage'))
         for item in data.get('output',[]):
-            if item.get('type')=='image_generation_call' and item.get('result'):
+            if item.get('type')!='image_generation_call':
+                continue
+            if item.get('result'):
                 encoded=item['result']
                 if len(encoded)>34*1024*1024:raise ValueError('生成图像超过大小限制。')
                 return __import__('base64').b64decode(encoded,validate=True),self.pdf_usage,False
+            error=item.get('error')
+            notice=image_review_notice(error.get('code')) if isinstance(error,dict) else ''
+            if notice:
+                raise AIAPIError(notice)
         raise ImageUnavailable('当前模型未返回图像工具结果，已跳过模型图。')
 
     def container_file_content(self,container,file):

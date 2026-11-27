@@ -12,6 +12,9 @@ subprocess.run([sys.executable, str(root/'packaging/ddrimage_smoke.py'),
 subprocess.run([sys.executable, str(root/'packaging/skin_update_smoke.py')],
                timeout=120, check=True, env={**os.environ, 'PYTHONPATH': str(root/'app'),
                                             'QT_QPA_PLATFORM': 'offscreen'})
+subprocess.run([sys.executable, str(root/'tests/test_skin_render_prompt.py')],
+               timeout=90, check=True, env={**os.environ, 'PYTHONPATH': str(root/'app'),
+                                           'QT_QPA_PLATFORM': 'offscreen'})
 for attempt in range(4):
     command=['hdiutil','create','-fs','HFS+','-volname','Biomed Reader','-srcfolder',str(source),'-format','UDZO','-ov',str(target)]
     result=subprocess.run(command,capture_output=True,text=True)

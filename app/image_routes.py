@@ -67,6 +67,22 @@ def discover(provider,key,region='cn',session=None):
 class ImageUnavailable(ValueError):pass
 
 
+def image_review_notice(code):
+    if not isinstance(code,str):
+        return ''
+    kind = code.split('.',1)[0].casefold()
+    if kind in ('inputtextsensitivecontentdetected','inputtextriskdetection'):
+        return '绘图提示未通过服务商的内容审核。请用清晰的画面描述重新提交。'
+    if kind=='inputimagesensitivecontentdetected':
+        return '参考图未通过服务商的内容审核。请检查并更换参考图。'
+    if kind in ('outputimagesensitivecontentdetected','outputtextsensitivecontentdetected'):
+        return '生成结果未通过服务商的内容审核。请调整创作要求后重新提交。'
+    if kind in ('sensitivecontentdetected','datainspectionfailed','data_inspection_failed',
+                'ipinfringementsuspect','moderation_blocked'):
+        return '绘图请求或结果未通过服务商的内容审核。请检查绘图描述和参考图。'
+    return ''
+
+
 def ark_request_error(response):
     """Keep the provider's diagnostic code and request ID without leaking messages."""
     try:
@@ -83,7 +99,10 @@ def ark_request_error(response):
     if not isinstance(request_id,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,120}',request_id):
         request_id = ''
     status = response.status_code
-    if status==429:
+    review = image_review_notice(code)
+    if review:
+        detail = review
+    elif status==429:
         if code=='SetLimitExceeded':
             detail = '该模型或接入点达到设置的用量上限，服务已暂停。请在方舟「开通管理」核对模型用量上限和安心体验模式。使用接入点时，也请核对其用量上限。'
         elif code.startswith('QuotaExceeded') or code in ('AccountQuotaExceeded','EndpointUsageLimitExceeded'):
@@ -166,7 +185,7 @@ def bailian_task(session,base,data,cancelled):
         if state in ('FAILED','CANCELED','UNKNOWN'):
             code = output.get('code') or ''
             detail = f' · {code}' if isinstance(code,str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_.-]{0,95}',code) else ''
-            raise ValueError(f'百炼任务 {task} 未完成（{state}{detail}）。')
+            raise ValueError(f'百炼任务 {task} 未完成（{state}{detail}）。'+image_review_notice(code))
     raise ValueError(f'百炼任务 {task} 仍未返回图片，请在控制台查看原任务。')
 
 
@@ -196,7 +215,8 @@ def bailian_request_error(response):
         detail += f' · {code}'
     if isinstance(request_id,str) and re.fullmatch(r'[A-Za-z0-9_-]{1,120}',request_id):
         detail += f' · 请求 ID {request_id}'
-    return f'百炼未接受绘图请求（{detail}）。请核对 API Key 的区域及模型权限。'
+    guidance = image_review_notice(code) or '请核对 API Key 的区域及模型权限。'
+    return f'百炼未接受绘图请求（{detail}）。{guidance}'
 
 
 def config(db,provider,route=None):
