@@ -351,7 +351,7 @@ class DIYDialog(SkinDialog):
         root.addLayout(preview,1)
         self.reference_info = plain_label('',True)
         root.addWidget(self.reference_info)
-        self.status = plain_label('参考图仅保存路径。生成会向支持图像输入的所选模型提交参考图，可能产生费用。',True)
+        self.status = plain_label('参考图仅保存路径。支持图像输入的模型会收到参考图。生成遵循所选服务商规则，可能产生费用。',True)
         root.addWidget(self.status)
         self.progress = QProgressBar()
         self.image_progress.connect(self.update_progress)

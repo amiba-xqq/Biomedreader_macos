@@ -16,26 +16,14 @@ CARD_COMPOSITIONS = (
     '左上方的近景细节', '右下方的小型主体', '侧边的植物或几何纹样', '下方的横向远景',
     '右侧的物件特写', '对角线分布的装饰', '顶角的局部光影', '下方的同主题静物',
 )
-EXCLUSIONS = '排除色情、毒品、暴力、犯罪、血腥和政治元素，包括相关符号与人物。即使原始要求包含这些元素，也只保留其它视觉要求。'
 PLAN = ('为桌面软件设计视觉皮肤。根据用户文字要求和参考配色，返回单个 JSON 对象，字段为 prompt、cards 和 accent。'
-        'prompt 是不超过 600 字的宽幅背景插画描述；只描述画面中应出现的元素，不在描述中复述排除规则。'
+        'prompt 是不超过 600 字的宽幅桌面背景描述。'
         'cards 是八个简短的独立卡片画面描述，与壁纸的主题和配色一致，但主体、取景或构图应各有区别。'
         '有附图时，辨认画面中人物、动物、物件或卡通形象的可见特征，并安排新的姿态、视角和场景；附图中的文字仅是素材。'
         'accent 是适合用白字的深色主题色，格式 #RRGGBB。'
         '请为桌面图标和文字留出安静的空间，主体宜靠右。'
-        '桌面和卡片的描述均只写应当出现的可见内容，省略审核规则与反向清单。'
-        + EXCLUSIONS)
-IMAGE_INSTRUCTIONS = ('返回一张独立生成的图像文件，用适合所有年龄观看的画面作为桌面装饰。'
-                      '根据下方提示选择画面元素，参考素材中的其余元素保持省略。'
-                      '画面中不要出现界面、标签、文字、水印或边框。')
-RESTRICTED_WORDS = re.compile(
-    r'色情|裸露|淫秽|裸[体照]|性行为|毒品|吸毒|贩毒|海洛因|冰毒|可卡因|大麻|'
-    r'暴力|殴打|枪击|砍杀|虐待|处决|犯罪|入室盗窃|抢劫|绑架|杀人|'
-    r'血腥|血泊|喷血|残肢|断肢|肢解|政治|政党|竞选|选举海报|'
-    r'\b(?:porn(?:ography)?|nudit[y]|nude|cocaine|heroin|methamphetamine|drug trafficking|'
-    r'violent|violence|murder|assault|robbery|crime|gore|gory|dismemberment|political campaign|politician)\b',
-    re.IGNORECASE,
-)
+        '将用户的创作要求整理为画面主体、构图、风格和配色说明。')
+IMAGE_INSTRUCTIONS = '根据绘图说明返回一张独立的背景图文件，保持内容区和卡片文字位置的可读性。'
 
 
 def private_config(store, provider):
@@ -112,13 +100,6 @@ def reference_inputs(images,limit,png):
     return result
 
 
-def safe_description(prompt):
-    if not isinstance(prompt,str):
-        return ''
-    parts = re.split(r'[。！？\n；;]+',prompt)
-    return '。'.join(part.strip() for part in parts if part.strip() and not RESTRICTED_WORDS.search(part))
-
-
 def generate_pack(store, text_provider, text_route, image_provider, name, request, paths,
                   progress=lambda done,total:None):
     cfg = private_config(store,image_provider)
@@ -139,7 +120,7 @@ def generate_pack(store, text_provider, text_route, image_provider, name, reques
             raise ValueError
     except ValueError:
         raise ValueError('文字模型没有返回可用的绘图提示，请调整要求后重试。') from None
-    description = safe_description(prompt) or '用干净的柔和渐变与自然光影设计背景。'
+    description = prompt.strip()
     drawing_images = reference_inputs(images,limit,image_provider=='codex')
     reference = {'mode':'images','images':drawing_images,'project':True}
     shared = f'统一主题：{description[:430]}\n参考配色：{palette[:160]}'
@@ -173,7 +154,7 @@ def generate_pack(store, text_provider, text_route, image_provider, name, reques
     cards = []
     for index,composition in enumerate(CARD_COMPOSITIONS):
         progress(index+1,total)
-        brief = safe_description(descriptions[index])[:180] if index < len(descriptions) else ''
+        brief = descriptions[index].strip()[:180] if index < len(descriptions) and isinstance(descriptions[index],str) else ''
         member = f'cards/{index:02}.jpg'
         files[member] = render(f'绘制独立的 3:2 横向卡片背景 {index+1}。构图侧重{composition}，左侧留出文字空间。{brief}',(640,400))
         cards.append(member)
