@@ -161,10 +161,12 @@ class KeywordBoard(QWidget):
     order_changed = Signal(object)
     width_changed = Signal(int,int)
 
-    def __init__(self,columns=5,card_height=245):
+    def __init__(self,columns=5,card_height=245,*,fixed_card_height=False,fixed_card_width=0):
         super().__init__()
         self.cards = []
         self.columns=columns;self.card_height=card_height;self.row_gap=16
+        self.fixed_card_height=fixed_card_height
+        self.fixed_card_width=fixed_card_width
         self.minimum_card_width = 140
         self.scroll_area = None
         self.scroll_step = 0
@@ -196,22 +198,27 @@ class KeywordBoard(QWidget):
         self.indicator.hide()
 
     def reflow(self):
-        gap=scaled(16);edge=scaled(10);minimum=scaled(self.minimum_card_width)
+        gap=scaled(16);edge=scaled(10);minimum=scaled(self.fixed_card_width or self.minimum_card_width)
         columns=max(1,min(self.columns,(self.width()-2*edge+gap)//(minimum+gap)))
         available=max(minimum,self.width()-2*edge)
         automatic=max(minimum,(available-(columns-1)*gap)//columns)
+        row_width=columns*minimum+(columns-1)*gap if self.fixed_card_width else available
         x,y,row_height=edge,edge,0
         self.setMinimumWidth(minimum+2*edge)
         for card in self.cards:
-            width=min(available,scaled(card.custom_width) if card.custom_width else automatic)
-            height=scaled(self.card_height+30 if card.busy else self.card_height)
+            width=minimum if self.fixed_card_width else min(available,scaled(card.custom_width) if card.custom_width else automatic)
+            height=scaled(self.card_height+30 if card.busy and not self.fixed_card_height else self.card_height)
             title=getattr(card,'title_label',None)
             if title:
                 title.ensurePolished();m=card.layout().contentsMargins();text_width=max(40,width-m.left()-m.right()-4)
-                h=title.fontMetrics().boundingRect(QRect(0,0,text_width,100000),Qt.TextFlag.TextWordWrap,title.text()).height()+scaled(10)
-                title.setFixedHeight(max(scaled(30),h))
-                height=max(height,card.layout().heightForWidth(width)+scaled(8),card.layout().minimumSize().height()+scaled(8))
-            if x>edge and x+width>edge+available:
+                if self.fixed_card_height:
+                    title.setText(title.fontMetrics().elidedText(card.full_title,Qt.TextElideMode.ElideRight,text_width))
+                    title.setFixedHeight(scaled(30))
+                else:
+                    h=title.fontMetrics().boundingRect(QRect(0,0,text_width,100000),Qt.TextFlag.TextWordWrap,title.text()).height()+scaled(10)
+                    title.setFixedHeight(max(scaled(30),h))
+                    height=max(height,card.layout().heightForWidth(width)+scaled(8),card.layout().minimumSize().height()+scaled(8))
+            if x>edge and x+width>edge+row_width:
                 x,y,row_height=edge,y+row_height+scaled(self.row_gap),0
             card.setGeometry(x,y,width,height);card.show()
             x+=width+gap;row_height=max(row_height,height)

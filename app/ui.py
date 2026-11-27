@@ -2059,7 +2059,6 @@ class FavoritesPage(QWidget):
         self.bundle_task = None
         self.pdf_task = None
         self.pdf_import_dialog = None
-        self.pdf_progress_state = None
         self._pdf_completed = -1
         layout = QVBoxLayout(self)
         header = QHBoxLayout()
@@ -2140,7 +2139,7 @@ class FavoritesPage(QWidget):
         self.stack = QStackedWidget()
         self.group_scroll = QScrollArea()
         self.group_scroll.setWidgetResizable(True)
-        self.group_container = CardBoard(columns=5)
+        self.group_container = CardBoard(columns=5,fixed_card_height=True,fixed_card_width=248)
         self.group_container.scroll_area=self.group_scroll
         self.group_container.order_changed.connect(lambda order:self.database.save_card_order('favorite',order))
         self.group_scroll.setWidget(self.group_container)
@@ -2217,10 +2216,8 @@ class FavoritesPage(QWidget):
         entries=self.database._ordered_cards(entries,'favorite_card_order')
         self.group_names={row['id']:row['name'] for row in entries}
         for row in entries:
-            card=self.group_container.add_card(row['id'],row['name'],f"{len(row['articles'])} 篇收藏文章\n"+by_name.get(row['name'],{}).get('keywords','未指定分组'),lambda identifier:self._show_group(self.group_names[identifier]))
-            if self.pdf_task and row['id']==str(self.pdf_task.selection['group_id']) and self.pdf_progress_state:
-                state=self.pdf_progress_state
-                card.set_import_progress(state['completed'],state['total'],f"正在联网搜索\n共 {state['total']} 个 PDF，已完成 {state['completed']} 个")
+            self.group_container.add_card(row['id'],row['name'],f"{len(row['articles'])} 篇收藏文章",
+                                          lambda identifier:self._show_group(self.group_names[identifier]))
         self.group_container.reflow()
         self.stack.setCurrentWidget(self.group_scroll)
 
@@ -2296,7 +2293,6 @@ class FavoritesPage(QWidget):
         from pdf_import_ui import PDFImportTask
         if self.pdf_task:return
         self.pdf_task=PDFImportTask(self.database,selection)
-        self.pdf_progress_state=dict(total=len(selection['files']),completed=0,successes=[],failures=[])
         self._pdf_completed=-1
         self.pdf_import_button.setEnabled(False);self.pdf_cancel_button.show()
         self.bulk_cancel_button.setEnabled(False)
@@ -2304,7 +2300,7 @@ class FavoritesPage(QWidget):
         self.window().settings_page.setEnabled(False)
         self.pdf_task.signals.progress.connect(self.pdf_import_progress)
         self.pdf_task.signals.finished.connect(self.pdf_import_finished)
-        self.pdf_import_progress(self.pdf_progress_state)
+        self.pdf_import_progress(dict(total=len(selection['files']),completed=0,successes=[],failures=[]))
         self.window().thread_pool.start(self.pdf_task)
 
     def cancel_pdf_import(self):
@@ -2313,17 +2309,13 @@ class FavoritesPage(QWidget):
             self.bundle_status.setText('正在取消，等待当前请求结束；已成功收藏的文章与 PDF 会保留。')
 
     def pdf_import_progress(self,state):
-        self.pdf_progress_state=state
         self.bundle_status.setText(f"共 {state['total']} 个 PDF，已经搜索完成 {state['completed']} 个；成功 {len(state['successes'])} 个。")
         if self._pdf_completed!=state['completed']:
             self._pdf_completed=state['completed'];self.reload()
-        for card in self.group_container.cards:
-            if self.pdf_task and card.identifier==str(self.pdf_task.selection['group_id']):
-                card.set_import_progress(state['completed'],state['total'],f"正在联网搜索\n共 {state['total']} 个 PDF，已完成 {state['completed']} 个")
 
     def pdf_import_finished(self,report):
         from pdf_import_ui import PDFFailureDialog
-        self.pdf_task=None;self.pdf_progress_state=None
+        self.pdf_task=None
         self.pdf_import_button.setEnabled(True);self.pdf_cancel_button.hide();self.pdf_cancel_button.setEnabled(True)
         self.bulk_cancel_button.setEnabled(True)
         for button in (self.add_group_button,self.transfer_button,self.import_bundle_button,self.group_settings_button):button.setEnabled(True)
@@ -3586,6 +3578,7 @@ class MainWindow(QMainWindow):
         if self.ddrimage_page is not None and not self.ddrimage_page.close_workflows():
             event.ignore();return
         if self.favorites.pdf_import_dialog is not None:self.favorites.pdf_import_dialog.close()
+        if hasattr(self,'skin_page'):self.skin_page.close_ai_editor()
         self.word_bridge.timer.stop()
         if self.batch_refresh.active:self.batch_refresh.cancel()
         self.interface_scale.stop()

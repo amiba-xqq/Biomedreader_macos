@@ -1,5 +1,6 @@
 """Read, normalize and share visual-only skin packs."""
 from dataclasses import dataclass, field
+from contextlib import contextmanager
 from io import BytesIO
 import json
 from pathlib import Path, PurePosixPath
@@ -18,6 +19,8 @@ IDENTIFIER = re.compile(r'[0-9a-f]{32}\Z')
 MAX_IMAGE = 16 * 1024 * 1024
 MAX_PACK = 64 * 1024 * 1024
 MAX_CARDS = 32
+MAX_BUNDLE = 256 * 1024 * 1024
+MAX_BUNDLE_SKINS = 200
 
 
 @dataclass(frozen=True)
@@ -37,6 +40,13 @@ class Skin:
     @property
     def wallpaper(self):
         return self.directory / 'wallpaper.jpg' if self.directory else None
+
+
+@dataclass(frozen=True)
+class SkinPreview:
+    name: str
+    card_count: int
+    thumbnail: bytes
 
 
 def blend(first, second, weight):
@@ -87,6 +97,14 @@ def jpeg(image, limit, quality=88):
     return stream.getvalue()
 
 
+def read_image_file(path):
+    try:
+        with Path(path).open('rb') as stream:
+            return stream.read(MAX_IMAGE + 1)
+    except OSError:
+        raise ValueError(f'无法打开图片「{Path(path).name}」。') from None
+
+
 def asset_name(value):
     if not isinstance(value,str) or '\\' in value or ':' in value:
         raise ValueError('皮肤包中包含无效的资源路径。')
@@ -117,6 +135,51 @@ def pack_metadata(raw):
                     }.items()})
 
 
+@contextmanager
+def open_packs(path):
+    """Load the legacy single pack or an indexed archive of skin packs."""
+    try:
+        with ZipFile(path) as archive:
+            entries = archive.infolist()
+            names = {entry.filename for entry in entries}
+            bundled = 'bundle.json' in names
+            if len(names) != len(entries):
+                raise ValueError('皮肤包中有重复资源。')
+            if (len(entries) > (1 + MAX_BUNDLE_SKINS * (MAX_CARDS + 2) if bundled else 160)
+                    or sum(item.file_size for item in entries) > (MAX_BUNDLE if bundled else MAX_PACK)):
+                raise ValueError('皮肤包大小或资源数量超出限制。')
+
+            def read(name, limit=MAX_IMAGE):
+                entry = archive.getinfo(name)
+                if (entry.is_dir() or stat.S_ISLNK(entry.external_attr >> 16)
+                        or entry.file_size > limit or entry.flag_bits & 1):
+                    raise ValueError('皮肤包中包含无法读取或过大的资源。')
+                return archive.read(entry)
+
+            def manifest(name):
+                return json.loads(read(name, 64 * 1024).decode('utf-8-sig'))
+
+            def load(prefix):
+                metadata = pack_metadata(manifest(prefix + 'theme.json'))
+                for asset in [metadata['wallpaper'], *metadata['cards']]:
+                    if prefix + asset not in names:
+                        raise ValueError(f'皮肤「{metadata["name"]}」缺少背景资源。')
+                return metadata, lambda member: read(prefix + member)
+
+            if bundled:
+                index = manifest('bundle.json')
+                prefixes = index.get('packs') if isinstance(index, dict) and index.get('format') == 1 else None
+                if (not isinstance(prefixes,list) or not 1 <= len(prefixes) <= MAX_BUNDLE_SKINS
+                        or any(not isinstance(prefix,str) or not re.fullmatch(r'packs/[0-9]{3}/',prefix) for prefix in prefixes)
+                        or len(set(prefixes)) != len(prefixes)):
+                    raise ValueError('皮肤包合集的索引格式无效。')
+            else:
+                prefixes = ['']
+            yield [load(prefix) for prefix in prefixes]
+    except (BadZipFile, KeyError, UnicodeError, NotImplementedError, RuntimeError) as error:
+        raise ValueError('请选择包含有效背景图片的 ZIP 皮肤包。') from error
+
+
 class SkinStore:
     def __init__(self, database):
         self.database = database
@@ -142,7 +205,15 @@ class SkinStore:
                 custom.append(Skin(path.name,raw['name'],accent,sidebar,surface,
                     readable_ink(accent,sidebar),selected,readable_ink(accent,selected),
                     '自定义皮肤',path,tuple(path/f for f in raw['cards'] if (path/f).is_file())))
-        return self.builtins + sorted(custom,key=lambda skin:skin.name.casefold())
+        try:
+            order = json.loads(self.database.get_settings().get('skin_pack_order','[]'))
+        except ValueError:
+            order = []
+        positions = {value:index for index,value in enumerate(order) if isinstance(value,str)} if isinstance(order,list) else {}
+        return self.builtins + sorted(custom,key=lambda skin:(positions.get(skin.id,len(positions)),skin.name.casefold()))
+
+    def reorder(self, identifiers):
+        self.database.save_settings({'skin_pack_order':json.dumps(identifiers)})
 
     def active(self):
         identifier = self.database.get_settings().get('active_skin','classic')
@@ -152,55 +223,76 @@ class SkinStore:
         self.database.save_settings({'active_skin':skin.id})
 
     def receive(self, metadata, read):
-        metadata = pack_metadata(metadata)
+        return self.receive_many([(metadata,read)])[0]
+
+    def receive_many(self, packs):
         self.directory.mkdir(parents=True,exist_ok=True)
-        identifier = uuid4().hex
         with TemporaryDirectory(dir=self.directory,prefix='.import-') as temp:
-            stage = Path(temp) / identifier
-            stage.mkdir()
-            wallpaper = decode_image(read(metadata['wallpaper']))
-            (stage/'wallpaper.jpg').write_bytes(jpeg(wallpaper,(1920,1200)))
-            metadata['wallpaper'] = 'wallpaper.jpg'
-            images = metadata['cards']
-            (stage/'cards').mkdir()
-            metadata['cards'] = []
-            for i,member in enumerate(images):
-                filename = f'cards/{i:02}.jpg'
-                (stage/filename).write_bytes(jpeg(decode_image(read(member)),(640,400)))
-                metadata['cards'].append(filename)
-            (stage/'theme.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
-            (stage/'arrow.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="10" viewBox="0 0 16 10"><path d="M3 3l5 4 5-4" fill="none" stroke="{accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'.format(accent=readable_ink(metadata['accent'],'#FFFFFF')),encoding='ascii')
-            stage.rename(self.directory / identifier)
-        return next(skin for skin in self.all() if skin.id == identifier)
+            staged = []
+            for metadata,read in packs:
+                metadata = pack_metadata(metadata)
+                stage = Path(temp) / uuid4().hex
+                stage.mkdir()
+                (stage/'wallpaper.jpg').write_bytes(jpeg(decode_image(read(metadata['wallpaper'])),(1920,1200)))
+                metadata['wallpaper'] = 'wallpaper.jpg'
+                images = metadata['cards']
+                (stage/'cards').mkdir()
+                metadata['cards'] = []
+                for i,member in enumerate(images):
+                    filename = f'cards/{i:02}.jpg'
+                    (stage/filename).write_bytes(jpeg(decode_image(read(member)),(640,400)))
+                    metadata['cards'].append(filename)
+                (stage/'theme.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
+                (stage/'arrow.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="10" viewBox="0 0 16 10"><path d="M3 3l5 4 5-4" fill="none" stroke="{accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'.format(accent=readable_ink(metadata['accent'],'#FFFFFF')),encoding='ascii')
+                staged.append(stage)
+            installed = []
+            try:
+                for stage in staged:
+                    installed.append(stage.rename(self.directory / stage.name))
+            except OSError:
+                for path in installed:
+                    shutil.rmtree(path)
+                raise
+        by_id = {skin.id:skin for skin in self.all()}
+        return [by_id[path.name] for path in installed]
+
+    def preview_zip(self,path):
+        with open_packs(path) as packs:
+            return [SkinPreview(meta['name'],len(meta['cards']),jpeg(decode_image(read(meta['wallpaper'])),(384,240),85))
+                    for meta,read in packs]
+
+    def import_selected(self,path,indices):
+        with open_packs(path) as packs:
+            chosen = set(indices)
+            if not chosen or not chosen.issubset(range(len(packs))):
+                raise ValueError('请选择要缓存的皮肤包。')
+            return self.receive_many(pack for index,pack in enumerate(packs) if index in chosen)
 
     def import_zip(self, path):
-        try:
-            with ZipFile(path) as archive:
-                entries = archive.infolist()
-                if len(entries)>160 or sum(item.file_size for item in entries)>MAX_PACK:
-                    raise ValueError('皮肤包解压后不得超过 64 MB。')
-                names = [item.filename for item in entries]
-                if len(set(names)) != len(names):
-                    raise ValueError('皮肤包中有重复资源。')
-                def read(name, limit=MAX_IMAGE):
-                    entry = archive.getinfo(name)
-                    if (entry.is_dir() or stat.S_ISLNK(entry.external_attr >> 16)
-                            or entry.file_size > limit or entry.flag_bits & 1):
-                        raise ValueError('皮肤包中包含无法读取或过大的资源。')
-                    return archive.read(entry)
-                return self.receive(json.loads(read('theme.json',64*1024).decode('utf-8-sig')),read)
-        except (BadZipFile, KeyError, UnicodeError, json.JSONDecodeError, NotImplementedError):
-            raise ValueError('请选择包含有效 theme.json 和背景图片的 ZIP 皮肤包。') from None
+        with open_packs(path) as packs:
+            if len(packs) != 1:
+                raise ValueError('请在导入窗口选择要缓存的皮肤。')
+            return self.receive(*packs[0])
 
     def export_zip(self, skin, path):
-        if skin.directory is None:
-            raise ValueError('请选择自定义皮肤。')
+        self.export_selected([skin],path)
+
+    def export_selected(self, skins, path):
+        if not 1 <= len(skins) <= MAX_BUNDLE_SKINS or any(skin.directory is None for skin in skins):
+            raise ValueError('请选择要导出的自定义皮肤。')
+        packs = [[skin.directory/'theme.json',skin.wallpaper,*skin.cards] for skin in skins]
+        if sum(asset.stat().st_size for pack in packs for asset in pack)>MAX_BUNDLE:
+            raise ValueError('所选皮肤包超过 256 MB，请分批导出。')
         path = Path(path)
         with TemporaryDirectory(dir=path.parent,prefix='.skin-export-') as temp:
             stage = Path(temp)/'pack.zip'
             with ZipFile(stage,'w',ZIP_DEFLATED) as archive:
-                for asset in [skin.directory/'theme.json',skin.wallpaper,*skin.cards]:
-                    archive.write(asset,asset.relative_to(skin.directory).as_posix())
+                prefixes = [f'packs/{index:03}/' for index in range(len(skins))] if len(skins)>1 else ['']
+                if len(skins)>1:
+                    archive.writestr('bundle.json',json.dumps({'format':1,'packs':prefixes}))
+                for skin,assets,prefix in zip(skins,packs,prefixes):
+                    for asset in assets:
+                        archive.write(asset,prefix + asset.relative_to(skin.directory).as_posix())
             stage.replace(path)
 
     def delete(self, skin):

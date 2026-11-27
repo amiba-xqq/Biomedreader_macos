@@ -164,7 +164,8 @@ def application_style(base, skin):
     if arrow.is_file():
         style += f'QComboBox::down-arrow, QComboBox::down-arrow:disabled, QDateEdit::down-arrow, QDateTimeEdit::down-arrow {{ image:{qss_url(arrow)}; }}'
     if skin.wallpaper:
-        style += f'''QWidget[skinTransparent="true"], QFrame#Sidebar {{ background:transparent; }}
+        style += f'''QWidget[skinTransparent="true"] {{ background:transparent; }}
+            QFrame#Sidebar {{ background:transparent; border:none; }}
             QLabel#Brand, QPushButton#NavButton {{ color:{readable_ink(skin.accent,'#f2efe9')}; }}
             QPushButton#NavButton:checked {{ color:{skin.selected_text}; }}'''
     return style
